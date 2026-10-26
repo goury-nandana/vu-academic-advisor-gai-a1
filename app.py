@@ -195,6 +195,8 @@ defaults = {
     "knowledge_loaded": False,
     "website_loaded": False,
     "pending_question": None,
+    "website_attempts": 0,
+    "website_status": {},
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -477,11 +479,20 @@ def fetch_all_pages(urls):
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=8) as pool:
         results = list(pool.map(download_page, urls))
+    ok = sum(1 for r in results if r["sections"])
+    if ok < max(1, len(urls) // 2):
+        # Raising means Streamlit does NOT cache this failed result
+        raise RuntimeError("website download failed")
     return dict(zip(urls, results))
 
 def load_website_documents():
     sources = [src for src in load_website_sources() if src.get("url")]
-    pages = fetch_all_pages(tuple(src["url"] for src in sources))
+    try:
+        pages = fetch_all_pages(tuple(src["url"] for src in sources))
+    except Exception:
+        st.session_state.website_status = {src["url"]: 0 for src in sources}
+        return []
+    st.session_state.website_status = {u: len(p.get("sections", [])) for u, p in pages.items()}
     documents = []
     for source in sources:
         url = source["url"]
@@ -505,10 +516,29 @@ if not st.session_state.knowledge_loaded:
 if not st.session_state.website_loaded:
     with st.spinner("Loading official VU information..."):
         st.session_state.website_kb = load_website_documents()
-        st.session_state.website_loaded = True
+        st.session_state.website_attempts += 1
+        if st.session_state.website_kb or st.session_state.website_attempts >= 3:
+            st.session_state.website_loaded = True
 
 academic_kb = st.session_state.academic_kb
 website_kb = st.session_state.website_kb
+
+# Add ?debug=1 to the app URL to see what was loaded and retrieved
+DEBUG = st.query_params.get("debug") == "1"
+if DEBUG:
+    status = st.session_state.website_status
+    failed = [u for u, n in status.items() if n == 0]
+    with st.sidebar:
+        st.markdown("---")
+        st.markdown(f"**DEBUG** academic chunks: {len(academic_kb)} | website chunks: {len(website_kb)}")
+        st.markdown(f"Website pages OK: {len(status) - len(failed)} / {len(status)}")
+        if failed:
+            st.markdown("Failed: " + ", ".join(failed[:8]))
+        if st.button("Reload website data"):
+            st.cache_data.clear()
+            st.session_state.website_loaded = False
+            st.session_state.website_attempts = 0
+            st.rerun()
 
 # ============================================================
 # TOKENIZER & RETRIEVAL (TF-IDF style)
@@ -538,7 +568,8 @@ def tokenize(text):
     text = re.sub(r"\bb\.?\s?des\b", "bdes", text)
     return [stem(t) for t in re.findall(r"[a-zA-Z0-9]+", text) if t not in STOPWORDS]
 
-GENERIC_FILE_TOKENS = {"student", "sept", "2026", "aug", "final", "for", "spread", "structure", "plan"}
+GENERIC_FILE_TOKENS = {"student", "sept", "2026", "aug", "final", "for", "spread", "structure", "plan",
+                       "vu", "vidyashilp", "university", "hon", "bangalore", "bengaluru"}
 
 def retrieve(query, documents, top_k=5, minimum_score=0.05):
     if not documents:
@@ -564,7 +595,10 @@ def retrieve(query, documents, top_k=5, minimum_score=0.05):
         tl = doc["text"].lower()
         score += 0.15 * sum(1 for p in BOOST_PHRASES if p in ql and p in tl)
         # A query word that appears in the FILE NAME (e.g. "minor" -> Minor_Courses_...) is a strong signal
-        fname = os.path.splitext(doc.get("source", ""))[0].replace("_", " ")
+        if doc.get("type") == "website":
+            fname = f'{doc.get("source", "")} {doc.get("title", "")} {doc.get("url", "")}'.replace("_", " ")
+        else:
+            fname = os.path.splitext(doc.get("source", ""))[0].replace("_", " ")
         fname_tokens = set(tokenize(fname)) - GENERIC_FILE_TOKENS
         score += 0.25 * len(fname_tokens & set(query_counter))
         if score >= minimum_score:
@@ -979,6 +1013,11 @@ if user_question:
                 web_for_display = website_results if which in ("WEB", "BOTH") else []
                 docs_for_display = academic_results if which in ("DOCS", "BOTH") else []
                 reply(answer, docs_for_display, web_for_display, show_src=show_src)
+                if DEBUG:
+                    with st.expander("Debug: retrieved chunks"):
+                        for r in list(website_results) + list(academic_results):
+                            st.markdown(f"**{r.get('type')} · {r.get('source')}** · score {r.get('_score', 0):.3f}")
+                            st.text(r["text"][:250])
         except Exception:
             reply("I couldn't process that request right now. Please try again.")
 

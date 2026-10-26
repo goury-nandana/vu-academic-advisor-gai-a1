@@ -381,8 +381,10 @@ def load_academic_documents():
 # ============================================================
 # WEBSITE SOURCES
 # ============================================================
+USE_WEBSITE_SOURCES_JSON = False  # keep False: the verified list in DEFAULT_WEBSITE_SOURCES is used
+
 def load_website_sources():
-    if os.path.exists("website_sources.json"):
+    if USE_WEBSITE_SOURCES_JSON and os.path.exists("website_sources.json"):
         try:
             with open("website_sources.json", "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -404,10 +406,14 @@ def fetch_webpage(url):
             tag.decompose()
         title = clean_text(soup.title.get_text()) if soup.title else ""
         sections, current = [], title or "VU Official Website"
-        for el in soup.find_all(["h1", "h2", "h3", "p", "li"]):
+        seen_text = set()
+        for el in soup.find_all(["h1", "h2", "h3", "p", "li", "td", "th", "div"]):
+            if el.name == "div" and el.find(["div", "p", "li", "h1", "h2", "h3", "table", "ul", "ol"]):
+                continue  # only keep leaf divs, avoid duplicating parent text
             txt = clean_text(el.get_text(" "))
-            if not txt:
+            if not txt or txt in seen_text:
                 continue
+            seen_text.add(txt)
             if el.name in ("h1", "h2", "h3"):
                 current = txt
             else:
@@ -677,6 +683,10 @@ BEHAVIOUR RULES:
 15. Academic documents are primary for regulations, prerequisites, attendance, credits and
     progression. Official VU webpages are best for programme, admission and contact info.
 
+18. LISTS FROM SEVERAL SOURCES (minors, majors, electives): collect every item the sources
+    give, from both the documents and the VU website. If the sources list different items, show
+    the combined list and say which source each difference comes from. Never present a partial
+    list as complete.
 16. SPECIFIC LOOKUPS (course codes, credits of a course, which courses run in a given
     year/semester): answer ONLY with codes/numbers written in the sources for that exact
     programme, batch/year and semester. Never guess or reuse a code from another programme or
@@ -895,12 +905,14 @@ if user_question:
             if conv_ctx:
                 retrieval_query = f"{get_last_user_question(skip_current=True)} {user_question}"
 
+            programme_q = bool(re.search(r"\b(minor|major|specialis|eligib|scholarship)", user_question, re.I))
             if category == "website":
                 website_results = retrieve(retrieval_query, website_kb, top_k=6, minimum_score=0.035)
                 academic_results = retrieve(retrieval_query, academic_kb, top_k=4, minimum_score=0.045)
             else:
                 academic_results = retrieve(retrieval_query, academic_kb, top_k=8, minimum_score=0.045)
-                website_results = retrieve(retrieval_query, website_kb, top_k=4, minimum_score=0.035)
+                website_results = retrieve(retrieval_query, website_kb, top_k=6 if programme_q else 4,
+                                           minimum_score=0.035)
 
             if not academic_results and not website_results:
                 reply(NO_INFO_REPLY)

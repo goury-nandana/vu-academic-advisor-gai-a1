@@ -571,40 +571,48 @@ def tokenize(text):
 GENERIC_FILE_TOKENS = {"student", "sept", "2026", "aug", "final", "for", "spread", "structure", "plan",
                        "vu", "vidyashilp", "university", "hon", "bangalore", "bengaluru"}
 
+def _index_doc(doc):
+    """Tokenise a chunk once and keep the result on the chunk (big speed-up on repeat queries)."""
+    if "_t" in doc:
+        return
+    meta = f'{doc.get("source", "")} {doc.get("sheet", "")}'.replace("_", " ")
+    doc["_t"] = tokenize(doc["text"] + " " + meta)
+    doc["_tc"] = Counter(doc["_t"])
+    if doc.get("type") == "website":
+        fname = f'{doc.get("source", "")} {doc.get("title", "")} {doc.get("url", "")}'.replace("_", " ")
+    else:
+        fname = os.path.splitext(doc.get("source", ""))[0].replace("_", " ")
+    doc["_f"] = set(tokenize(fname)) - GENERIC_FILE_TOKENS
+
 def retrieve(query, documents, top_k=5, minimum_score=0.05):
     if not documents:
         return []
     query_counter = Counter(tokenize(query))
     if not query_counter:
         return []
-    doc_freq, tokenized_docs = Counter(), []
+    doc_freq = Counter()
     for doc in documents:
-        meta = f'{doc.get("source", "")} {doc.get("sheet", "")}'.replace("_", " ")
-        toks = tokenize(doc["text"] + " " + meta)
-        doc_freq.update(set(toks))
-        tokenized_docs.append(toks)
-    total, ql, scored = len(documents), query.lower(), []
-    for doc, toks in zip(documents, tokenized_docs):
+        _index_doc(doc)
+        doc_freq.update(set(doc["_t"]))
+    total, ql, qset, scored = len(documents), query.lower(), set(query_counter), []
+    for doc in documents:
+        toks = doc["_t"]
         if not toks:
             continue
-        tc = Counter(toks)
+        tc = doc["_tc"]
         score = sum(
             (tc[t] / len(toks)) * (math.log((total + 1) / (doc_freq.get(t, 0) + 1)) + 1) * qc
             for t, qc in query_counter.items() if t in tc
         )
         tl = doc["text"].lower()
         score += 0.15 * sum(1 for p in BOOST_PHRASES if p in ql and p in tl)
-        # A query word that appears in the FILE NAME (e.g. "minor" -> Minor_Courses_...) is a strong signal
-        if doc.get("type") == "website":
-            fname = f'{doc.get("source", "")} {doc.get("title", "")} {doc.get("url", "")}'.replace("_", " ")
-        else:
-            fname = os.path.splitext(doc.get("source", ""))[0].replace("_", " ")
-        fname_tokens = set(tokenize(fname)) - GENERIC_FILE_TOKENS
-        score += 0.25 * len(fname_tokens & set(query_counter))
+        # A query word that appears in the FILE / PAGE NAME is a strong signal
+        score += 0.25 * len(doc["_f"] & qset)
         if score >= minimum_score:
             scored.append((score, doc))
     scored.sort(key=lambda x: x[0], reverse=True)
-    return [{**d, "_score": s} for s, d in scored[:top_k]]
+    return [{**{k: v for k, v in d.items() if not k.startswith("_t") and k not in ("_tc", "_f")},
+             "_score": sc} for sc, d in scored[:top_k]]
 
 # ============================================================
 # CLASSIFY QUERY
@@ -853,7 +861,7 @@ Do not add source placeholders such as [Academic Source 1] to your response."""
             return resp.choices[0].message.content.strip()
         except Exception:
             continue
-    return "I couldn't get a response right now. Please try again."
+    return "[[INSUFFICIENT]] I couldn't get a response right now. Please try again."
 
 # ============================================================
 # DISPLAY HELPERS

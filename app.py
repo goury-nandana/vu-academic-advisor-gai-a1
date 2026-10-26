@@ -71,18 +71,39 @@ div[data-testid="stButton"] > button:hover {
 .stApp h1, .stApp h2, .stApp h3, .info-box h3, .info-box p { color: #1a1a2e !important; }
 [data-testid="stExpander"] summary, [data-testid="stExpander"] summary *,
 [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] * { color: #3a4a63 !important; }
-/* ---- Sidebar: VU navy with white text ---- */
-[data-testid="stSidebar"], [data-testid="stSidebar"] > div { background-color: #0a2240 !important; }
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *,
-[data-testid="stSidebar"] [data-testid="stWidgetLabel"] * { color: #ffffff !important; }
-[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.25) !important; }
-[data-testid="stSidebar"] [data-baseweb="select"] > div,
-[data-testid="stSidebar"] [data-baseweb="input"],
-[data-testid="stSidebar"] [data-baseweb="base-input"] { background-color: #ffffff !important; }
-[data-testid="stSidebar"] [data-baseweb="select"] *,
-[data-testid="stSidebar"] [data-baseweb="input"] *,
-[data-testid="stSidebar"] input { color: #1a1a2e !important; }
-[data-testid="stSidebar"] input::placeholder { color: #6b7686 !important; }
+/* ---- Sidebar: lighter VU blue, white text ---- */
+section[data-testid="stSidebar"], section[data-testid="stSidebar"] > div { background-color: #1f4a7d !important; }
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1,
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3,
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] strong,
+section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,
+section[data-testid="stSidebar"] label { color: #ffffff !important; }
+section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.3) !important; }
+section[data-testid="stSidebar"] [data-baseweb="select"] > div,
+section[data-testid="stSidebar"] [data-baseweb="input"],
+section[data-testid="stSidebar"] [data-baseweb="base-input"],
+section[data-testid="stSidebar"] input {
+    background-color: rgba(255,255,255,0.14) !important;
+    border-color: rgba(255,255,255,0.35) !important;
+    color: #ffffff !important;
+}
+section[data-testid="stSidebar"] [data-baseweb="select"] *,
+section[data-testid="stSidebar"] [data-baseweb="input"] *,
+section[data-testid="stSidebar"] [data-testid="stNumberInput"] button { color: #ffffff !important; }
+section[data-testid="stSidebar"] [data-baseweb="select"] svg,
+section[data-testid="stSidebar"] [data-testid="stNumberInput"] svg { fill: #ffffff !important; }
+section[data-testid="stSidebar"] input::placeholder { color: rgba(255,255,255,0.7) !important; }
+section[data-testid="stSidebar"] [data-testid="stButton"] button p { color: #0a2240 !important; }
+/* ---- Chat input (new + old Streamlit selectors) ---- */
+[data-testid="stChatInput"], [data-testid="stChatInput"] > div,
+[data-testid="stChatInput"] textarea { background: #ffffff !important; color: #1a1a2e !important; }
+[data-testid="stChatInput"] { border: 1.5px solid #dde0e6 !important; border-radius: 26px !important; }
+[data-testid="stChatInput"] textarea::placeholder { color: #8a94a6 !important; }
+/* ---- Chat bubbles ---- */
+.bubble-user { display: flex; justify-content: flex-end; margin: 6px 0; }
+.bubble-bot  { display: flex; justify-content: flex-start; margin: 6px 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -113,7 +134,7 @@ DEFAULT_WEBSITE_SOURCES = [
 ]
 
 SOCIAL_RE = re.compile(
-    r"^\s*(h+i+|h+e+l+o+|hey+|hola|yo+|sup|bro|wsp|wsup|what'?s\s*up|wassup|"
+    r"^\s*(h+i+|h+e+l+o+|h+l+o+|hlw|helo|hellow|hey+|hola|yo+|sup|bro|wsp|wsup|what'?s\s*up|wassup|"
     r"good\s*(morning|afternoon|evening|night)|namaste|namaskaram|"
     r"thank(s|\s*you|u)|thx|ty|ok(ay)?|got\s*it|sure|great|nice|cool|"
     r"bye|goodbye|see\s*you|take\s*care|cya)\s*[!.?]*\s*$",
@@ -127,7 +148,7 @@ GREETING_REPLY = (
 THANKS_REPLY = "Happy to help! 😊 Feel free to ask anything else about your academics at VU."
 
 OUT_OF_SCOPE_RE = re.compile(
-    r"\b(weather|temperature|rain|forecast|cricket|football|soccer|match|movie|movies|"
+    r"\b(president of|prime minister|chief minister|capital of|ipl|world cup|bollywood|weather|temperature|rain|forecast|cricket|football|soccer|match|movie|movies|"
     r"song|music|restaurant|recipe|stock market|politics|election|celebrity|"
     r"who will win|score today|bitcoin|share price)\b",
     re.I,
@@ -139,8 +160,9 @@ PERSONAL_RE = re.compile(
     re.I,
 )
 OUT_OF_SCOPE_REPLY = (
-    "I'm VU's AI Academic Advisor, so I can help with Vidyashilp University "
-    "academic and programme-related questions, but not that topic. 😊"
+    "Sorry, I can't help with that one 😅 I only handle Vidyashilp University "
+    "academics, like courses, credits, attendance, programmes and admissions. "
+    "Ask me something on those!"
 )
 PERSONAL_REPLY = (
     "I'm an AI academic advisor, so I don't have a personal family or personal life. "
@@ -645,6 +667,22 @@ BEHAVIOUR RULES:
 15. Academic documents are primary for regulations, prerequisites, attendance, credits and
     progression. Official VU webpages are best for programme, admission and contact info.
 
+16. SPECIFIC LOOKUPS (course codes, credits of a course, which courses run in a given
+    year/semester): answer ONLY with codes/numbers written in the sources for that exact
+    programme, batch/year and semester. Never guess or reuse a code from another programme or
+    year. If the programme, batch/admission year or semester is missing, ask for it. If it is
+    still not in the sources, say sorry you can't find it in the available documents and point to
+    the academic office.
+17. Questions about people or topics outside VU academics (politics, general knowledge, sports,
+    celebrities, etc.) must be declined with a short, friendly "Sorry, I can't help with that"
+    and an invitation to ask a VU academic question.
+
+OUTPUT MARKER (the app removes it before showing your answer): start your reply with exactly
+one marker when it applies, otherwise use none:
+- [[CHAT]] for greetings, thanks and small talk (including misspelt or stretched greetings).
+- [[OUT_OF_SCOPE]] for anything not about VU academics, programmes or admissions.
+- [[INSUFFICIENT]] when the sources do not contain the specific detail requested.
+
 SOURCE RULES:
 - Do not put placeholders such as [Academic Source 1] in the answer.
 - Sources are displayed separately by the application.
@@ -844,7 +882,7 @@ if user_question:
     show_user_bubble(user_question)
 
     # --- Shortcuts: greetings, personal, out-of-scope (no retrieval, no sources) ---
-    if SOCIAL_RE.match(user_question.strip()):
+    if SOCIAL_RE.match(re.sub(r"(.)\1{2,}", r"\1", user_question.strip())):
         is_thanks = re.search(r"\b(thank(s|\s*you|u)|thx|ty)\b", user_question, re.I)
         reply(THANKS_REPLY if is_thanks else GREETING_REPLY)
     elif PERSONAL_RE.search(user_question):
@@ -878,7 +916,12 @@ if user_question:
                 with st.spinner("Thinking..."):
                     answer = generate_answer(Groq(api_key=api_key), user_question,
                                              context, category, profile)
-                reply(answer, academic_results, website_results, show_src=True)
+                show_src = True
+                for marker in ("[[CHAT]]", "[[OUT_OF_SCOPE]]", "[[INSUFFICIENT]]"):
+                    if marker in answer:
+                        show_src = False
+                answer = re.sub(r"\[\[[A-Z_]+\]\]\s*", "", answer).strip()
+                reply(answer, academic_results, website_results, show_src=show_src)
         except Exception:
             reply("I couldn't process that request right now. Please try again.")
 

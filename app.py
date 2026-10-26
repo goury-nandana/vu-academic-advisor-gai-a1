@@ -64,12 +64,25 @@ div[data-testid="stButton"] > button:hover {
 }
 .footer-text { text-align: center; color: #adb5bd; font-size: 11px; padding-top: 20px; }
 #MainMenu, footer { visibility: hidden; }
-/* Keep text readable even if the browser/Streamlit is in dark mode */
-[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3,
-[data-testid="stSidebar"] p, [data-testid="stWidgetLabel"] p,
+/* ---- Main area: dark readable text ---- */
+[data-testid="stAppViewContainer"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stAppViewContainer"] [data-testid="stMarkdownContainer"] li,
+[data-testid="stAppViewContainer"] [data-testid="stMarkdownContainer"] strong,
 .stApp h1, .stApp h2, .stApp h3, .info-box h3, .info-box p { color: #1a1a2e !important; }
-.bubble-user { display: flex; justify-content: flex-end; margin: 6px 0; }
-.bubble-bot  { display: flex; justify-content: flex-start; margin: 6px 0; }
+[data-testid="stExpander"] summary, [data-testid="stExpander"] summary *,
+[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] * { color: #3a4a63 !important; }
+/* ---- Sidebar: VU navy with white text ---- */
+[data-testid="stSidebar"], [data-testid="stSidebar"] > div { background-color: #0a2240 !important; }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *,
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] * { color: #ffffff !important; }
+[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.25) !important; }
+[data-testid="stSidebar"] [data-baseweb="select"] > div,
+[data-testid="stSidebar"] [data-baseweb="input"],
+[data-testid="stSidebar"] [data-baseweb="base-input"] { background-color: #ffffff !important; }
+[data-testid="stSidebar"] [data-baseweb="select"] *,
+[data-testid="stSidebar"] [data-baseweb="input"] *,
+[data-testid="stSidebar"] input { color: #1a1a2e !important; }
+[data-testid="stSidebar"] input::placeholder { color: #6b7686 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -284,9 +297,8 @@ def extract_excel_sheets(filepath):
                 values = [str(v) for v in row if v is not None]
                 if values:
                     rows.append(" | ".join(values))
-            text = clean_text("\n".join(rows))
-            if text:
-                sheets.append({"sheet": sheet.title, "text": text})
+            if rows:
+                sheets.append({"sheet": sheet.title, "rows": rows})
         return sheets
     except Exception:
         return []
@@ -327,9 +339,14 @@ def load_academic_documents():
                     documents.append({**base, "text": c, "chunk": i,
                                       "page": p["page"], "section": p["section"]})
         elif ext in (".xlsx", ".xls"):
-            for s in extract_excel_sheets(filepath):
-                for i, c in enumerate(chunk_text(s["text"]), start=1):
-                    documents.append({**base, "text": c, "chunk": i, "sheet": s["sheet"]})
+            for sh in extract_excel_sheets(filepath):
+                rows, header, group = sh["rows"], sh["rows"][0], 12
+                for i in range(0, len(rows), group):
+                    block = rows[i:i + group]
+                    if i > 0:
+                        block = [header] + block
+                    documents.append({**base, "text": "\n".join(block),
+                                      "chunk": i // group + 1, "sheet": sh["sheet"]})
         else:
             for i, c in enumerate(chunk_text(extract_plain_text(filepath)), start=1):
                 documents.append({**base, "text": c, "chunk": i})
@@ -431,7 +448,9 @@ def stem(t):
     return t
 
 def tokenize(text):
-    return [stem(t) for t in re.findall(r"[a-zA-Z0-9]+", text.lower()) if t not in STOPWORDS]
+    text = re.sub(r"\bb\.?\s?tech\b", "btech", text.lower())
+    text = re.sub(r"\bb\.?\s?des\b", "bdes", text)
+    return [stem(t) for t in re.findall(r"[a-zA-Z0-9]+", text) if t not in STOPWORDS]
 
 def retrieve(query, documents, top_k=5, minimum_score=0.05):
     if not documents:
@@ -441,7 +460,8 @@ def retrieve(query, documents, top_k=5, minimum_score=0.05):
         return []
     doc_freq, tokenized_docs = Counter(), []
     for doc in documents:
-        toks = tokenize(doc["text"])
+        meta = f'{doc.get("source", "")} {doc.get("sheet", "")}'.replace("_", " ")
+        toks = tokenize(doc["text"] + " " + meta)
         doc_freq.update(set(toks))
         tokenized_docs.append(toks)
     total, ql, scored = len(documents), query.lower(), []
@@ -813,7 +833,8 @@ for msg in st.session_state.messages:
 # ============================================================
 pending = st.session_state.pending_question
 st.session_state.pending_question = None
-user_question = pending or st.chat_input("Ask your academic question...")
+typed_question = st.chat_input("Ask your academic question...")
+user_question = pending or typed_question
 
 # ============================================================
 # PROCESS QUESTION
@@ -847,7 +868,7 @@ if user_question:
                 website_results = retrieve(retrieval_query, website_kb, top_k=6, minimum_score=0.035)
                 academic_results = retrieve(retrieval_query, academic_kb, top_k=4, minimum_score=0.045)
             else:
-                academic_results = retrieve(retrieval_query, academic_kb, top_k=6, minimum_score=0.045)
+                academic_results = retrieve(retrieval_query, academic_kb, top_k=8, minimum_score=0.045)
                 website_results = retrieve(retrieval_query, website_kb, top_k=4, minimum_score=0.035)
 
             if not academic_results and not website_results:

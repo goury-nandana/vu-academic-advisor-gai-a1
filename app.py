@@ -180,9 +180,11 @@ PERSONAL_REPLY = (
     "I'm an AI academic advisor, so I don't have a personal family or personal life. "
     "But I can definitely help with your VU academic questions. 😊"
 )
+CONTACT_LINE = ("For this, please contact the Academic Office or the admissions team. "
+                "Contact details: https://vidyashilp.edu.in/contact/")
 NO_INFO_REPLY = (
-    "I don't have enough information in the available VU sources to answer that accurately. "
-    "Please check with the relevant academic office or programme office for the current rule."
+    "Sorry, I couldn't find that on the VU website or in the university documents I have. "
+    + CONTACT_LINE
 )
 
 # ============================================================
@@ -398,7 +400,13 @@ MAX_AUTO_PAGES = 60
 SKIP_URL_PARTS = ("wp-content", "preapplication", "phd-apply-now", "application.", "/blogs/",
                   "indiarising", "seru.php", "enquiryform", "javascript", "mailto", "tel:")
 SKIP_EXTENSIONS = (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".zip", ".php", ".doc", ".docx", ".xlsx")
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/124.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+_PARTIAL = {}  # keeps partly-downloaded pages when a download round is poor
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def discover_site_links():
@@ -448,8 +456,18 @@ def load_website_sources():
 def download_page(url):
     """Plain download + parse (no Streamlit calls, safe to run in threads)."""
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=15)
-        resp.raise_for_status()
+        import time
+        resp = None
+        for attempt in range(3):
+            try:
+                resp = requests.get(url, headers=HEADERS, timeout=15)
+                resp.raise_for_status()
+                break
+            except Exception:
+                resp = None
+                time.sleep(1.0 + attempt)
+        if resp is None:
+            return {"title": "", "sections": []}
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(resp.text, "html.parser")
         for tag in soup(["script", "style", "noscript", "svg", "iframe", "nav", "footer"]):
@@ -477,12 +495,14 @@ def download_page(url):
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_all_pages(urls):
     from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(download_page, urls))
     ok = sum(1 for r in results if r["sections"])
     if ok < max(1, len(urls) // 2):
-        # Raising means Streamlit does NOT cache this failed result
-        raise RuntimeError("website download failed")
+        # Raising means Streamlit does NOT cache this poor result; keep what we did get
+        _PARTIAL.clear()
+        _PARTIAL.update(dict(zip(urls, results)))
+        raise RuntimeError("website download poor")
     return dict(zip(urls, results))
 
 def load_website_documents():
@@ -490,8 +510,10 @@ def load_website_documents():
     try:
         pages = fetch_all_pages(tuple(src["url"] for src in sources))
     except Exception:
-        st.session_state.website_status = {src["url"]: 0 for src in sources}
-        return []
+        pages = dict(_PARTIAL)  # use whatever downloaded, even if it was a poor round
+        if not pages:
+            st.session_state.website_status = {src["url"]: 0 for src in sources}
+            return []
     st.session_state.website_status = {u: len(p.get("sections", [])) for u, p in pages.items()}
     documents = []
     for source in sources:
@@ -522,6 +544,10 @@ if not st.session_state.website_loaded:
 
 academic_kb = st.session_state.academic_kb
 website_kb = st.session_state.website_kb
+
+if not website_kb:
+    st.warning("The VU website could not be loaded right now, so answers come only from the uploaded "
+               "university documents. Try again in a few minutes.")
 
 # Add ?debug=1 to the app URL to see what was loaded and retrieved
 DEBUG = st.query_params.get("debug") == "1"
@@ -779,7 +805,8 @@ BEHAVIOUR RULES:
 15. WEBSITE FIRST: the OFFICIAL VU WEBSITE excerpts are your primary source for everything.
     If they answer the question, answer from them and do not mix in the academic documents.
     ONLY if the website excerpts do not contain the answer, use the ACADEMIC DOCUMENTS
-    excerpts. If neither contains it, say so.
+    excerpts. If neither contains it, say sorry, use the [[INSUFFICIENT]] marker, and do not
+    guess (the app adds the contact details).
 18. LISTS (minors, majors, electives): give the complete list exactly as the source you are
     using states it. Never present a partial list as complete.
 16. SPECIFIC LOOKUPS (course codes, credits of a course, which courses run in a given
@@ -870,6 +897,7 @@ def format_text(text):
     """Escape HTML, then support **bold**, bullets and line breaks inside bubbles."""
     t = html.escape(text)
     t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
+    t = re.sub(r"(https?://[^\s<]+)", r'<a href="\1" target="_blank" style="color:#1f4a7d;">\1</a>', t)
     lines = []
     for ln in t.split("\n"):
         s = ln.strip()
@@ -1016,7 +1044,10 @@ if user_question:
                     if marker in answer:
                         show_src = False
                 src = re.search(r"\[\[SRC:(WEB|DOCS|BOTH)\]\]", answer)
+                needs_contact = "[[INSUFFICIENT]]" in answer
                 answer = re.sub(r"\[\[[A-Z_:]+\]\]\s*", "", answer).strip()
+                if needs_contact and "vidyashilp.edu.in/contact" not in answer:
+                    answer += "\n\n" + CONTACT_LINE
                 which = src.group(1) if src else ("WEB" if website_results else "DOCS")
                 web_for_display = website_results if which in ("WEB", "BOTH") else []
                 docs_for_display = academic_results if which in ("DOCS", "BOTH") else []

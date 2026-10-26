@@ -391,22 +391,35 @@ def load_academic_documents():
 # ============================================================
 USE_WEBSITE_SOURCES_JSON = False  # keep False: the verified list in code is used
 
+SITE_ROOT = "https://vidyashilp.edu.in/"
+MAX_AUTO_PAGES = 60
+SKIP_URL_PARTS = ("wp-content", "preapplication", "phd-apply-now", "application.", "/blogs/",
+                  "indiarising", "seru.php", "enquiryform", "javascript", "mailto", "tel:")
+SKIP_EXTENSIONS = (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".zip", ".php", ".doc", ".docx", ".xlsx")
+HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
 @st.cache_data(ttl=3600, show_spinner=False)
-def discover_program_links():
-    """Find programme pages linked from the VU homepage so new programmes are picked up."""
+def discover_site_links():
+    """Collect every page linked from the VU homepage menus (all the 'tabs')."""
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        resp = requests.get("https://vidyashilp.edu.in/", headers=headers, timeout=20)
-        resp.raise_for_status()
+        from urllib.parse import urljoin, urlparse
         from bs4 import BeautifulSoup
+        resp = requests.get(SITE_ROOT, headers=HEADERS, timeout=20)
+        resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         found = {}
         for a in soup.find_all("a", href=True):
-            url = a["href"].split("#")[0].split("?")[0]
-            if re.match(r"^https://vidyashilp\.edu\.in/schools/[^/]+/?$", url):
-                url = url if url.endswith("/") else url + "/"
-                found[url] = clean_text(a.get_text(" ")) or "Programme"
-        return [{"name": ("VU " + n)[:60], "url": u} for u, n in found.items()]
+            url = urljoin(SITE_ROOT, a["href"]).split("#")[0].split("?")[0]
+            parsed = urlparse(url)
+            if parsed.netloc != "vidyashilp.edu.in" or parsed.path in ("", "/"):
+                continue
+            low = url.lower()
+            if any(x in low for x in SKIP_URL_PARTS) or low.endswith(SKIP_EXTENSIONS):
+                continue
+            url = url if url.endswith("/") else url + "/"
+            slug = parsed.path.strip("/").split("/")[-1].replace("-", " ").replace("_", " ")
+            found.setdefault(url, clean_text(a.get_text(" ")) or slug)
+        return [{"name": ("VU " + n)[:60], "url": u} for u, n in list(found.items())[:MAX_AUTO_PAGES]]
     except Exception:
         return []
 
@@ -421,7 +434,7 @@ def load_website_sources():
         except Exception:
             pass
     if AUTO_DISCOVER_PROGRAMMES:
-        sources += discover_program_links()
+        sources += discover_site_links()
     unique, seen = [], set()
     for src in sources:
         key = src.get("url", "").rstrip("/")
@@ -430,22 +443,20 @@ def load_website_sources():
             unique.append(src)
     return unique
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def fetch_webpage(url):
+def download_page(url):
+    """Plain download + parse (no Streamlit calls, safe to run in threads)."""
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        resp = requests.get(url, headers=headers, timeout=20)
+        resp = requests.get(url, headers=HEADERS, timeout=15)
         resp.raise_for_status()
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(resp.text, "html.parser")
         for tag in soup(["script", "style", "noscript", "svg", "iframe", "nav", "footer"]):
             tag.decompose()
         title = clean_text(soup.title.get_text()) if soup.title else ""
-        sections, current = [], title or "VU Official Website"
-        seen_text = set()
+        sections, current, seen_text = [], title or "VU Official Website", set()
         for el in soup.find_all(["h1", "h2", "h3", "p", "li", "td", "th", "div"]):
             if el.name == "div" and el.find(["div", "p", "li", "h1", "h2", "h3", "table", "ul", "ol"]):
-                continue  # only keep leaf divs, avoid duplicating parent text
+                continue
             txt = clean_text(el.get_text(" "))
             if not txt or txt in seen_text:
                 continue
@@ -461,13 +472,20 @@ def fetch_webpage(url):
     except Exception:
         return {"title": "", "sections": []}
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_all_pages(urls):
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(download_page, urls))
+    return dict(zip(urls, results))
+
 def load_website_documents():
+    sources = [src for src in load_website_sources() if src.get("url")]
+    pages = fetch_all_pages(tuple(src["url"] for src in sources))
     documents = []
-    for source in load_website_sources():
-        url = source.get("url", "")
-        if not url:
-            continue
-        page = fetch_webpage(url)
+    for source in sources:
+        url = source["url"]
+        page = pages.get(url, {})
         for sec in page.get("sections", []):
             for i, c in enumerate(chunk_text(sec.get("text", ""), 180, 40), start=1):
                 documents.append({
@@ -716,13 +734,12 @@ BEHAVIOUR RULES:
     whole programme (e.g. a minors list for B.Tech), just answer; do not ask for details you
     do not need. Otherwise ask ONE short, specific follow-up question naming exactly what you
     need, and mention what you can already tell them from the sources.
-15. Academic documents are primary for regulations, prerequisites, attendance, credits and
-    progression. Official VU webpages are best for programme, admission and contact info.
-
-18. LISTS FROM SEVERAL SOURCES (minors, majors, electives): collect every item the sources
-    give, from both the documents and the VU website. If the sources list different items, show
-    the combined list and say which source each difference comes from. Never present a partial
-    list as complete.
+15. WEBSITE FIRST: the OFFICIAL VU WEBSITE excerpts are your primary source for everything.
+    If they answer the question, answer from them and do not mix in the academic documents.
+    ONLY if the website excerpts do not contain the answer, use the ACADEMIC DOCUMENTS
+    excerpts. If neither contains it, say so.
+18. LISTS (minors, majors, electives): give the complete list exactly as the source you are
+    using states it. Never present a partial list as complete.
 16. SPECIFIC LOOKUPS (course codes, credits of a course, which courses run in a given
     year/semester): answer ONLY with codes/numbers written in the sources for that exact
     programme, batch/year and semester. Never guess or reuse a code from another programme or
@@ -738,6 +755,9 @@ one marker when it applies, otherwise use none:
 - [[CHAT]] for greetings, thanks and small talk (including misspelt or stretched greetings).
 - [[OUT_OF_SCOPE]] for anything not about VU academics, programmes or admissions.
 - [[INSUFFICIENT]] when the sources do not contain the specific detail requested.
+When you answer from VU information, also add ONE source marker: [[SRC:WEB]] if the answer
+came only from the website excerpts, [[SRC:DOCS]] if only from the academic documents,
+[[SRC:BOTH]] if you needed both.
 
 SOURCE RULES:
 - Do not put placeholders such as [Academic Source 1] in the answer.
@@ -751,8 +771,16 @@ def create_context(academic_results, website_results, conversation_context=""):
     parts = []
     if conversation_context:
         parts.append("RELEVANT PREVIOUS CONVERSATION CONTEXT:\n" + conversation_context)
+    if website_results:
+        parts.append("OFFICIAL VU WEBSITE (PRIMARY SOURCE, USE THIS FIRST):")
+        for i, r in enumerate(website_results, 1):
+            meta = [f"Page: {r.get('source', 'VU Official Website')}"]
+            for key, label in (("title", "Title"), ("section", "Section"), ("url", "URL")):
+                if r.get(key):
+                    meta.append(f"{label}: {r[key]}")
+            parts.append(f"[Website Source {i}] {' | '.join(meta)}\n{r['text']}")
     if academic_results:
-        parts.append("ACADEMIC UNIVERSITY DOCUMENTS:")
+        parts.append("ACADEMIC UNIVERSITY DOCUMENTS (USE ONLY IF THE WEBSITE DOES NOT ANSWER):")
         for i, r in enumerate(academic_results, 1):
             meta = [f"File: {r['source']}"]
             if r.get("page"):
@@ -762,22 +790,11 @@ def create_context(academic_results, website_results, conversation_context=""):
             if r.get("sheet"):
                 meta.append(f"Sheet: {r['sheet']}")
             parts.append(f"[Academic Source {i}] {' | '.join(meta)}\n{r['text']}")
-    if website_results:
-        parts.append("OFFICIAL VU WEBSITE:")
-        for i, r in enumerate(website_results, 1):
-            meta = [f"Page: {r.get('source', 'VU Official Website')}"]
-            for key, label in (("title", "Title"), ("section", "Section"), ("url", "URL")):
-                if r.get(key):
-                    meta.append(f"{label}: {r[key]}")
-            parts.append(f"[Website Source {i}] {' | '.join(meta)}\n{r['text']}")
     return "\n\n".join(parts)
 
 def generate_answer(client, question, context, category, profile):
-    priority = (
-        "Prioritize the relevant official VU webpage information for this question."
-        if category == "website"
-        else "Prioritize VU academic documents for regulations and student eligibility."
-    )
+    priority = ("Answer from the OFFICIAL VU WEBSITE excerpts first. Use the academic documents "
+                "only if the website excerpts do not contain the answer.")
     user_prompt = f"""{priority}
 
 RETRIEVED INFORMATION:
@@ -941,14 +958,9 @@ if user_question:
             if conv_ctx:
                 retrieval_query = f"{get_last_user_question(skip_current=True)} {user_question}"
 
-            programme_q = bool(re.search(r"\b(minor|major|specialis|eligib|scholarship)", user_question, re.I))
-            if category == "website":
-                website_results = retrieve(retrieval_query, website_kb, top_k=6, minimum_score=0.035)
-                academic_results = retrieve(retrieval_query, academic_kb, top_k=4, minimum_score=0.045)
-            else:
-                academic_results = retrieve(retrieval_query, academic_kb, top_k=8, minimum_score=0.045)
-                website_results = retrieve(retrieval_query, website_kb, top_k=6 if programme_q else 4,
-                                           minimum_score=0.035)
+            # Website first, documents as fallback (both retrieved; the prompt enforces the order)
+            website_results = retrieve(retrieval_query, website_kb, top_k=8, minimum_score=0.035)
+            academic_results = retrieve(retrieval_query, academic_kb, top_k=6, minimum_score=0.045)
 
             if not academic_results and not website_results:
                 reply(NO_INFO_REPLY)
@@ -961,9 +973,12 @@ if user_question:
                 for marker in ("[[CHAT]]", "[[OUT_OF_SCOPE]]", "[[INSUFFICIENT]]"):
                     if marker in answer:
                         show_src = False
-                answer = re.sub(r"\[\[[A-Z_]+\]\]\s*", "", answer).strip()
-                web_for_display = website_results if (category == "website" or not academic_results) else []
-                reply(answer, academic_results, web_for_display, show_src=show_src)
+                src = re.search(r"\[\[SRC:(WEB|DOCS|BOTH)\]\]", answer)
+                answer = re.sub(r"\[\[[A-Z_:]+\]\]\s*", "", answer).strip()
+                which = src.group(1) if src else ("WEB" if website_results else "DOCS")
+                web_for_display = website_results if which in ("WEB", "BOTH") else []
+                docs_for_display = academic_results if which in ("DOCS", "BOTH") else []
+                reply(answer, docs_for_display, web_for_display, show_src=show_src)
         except Exception:
             reply("I couldn't process that request right now. Please try again.")
 

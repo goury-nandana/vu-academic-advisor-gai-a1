@@ -137,6 +137,14 @@ DEFAULT_WEBSITE_SOURCES = [
     {"name": "VU PhD Programme", "url": "https://vidyashilp.edu.in/phd-program/"},
 ]
 
+# Paste any extra VU pages here, one per line, e.g.:
+#   {"name": "VU Anti-Ragging", "url": "https://vidyashilp.edu.in/anti-ragging-committee-3/"},
+EXTRA_WEBSITE_LINKS = [
+]
+
+# If True, programme pages linked from the VU homepage (/schools/...) are added automatically
+AUTO_DISCOVER_PROGRAMMES = True
+
 SOCIAL_RE = re.compile(
     r"^\s*(h+i+|h+e+l+o+|h+l+o+|hlw|helo|hellow|hey+|hola|yo+|sup|bro|wsp|wsup|what'?s\s*up|wassup|"
     r"good\s*(morning|afternoon|evening|night)|namaste|namaskaram|"
@@ -381,18 +389,46 @@ def load_academic_documents():
 # ============================================================
 # WEBSITE SOURCES
 # ============================================================
-USE_WEBSITE_SOURCES_JSON = False  # keep False: the verified list in DEFAULT_WEBSITE_SOURCES is used
+USE_WEBSITE_SOURCES_JSON = False  # keep False: the verified list in code is used
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def discover_program_links():
+    """Find programme pages linked from the VU homepage so new programmes are picked up."""
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        resp = requests.get("https://vidyashilp.edu.in/", headers=headers, timeout=20)
+        resp.raise_for_status()
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(resp.text, "html.parser")
+        found = {}
+        for a in soup.find_all("a", href=True):
+            url = a["href"].split("#")[0].split("?")[0]
+            if re.match(r"^https://vidyashilp\.edu\.in/schools/[^/]+/?$", url):
+                url = url if url.endswith("/") else url + "/"
+                found[url] = clean_text(a.get_text(" ")) or "Programme"
+        return [{"name": ("VU " + n)[:60], "url": u} for u, n in found.items()]
+    except Exception:
+        return []
 
 def load_website_sources():
+    sources = list(DEFAULT_WEBSITE_SOURCES) + list(EXTRA_WEBSITE_LINKS)
     if USE_WEBSITE_SOURCES_JSON and os.path.exists("website_sources.json"):
         try:
             with open("website_sources.json", "r", encoding="utf-8") as f:
                 data = json.load(f)
-            if isinstance(data, list) and data:
-                return data
+            if isinstance(data, list):
+                sources += data
         except Exception:
             pass
-    return DEFAULT_WEBSITE_SOURCES
+    if AUTO_DISCOVER_PROGRAMMES:
+        sources += discover_program_links()
+    unique, seen = [], set()
+    for src in sources:
+        key = src.get("url", "").rstrip("/")
+        if key and key not in seen:
+            seen.add(key)
+            unique.append(src)
+    return unique
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_webpage(url):

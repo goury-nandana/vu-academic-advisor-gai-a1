@@ -96,11 +96,15 @@ section[data-testid="stSidebar"] [data-baseweb="select"] svg,
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] svg { fill: #ffffff !important; }
 section[data-testid="stSidebar"] input::placeholder { color: rgba(255,255,255,0.7) !important; }
 section[data-testid="stSidebar"] [data-testid="stButton"] button p { color: #0a2240 !important; }
-/* ---- Chat input (new + old Streamlit selectors) ---- */
-[data-testid="stChatInput"], [data-testid="stChatInput"] > div,
-[data-testid="stChatInput"] textarea { background: #ffffff !important; color: #1a1a2e !important; }
-[data-testid="stChatInput"] { border: 1.5px solid #dde0e6 !important; border-radius: 26px !important; }
+/* ---- Chat input ---- */
+[data-testid="stChatInput"] { background: #ffffff !important; border: 1.5px solid #dde0e6 !important;
+    border-radius: 26px !important; overflow: hidden; }
+[data-testid="stChatInput"] > div, [data-testid="stChatInput"] [data-baseweb],
+[data-testid="stChatInput"] textarea { background: transparent !important; border: none !important;
+    box-shadow: none !important; color: #1a1a2e !important; }
 [data-testid="stChatInput"] textarea::placeholder { color: #8a94a6 !important; }
+[data-testid="stChatInput"] button { background: #c0182a !important; border-radius: 50% !important; }
+[data-testid="stChatInput"] button svg { fill: #ffffff !important; color: #ffffff !important; }
 /* ---- Chat bubbles ---- */
 .bubble-user { display: flex; justify-content: flex-end; margin: 6px 0; }
 .bubble-bot  { display: flex; justify-content: flex-start; margin: 6px 0; }
@@ -474,6 +478,8 @@ def tokenize(text):
     text = re.sub(r"\bb\.?\s?des\b", "bdes", text)
     return [stem(t) for t in re.findall(r"[a-zA-Z0-9]+", text) if t not in STOPWORDS]
 
+GENERIC_FILE_TOKENS = {"student", "sept", "2026", "aug", "final", "for", "spread", "structure", "plan"}
+
 def retrieve(query, documents, top_k=5, minimum_score=0.05):
     if not documents:
         return []
@@ -497,6 +503,10 @@ def retrieve(query, documents, top_k=5, minimum_score=0.05):
         )
         tl = doc["text"].lower()
         score += 0.15 * sum(1 for p in BOOST_PHRASES if p in ql and p in tl)
+        # A query word that appears in the FILE NAME (e.g. "minor" -> Minor_Courses_...) is a strong signal
+        fname = os.path.splitext(doc.get("source", ""))[0].replace("_", " ")
+        fname_tokens = set(tokenize(fname)) - GENERIC_FILE_TOKENS
+        score += 0.25 * len(fname_tokens & set(query_counter))
         if score >= minimum_score:
             scored.append((score, doc))
     scored.sort(key=lambda x: x[0], reverse=True)
@@ -781,38 +791,20 @@ def show_bot_bubble(text):
         unsafe_allow_html=True,
     )
 
+def source_label(r):
+    if r.get("type") == "website":
+        return "VU Website"
+    name = os.path.splitext(r.get("source", ""))[0]
+    return re.sub(r"^\d+\.\s*", "", name).replace("_", " ").strip()
+
 def display_sources(academic_results, website_results):
-    unique, seen = [], set()
-    for r in academic_results or []:
-        key = ("a", r.get("source"), r.get("page"), r.get("section"), r.get("sheet"))
-        if key not in seen:
-            seen.add(key)
-            unique.append(r)
-    for r in website_results or []:
-        key = ("w", r.get("source"), r.get("title"), r.get("section"), r.get("url"))
-        if key not in seen:
-            seen.add(key)
-            unique.append(r)
-    if not unique:
-        return
-    with st.expander("📚 Sources", expanded=False):
-        for r in unique:
-            if r.get("type") == "website":
-                st.markdown(f"**🌐 {r.get('source', 'VU Official Website')}**")
-                if r.get("title"):
-                    st.caption(r["title"])
-                if r.get("section") and r["section"] != r.get("title"):
-                    st.caption(f"Section: {r['section']}")
-                if r.get("url"):
-                    st.markdown(f"[View webpage →]({r['url']})")
-            else:
-                st.markdown(f"**📄 {r.get('source', 'Academic document')}**")
-                if r.get("section"):
-                    st.caption(f"Section: {r['section']}")
-                if r.get("page"):
-                    st.caption(f"Page: {r['page']}")
-                if r.get("sheet"):
-                    st.caption(f"Sheet: {r['sheet']}")
+    labels = []
+    for r in list(academic_results or []) + list(website_results or []):
+        lab = source_label(r)
+        if lab and lab not in labels:
+            labels.append(lab)
+    if labels:
+        st.caption("Sources: " + " · ".join(labels[:3]))
 
 def reply(answer, academic=None, website=None, show_src=False):
     """Show a bot answer (optionally with sources) and save it to history."""
@@ -838,7 +830,12 @@ SUGGESTIONS = [
     "What courses are offered next semester?",
 ]
 
-if not st.session_state.messages:
+pending = st.session_state.pending_question
+st.session_state.pending_question = None
+typed_question = st.chat_input("Ask your academic question...")
+user_question = pending or typed_question
+
+if not st.session_state.messages and not user_question:
     st.markdown("""
     <div class="info-box">
     <h3>Ask your academic question</h3>
@@ -869,10 +866,6 @@ for msg in st.session_state.messages:
 # ============================================================
 # GET QUESTION
 # ============================================================
-pending = st.session_state.pending_question
-st.session_state.pending_question = None
-typed_question = st.chat_input("Ask your academic question...")
-user_question = pending or typed_question
 
 # ============================================================
 # PROCESS QUESTION
@@ -921,7 +914,8 @@ if user_question:
                     if marker in answer:
                         show_src = False
                 answer = re.sub(r"\[\[[A-Z_]+\]\]\s*", "", answer).strip()
-                reply(answer, academic_results, website_results, show_src=show_src)
+                web_for_display = website_results if (category == "website" or not academic_results) else []
+                reply(answer, academic_results, web_for_display, show_src=show_src)
         except Exception:
             reply("I couldn't process that request right now. Please try again.")
 

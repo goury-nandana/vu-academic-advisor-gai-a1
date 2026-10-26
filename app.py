@@ -64,6 +64,10 @@ div[data-testid="stButton"] > button:hover {
 }
 .footer-text { text-align: center; color: #adb5bd; font-size: 11px; padding-top: 20px; }
 #MainMenu, footer { visibility: hidden; }
+/* Keep text readable even if the browser/Streamlit is in dark mode */
+[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] p, [data-testid="stWidgetLabel"] p,
+.stApp h1, .stApp h2, .stApp h3, .info-box h3, .info-box p { color: #1a1a2e !important; }
 .bubble-user { display: flex; justify-content: flex-end; margin: 6px 0; }
 .bubble-bot  { display: flex; justify-content: flex-start; margin: 6px 0; }
 </style>
@@ -80,14 +84,19 @@ EXCLUDED_FILES = ("advisor_eval", "eval_results", "phase4", "summary_metrics", "
 
 DEFAULT_WEBSITE_SOURCES = [
     {"name": "VU Official Website", "url": "https://vidyashilp.edu.in/"},
-    {"name": "VU Admissions", "url": "https://vidyashilp.edu.in/admission-enquiryform/"},
+    {"name": "VU About", "url": "https://vidyashilp.edu.in/about/"},
+    {"name": "VU Admissions", "url": "https://vidyashilp.edu.in/admissions/"},
+    {"name": "VU Scholarship", "url": "https://vidyashilp.edu.in/scholarship/"},
     {"name": "VU Contact", "url": "https://vidyashilp.edu.in/contact/"},
-    {"name": "VU B.Tech AI/ML", "url": "https://vidyashilp.edu.in/schools/b_tech_ai_ml/"},
-    {"name": "VU BMS", "url": "https://vidyashilp.edu.in/schools/b-m-s-hons-hons-with-research-in-digital-business/"},
-    {"name": "VU B.A., LL.B. (Hons.)", "url": "https://vidyashilp.edu.in/ba-llb/"},
-    # NOTE: verify this URL in your browser; it was cut off in the pasted code.
-    {"name": "VU B.M.S., LL.B. (Hons.)",
-     "url": "https://vidyashilp.edu.in/schools/bachelor-of-management-studies-bachelor-of-laws-hons/"},
+    {"name": "VU B.Tech (Hons.) Data Science", "url": "https://vidyashilp.edu.in/schools/bachelor-of-technology-hons-computer-science-and-engineering-data-science/"},
+    {"name": "VU B.Tech (Hons.) AI/ML", "url": "https://vidyashilp.edu.in/schools/b_tech_ai_ml/"},
+    {"name": "VU B.A. (Hons.) Economics", "url": "https://vidyashilp.edu.in/schools/bachelor-of-arts-hons/"},
+    {"name": "VU B.A. (Hons.) Psychology", "url": "https://vidyashilp.edu.in/schools/bachelor-of-arts-hons-with-research/"},
+    {"name": "VU B.Des", "url": "https://vidyashilp.edu.in/schools/bachelor-of-design/"},
+    {"name": "VU B.M.S. (Hons.)", "url": "https://vidyashilp.edu.in/schools/b-m-s-hons-hons-with-research-in-digital-business/"},
+    {"name": "VU B.A., LL.B. (Hons.)", "url": "https://vidyashilp.edu.in/schools/b-a-ll-b-hons/"},
+    {"name": "VU B.M.S., LL.B. (Hons.)", "url": "https://vidyashilp.edu.in/schools/bachelor-of-management-studies-bachelor-of-laws-hons/"},
+    {"name": "VU PhD Programme", "url": "https://vidyashilp.edu.in/phd-program/"},
 ]
 
 SOCIAL_RE = re.compile(
@@ -413,8 +422,16 @@ BOOST_PHRASES = [
     "law", "summer", "summer term",
 ]
 
+def stem(t):
+    """Very light plural handling so 'minors' matches 'minor'."""
+    if len(t) > 4 and t.endswith("ies"):
+        return t[:-3] + "y"
+    if len(t) > 3 and t.endswith("s") and not t.endswith("ss"):
+        return t[:-1]
+    return t
+
 def tokenize(text):
-    return [t for t in re.findall(r"[a-zA-Z0-9]+", text.lower()) if t not in STOPWORDS]
+    return [stem(t) for t in re.findall(r"[a-zA-Z0-9]+", text.lower()) if t not in STOPWORDS]
 
 def retrieve(query, documents, top_k=5, minimum_score=0.05):
     if not documents:
@@ -601,7 +618,9 @@ BEHAVIOUR RULES:
     student already gave.
 14. ASK BEFORE ASSUMING: if a reliable answer depends on information that is missing
     (for example which courses the student has completed, their semester, programme, credits
-    or CGPA), do NOT guess. Ask ONE short, specific follow-up question naming exactly what you
+    or CGPA), do NOT guess. But if the sources already answer the question for the student's
+    whole programme (e.g. a minors list for B.Tech), just answer; do not ask for details you
+    do not need. Otherwise ask ONE short, specific follow-up question naming exactly what you
     need, and mention what you can already tell them from the sources.
 15. Academic documents are primary for regulations, prerequisites, attendance, credits and
     progression. Official VU webpages are best for programme, admission and contact info.

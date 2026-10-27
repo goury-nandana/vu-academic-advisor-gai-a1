@@ -706,33 +706,67 @@ def load_website_sources():
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_webpage(url):
+    """Download one page. Failures are RAISED (not returned) so Streamlit does not cache them."""
+    import time
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+               "Accept": "text/html,application/xhtml+xml", "Accept-Language": "en-US,en;q=0.9"}
+    response = None
+    for attempt in range(3):
+        try:
+            response = requests.get(url, headers=headers, timeout=20)
+            response.raise_for_status()
+            break
+        except Exception:
+            response = None
+            time.sleep(1 + attempt)
+    if response is None:
+        raise RuntimeError("download failed: " + url)
+
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(response.text, "html.parser")
+    for tag in soup(["script", "style", "noscript", "svg", "iframe", "nav", "footer"]):
+        tag.decompose()
+    title = clean_text(soup.title.get_text()) if soup.title else ""
+
+    heading_tags = {"h1", "h2", "h3", "h4", "h5", "h6"}
+    block_tags = {"div", "p", "li", "ul", "ol", "table", "tr", "td", "th", "section", "article",
+                  "header", "aside", "form", "figure", "main", "details", "summary",
+                  "blockquote", "dl", "dt", "dd"}
+    nested = list(block_tags | heading_tags)
+    current, groups, seen_text = (title or "VU Official Website"), {}, set()
+    for el in soup.find_all(True):
+        if el.name in heading_tags:
+            heading = clean_text(el.get_text(" "))
+            if heading:
+                current = heading
+                groups.setdefault(current, [])
+            continue
+        if el.name not in block_tags:
+            continue
+        if el.find(nested):  # only the text sitting directly in this block
+            parts = []
+            for child in el.children:
+                if child.__class__.__name__ == "NavigableString":
+                    parts.append(str(child))
+                elif getattr(child, "name", None) and child.name not in block_tags \
+                        and child.name not in heading_tags and not child.find(nested):
+                    parts.append(child.get_text(" "))
+            txt = clean_text(" ".join(parts))
+        else:
+            txt = clean_text(el.get_text(" "))
+        if len(txt) < 2 or txt in seen_text:
+            continue
+        seen_text.add(txt)
+        groups.setdefault(current, []).append(txt)
+    sections = [{"section": h, "text": " | ".join(items)} for h, items in groups.items() if items]
+    if not sections:
+        sections = [{"section": title or "VU Official Website",
+                     "text": clean_text(soup.get_text(separator=" "))}]
+    return {"title": title, "sections": sections}
+
+def fetch_webpage_safe(url):
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        response = requests.get(url, headers=headers, timeout=20)
-        response.raise_for_status()
-        from bs4 import BeautifulSoup
-        soup = BeautifulSoup(response.text, "html.parser")
-        for tag in soup(["script", "style", "noscript", "svg", "iframe", "nav", "footer"]):
-            tag.decompose()
-
-        title = clean_text(soup.title.get_text()) if soup.title else ""
-        sections = []
-        current_section = title or "VU Official Website"
-
-        for element in soup.find_all(["h1", "h2", "h3", "p", "li"]):
-            if element.name in ("h1", "h2", "h3"):
-                heading = clean_text(element.get_text(" "))
-                if heading:
-                    current_section = heading
-            else:
-                text = clean_text(element.get_text(" "))
-                if text:
-                    sections.append({"section": current_section, "text": text})
-
-        if sections:
-            return {"title": title, "sections": sections}
-
-        return {"title": title, "sections": [{"section": title or "VU Official Website", "text": clean_text(soup.get_text(separator=" "))}]}
+        return fetch_webpage(url)
     except Exception:
         return {"title": "", "sections": []}
 
@@ -844,11 +878,8 @@ def load_website_documents():
     documents = []
     sources = [src for src in expand_with_sublinks(load_website_sources()) if src.get("url")]
     # Fetch many pages at the same time so loading stays fast
-    try:
-        with ThreadPoolExecutor(max_workers=12) as pool:
-            pages = list(pool.map(lambda src: fetch_webpage(src["url"]), sources))
-    except Exception:
-        pages = [fetch_webpage(src["url"]) for src in sources]
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        pages = list(pool.map(lambda src: fetch_webpage_safe(src["url"]), sources))
     for source, page in zip(sources, pages):
         name = source.get("name", "VU Official Website")
         url = source.get("url", "")
@@ -1087,7 +1118,7 @@ def classify_query(query):
         "admission", "apply", "application", "how do i join", "join vu",
         "contact", "phone number", "email", "address", "campus", "location",
         "where is vu", "where is vidyashilp", "programmes offered",
-        "about vu", "vidyashilp university", "law programme"
+        "about vu", "vidyashilp university", "law programme", "minor", "major"
     ]
     for pattern in website_patterns:
         if pattern in q:
@@ -1192,6 +1223,9 @@ BEHAVIOUR RULES:
     and the student profile or message does not give it, first give the general answer from the sources, then ask
     ONE short follow-up question (for example "Which programme are you in?") so you can tailor the answer.
     Do not ask if it is already known, and ask at most one question.
+    
+17. Do not add headings such as "What you can do next" or step lists. Give the answer, then at most one
+    short pointer to the right office or the Digicampus portal.
 
 SOURCE RULES:
 - Do not put source placeholders such as [Academic Source 1] in the answer.
@@ -1609,7 +1643,7 @@ if user_question:
                 academic_results = keyword_search(keywords, academic_kb, top_k=4)
             else:
                 academic_results = keyword_search(keywords, academic_kb, top_k=10)
-                website_results = keyword_search(keywords, website_kb, top_k=4)
+                website_results = keyword_search(keywords, website_kb, top_k=8)
 
             # If the keyword search found nothing, fall back to the normal ranked search
             if not academic_results and not website_results:

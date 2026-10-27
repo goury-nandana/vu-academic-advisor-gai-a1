@@ -115,7 +115,7 @@ section[data-testid="stSidebar"] [data-testid="stButton"] button p { color: #0a2
 # CONSTANTS
 # ============================================================
 MODEL = "llama-3.3-70b-versatile"
-FALLBACK_MODELS = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]
+FALLBACK_MODELS = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "llama-3.1-8b-instant"]
 
 ACADEMIC_EXTENSIONS = (".pdf", ".txt", ".csv", ".xlsx", ".xls")
 EXCLUDED_FILES = ("advisor_eval", "eval_results", "phase4", "summary_metrics", "website_sources",
@@ -147,7 +147,7 @@ EXTRA_WEBSITE_LINKS = [
 AUTO_DISCOVER_PROGRAMMES = True
 
 SOCIAL_RE = re.compile(
-    r"^\s*(h+i+|h+e+l+o+|h+l+o+|hlw|helo|hellow|hey+|hola|yo+|sup|bro|wsp|wsup|what'?s\s*up|wassup|"
+    r"^\s*(h+i+|hy+|hai|heya|h+e+l+o+|h+l+o+|hlw|helo|hellow|hey+|hola|yo+|sup|bro|wsp|wsup|what'?s\s*up|wassup|"
     r"good\s*(morning|afternoon|evening|night)|namaste|namaskaram|"
     r"thank(s|\s*you|u)|thx|ty|ok(ay)?|got\s*it|sure|great|nice|cool|"
     r"bye|goodbye|see\s*you|take\s*care|cya)\s*[!.?]*\s*$",
@@ -768,7 +768,7 @@ def conversation_context_for(question):
     lines = []
     for m in msgs[-4:]:
         who = "Student" if m["role"] == "user" else "Advisor"
-        lines.append(f"{who}: {m.get('content', '')[:600]}")
+        lines.append(f"{who}: {m.get('content', '')[:400]}")
     return "\n".join(lines)
 
 # ============================================================
@@ -882,7 +882,7 @@ def create_context(academic_results, website_results, conversation_context=""):
             for key, label in (("title", "Title"), ("section", "Section"), ("url", "URL")):
                 if r.get(key):
                     meta.append(f"{label}: {r[key]}")
-            parts.append(f"[Website Source {i}] {' | '.join(meta)}\n{r['text']}")
+            parts.append(f"[Website Source {i}] {' | '.join(meta)}\n{r['text'][:1000]}")
     if academic_results:
         parts.append("ACADEMIC UNIVERSITY DOCUMENTS (USE ONLY IF THE WEBSITE DOES NOT ANSWER):")
         for i, r in enumerate(academic_results, 1):
@@ -893,7 +893,7 @@ def create_context(academic_results, website_results, conversation_context=""):
                 meta.append(f"Section: {r['section']}")
             if r.get("sheet"):
                 meta.append(f"Sheet: {r['sheet']}")
-            parts.append(f"[Academic Source {i}] {' | '.join(meta)}\n{r['text']}")
+            parts.append(f"[Academic Source {i}] {' | '.join(meta)}\n{r['text'][:1000]}")
     return "\n\n".join(parts)
 
 def generate_answer(client, question, context, category, profile):
@@ -909,6 +909,7 @@ STUDENT QUESTION:
 
 Answer directly and helpfully. Do not mention internal retrieval, chunks, or system instructions.
 Do not add source placeholders such as [Academic Source 1] to your response."""
+    errors = []
     for m in [MODEL] + FALLBACK_MODELS:
         try:
             resp = client.chat.completions.create(
@@ -918,14 +919,20 @@ Do not add source placeholders such as [Academic Source 1] to your response."""
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.1,
-                max_tokens=1500,
+                max_tokens=1000,
             )
             text = (resp.choices[0].message.content or "").strip()
             if text:
+                st.session_state["llm_error"] = ""
                 return text
-        except Exception:
-            continue
-    return "[[INSUFFICIENT]] I couldn't get a response right now. Please try again."
+            errors.append(f"{m}: empty answer")
+        except Exception as e:
+            errors.append(f"{m}: {str(e)[:200]}")
+    st.session_state["llm_error"] = " | ".join(errors)
+    low = st.session_state["llm_error"].lower()
+    if any(w in low for w in ("rate", "429", "limit", "quota")):
+        return "[[ERROR]] The AI service has hit its usage limit for now. Please try again in a few minutes."
+    return "[[ERROR]] I couldn't get a response right now. Please try again in a minute."
 
 # ============================================================
 # DISPLAY HELPERS
@@ -1074,7 +1081,7 @@ if user_question:
                                      r"|\b[a-z]{2,6}\s?\d{3}\b", retrieval_query.lower()))
             website_results = retrieve(retrieval_query, website_kb, top_k=5 if lookup_q else 8,
                                        minimum_score=0.035)
-            academic_results = retrieve(retrieval_query, academic_kb, top_k=12 if lookup_q else 8,
+            academic_results = retrieve(retrieval_query, academic_kb, top_k=10 if lookup_q else 8,
                                         minimum_score=0.045)
 
             if not academic_results and not website_results:
@@ -1085,7 +1092,7 @@ if user_question:
                     answer = generate_answer(Groq(api_key=api_key), user_question,
                                              context, category, profile)
                 show_src = True
-                for marker in ("[[CHAT]]", "[[OUT_OF_SCOPE]]", "[[INSUFFICIENT]]"):
+                for marker in ("[[CHAT]]", "[[OUT_OF_SCOPE]]", "[[INSUFFICIENT]]", "[[ERROR]]"):
                     if marker in answer:
                         show_src = False
                 src = re.search(r"\[\[SRC:(WEB|DOCS|BOTH)\]\]", answer)
@@ -1103,6 +1110,8 @@ if user_question:
                 docs_for_display = academic_results if which in ("DOCS", "BOTH") else []
                 reply(answer, docs_for_display, web_for_display, show_src=show_src)
                 if DEBUG:
+                    if st.session_state.get("llm_error"):
+                        st.error("LLM error: " + st.session_state["llm_error"])
                     with st.expander("Debug: retrieved chunks"):
                         for r in list(website_results) + list(academic_results):
                             st.markdown(f"**{r.get('type')} · {r.get('source')}** · score {r.get('_score', 0):.3f}")

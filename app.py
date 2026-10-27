@@ -254,6 +254,12 @@ DEFAULT_WEBSITE_SOURCES = [
     {"name": "VU B.A., LL.B. (Hons.)", "url": "https://vidyashilp.edu.in/ba-llb/"},
     {"name": "VU B.M.S., LL.B. (Hons.)", "url": "https://vidyashilp.edu.in/schools/bachelor-of-management-studies-bachelor-of-laws-hons/"},
 ]
+# Sublink crawling: for every link listed in website_sources.json (or the list above),
+# the bot also reads pages linked from it (same website only), so you only need to add
+# the main links. Change the limit below if you want more / fewer sub-pages per link.
+CRAWL_SUBLINKS = True
+MAX_SUBLINKS_PER_SOURCE = 10
+
 # Greetings and social messages — handled without any document retrieval
 SOCIAL_RE = re.compile(
     r"^\s*(h+i+|h+e+l+o+|hey+|hola|yo+|sup|bro|wsp|wsup|what'?s\s*up|wassup|"
@@ -285,6 +291,69 @@ PERSONAL_RE = re.compile(
     r"who are you|what are you)\b",
     re.I
 )
+
+# Course-code style questions (e.g. DATA204, UCOR103, MGMT801)
+COURSE_CODE_RE = re.compile(r"\b[A-Za-z]{3,5}[\s-]?\d{3}\b")
+
+DIGICAMPUS_NOTE = "\n\nFor more details on this course, please refer to the Digicampus portal."
+DIGICAMPUS_ONLY_REPLY = "I don't have details for that course code in my sources. Please refer to the Digicampus portal."
+
+def course_code_in_sources(question, *knowledge_bases):
+    """True if any course code mentioned in the question appears in the loaded documents."""
+    codes = {re.sub(r"[\s-]", "", m).upper() for m in COURSE_CODE_RE.findall(question)}
+    if not codes:
+        return True
+    for kb in knowledge_bases:
+        for doc in kb:
+            text = re.sub(r"[\s-]", "", doc["text"]).upper()
+            if any(code in text for code in codes):
+                return True
+    return False
+
+# Personal distress / bereavement — direct to VU's counsellor
+DISTRESS_RE = re.compile(
+    r"\b(?:(?:i\s*am|i'?m|im|i\s+feel|feeling|i\s+have|i\s+got|suffering\s+from)\s+"
+    r"(?:so\s+|very\s+|really\s+|too\s+)?(?:depress\w*|anxious|anxiety|hopeless|panic attacks?)|"
+    r"suicid\w*|kill myself|end my life|want to die|self[- ]?harm|can'?t cope|"
+    r"my (?:mom|mother|dad|father|parents?|brother|sister|grand\w+|friend|best friend)\s+"
+    r"(?:just\s+)?(?:died|passed away|is no more|expired))\b",
+    re.I
+)
+
+CRISIS_RE = re.compile(r"\b(suicid\w*|kill myself|end my life|want to die|self[- ]?harm)\b", re.I)
+
+COUNSELLOR_REPLY = (
+    "I'm really sorry you're going through this. 💙 Please reach out to VU's student counsellor — "
+    "they are there to support you, and you don't have to handle this alone. "
+    "It can also help to talk to a friend, a family member or your mentor."
+)
+
+# Concerned office for questions the sources cannot answer (admission office only for admission questions)
+OFFICE_MAP = [
+    (r"fee|fees|payment|refund|scholarship|accounts|finance", "the Accounts office"),
+    (r"exam|result|grade|marks|revaluation|evaluation|transcript|backlog|arrear", "the Office of the Registrar (Examination & Evaluation)"),
+    (r"hostel|residential|residence|mess|accommodation|room", "the Residential Life office"),
+    (r"club|event|fest|activit|sports|gym|campus life", "the Campus Life / Student Activities office"),
+    (r"professor|faculty|hod|department|mentor|advisor", "the concerned department office"),
+    (r"placement|internship|career", "the Career / Placement office"),
+    (r"wifi|wi-fi|laptop|login|password|portal|digicampus|digii|\bit\b", "the IT helpdesk"),
+    (r"register|registration|course|credit|attendance|timetable|schedule|semester|audit|minor|major|calendar|id card|certificate|bonafide",
+     "the Office of the Registrar (Academic)"),
+]
+
+def concerned_office_for(question):
+    q = question.lower()
+    for pattern, office in OFFICE_MAP:
+        if re.search(pattern, q):
+            return office
+    return "the concerned department or the Office of the Registrar"
+
+def not_found_reply(question):
+    office = concerned_office_for(question)
+    return (
+        "I don't have enough information in the available VU sources to answer that accurately. "
+        f"Please contact {office} for the correct and current information."
+    )
 
 OUT_OF_SCOPE_REPLY = (
     "I’m VU’s AI Academic Advisor, so I can help with Vidyashilp University "
@@ -401,15 +470,7 @@ with st.sidebar:
 # ============================================================
 
 def get_api_key():
-    try:
-        secret_key = st.secrets.get("GROQ_API_KEY", "")
-        if secret_key:
-            return secret_key
-    except Exception:
-        pass
-    return os.getenv("GROQ_API_KEY", "")
-
-api_key = get_api_key()
+    return "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"
 
 
 # ============================================================
@@ -636,9 +697,65 @@ def fetch_webpage(url):
     except Exception:
         return {"title": "", "sections": []}
 
+SKIP_LINK_EXT = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp", ".zip",
+                 ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".mp4", ".mp3")
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_sublinks(url):
+    """Return same-website links found on a page (menus included)."""
+    try:
+        from urllib.parse import urljoin, urlparse
+        from bs4 import BeautifulSoup
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        response = requests.get(url, headers=headers, timeout=20)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        base_host = urlparse(url).netloc.replace("www.", "")
+        links = []
+        for a in soup.find_all("a", href=True):
+            href = a["href"].strip()
+            if href.startswith(("#", "mailto:", "tel:", "javascript:")):
+                continue
+            full = urljoin(url, href).split("#")[0].split("?")[0]
+            parsed = urlparse(full)
+            if parsed.scheme not in ("http", "https"):
+                continue
+            if parsed.netloc.replace("www.", "") != base_host:
+                continue
+            if parsed.path.lower().endswith(SKIP_LINK_EXT):
+                continue
+            if not full.endswith("/") and "." not in parsed.path.rsplit("/", 1)[-1]:
+                full += "/"
+            if full not in links:
+                links.append(full)
+        return links
+    except Exception:
+        return []
+
+def expand_with_sublinks(sources):
+    """Add sub-pages of each listed link (one level deep) to the source list."""
+    if not CRAWL_SUBLINKS:
+        return sources
+    expanded = list(sources)
+    seen = {src.get("url", "").rstrip("/") for src in sources}
+    for source in sources:
+        url = source.get("url", "")
+        if not url:
+            continue
+        added = 0
+        for link in fetch_sublinks(url):
+            if added >= MAX_SUBLINKS_PER_SOURCE:
+                break
+            if link.rstrip("/") in seen:
+                continue
+            seen.add(link.rstrip("/"))
+            expanded.append({"name": source.get("name", "VU Official Website"), "url": link})
+            added += 1
+    return expanded
+
 def load_website_documents():
     documents = []
-    for source in load_website_sources():
+    for source in expand_with_sublinks(load_website_sources()):
         name = source.get("name", "VU Official Website")
         url = source.get("url", "")
         if not url:
@@ -829,8 +946,16 @@ BEHAVIOUR RULES:
    explicitly lists minors including Law, Data Science, Economics, Design and Psychology.
 8. For fees or financial queries, say: "Please contact the Accounts office directly."
 9. For specific professors/HODs, say: "Please contact the department office directly."
+9a. For course-code type questions (a specific course such as DATA204 or UCOR103), answer only from
+    what the sources contain and tell the student to refer to the Digicampus portal for more details.
+9b. If the student mentions personal distress, depression, bereavement or a mental-health problem,
+    respond with care and tell them to contact VU's counsellor. Do not give an academic answer then.
 10. If a question has multiple parts, answer each part separately.
-11. If the sources do not contain enough information, say so clearly instead of guessing.
+11. If the sources do not contain enough information, say so clearly instead of guessing, and direct the
+    student to the specific office concerned with that topic (for example the Accounts office for fees,
+    the Office of the Registrar for registration/examinations/records, the Residential Life office for
+    hostel, the department office for faculty). Do NOT direct them to the admission office unless the
+    question is actually about admissions.
 12. If sources disagree, explicitly mention the disagreement and avoid silently choosing one rule.
 13. When a source gives a numeric threshold and the student gives their own number, compare them
     directly and explain the result.
@@ -1199,6 +1324,16 @@ if user_question:
         })
         st.stop()
 
+    # ---- Personal distress shortcut: direct to VU's counsellor ----
+    if DISTRESS_RE.search(user_question):
+        answer = COUNSELLOR_REPLY
+        show_bot_bubble(answer)
+        st.session_state.messages.append({
+            "role": "assistant", "content": answer,
+            "academic_sources": [], "website_sources": []
+        })
+        st.stop()
+
     if OUT_OF_SCOPE_RE.search(user_question):
         answer = OUT_OF_SCOPE_REPLY
         show_bot_bubble(answer)
@@ -1239,17 +1374,21 @@ if user_question:
                 website_results = retrieve(retrieval_query, website_kb, top_k=4, minimum_score=0.035)
 
             # If nothing relevant was retrieved, do not let the model hallucinate from unrelated chunks.
-            if not academic_results and not website_results:
-                answer = (
-                    "I don't have enough information in the available VU sources to answer that accurately. "
-                    "Please check with the relevant academic office or programme office for the current rule."
-                )
+            if COURSE_CODE_RE.search(user_question) and not course_code_in_sources(user_question, academic_kb, website_kb):
+                # Course code not present in any file -> only refer to Digicampus
+                answer = DIGICAMPUS_ONLY_REPLY
+                academic_results, website_results = [], []
+            elif not academic_results and not website_results:
+                answer = not_found_reply(user_question)
             else:
                 context = create_context(academic_results, website_results, conversation_context)
                 with st.spinner("Thinking..."):
                     answer = generate_answer(
                         client, user_question, context, category, effective_profile, conversation_context
                     )
+
+            if COURSE_CODE_RE.search(user_question) and "digicampus" not in answer.lower():
+                answer += DIGICAMPUS_NOTE
 
             show_bot_bubble(answer)
 
@@ -1280,5 +1419,3 @@ st.markdown(
     '<div class="footer-text">Vidyashilp University · AI Academic Advisor</div>',
     unsafe_allow_html=True
 )
-
-

@@ -255,10 +255,18 @@ DEFAULT_WEBSITE_SOURCES = [
     {"name": "VU B.M.S., LL.B. (Hons.)", "url": "https://vidyashilp.edu.in/schools/bachelor-of-management-studies-bachelor-of-laws-hons/"},
 ]
 # Sublink crawling: for every link listed in website_sources.json (or the list above),
-# the bot also reads pages linked from it (same website only), so you only need to add
-# the main links. Change the limit below if you want more / fewer sub-pages per link.
+# the bot also reads ALL pages linked from it (same website only) and the website's sitemap,
+# so you only need to add the main links. MAX_TOTAL_PAGES is only a safety cap on the total
+# number of web pages read (so the app does not run out of memory). Raise it if needed.
 CRAWL_SUBLINKS = True
-MAX_SUBLINKS_PER_SOURCE = 10
+MAX_TOTAL_PAGES = 500
+
+# Paste your Groq API key between the quotes below (it is used first if filled).
+# If left empty, the app uses GROQ_API_KEY from Streamlit secrets / environment.
+EMBEDDED_KEY = "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"
+
+# Small fast model used only to fix typos and pick search keywords from the question
+UNDERSTAND_MODELS = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"]
 
 # Greetings and social messages — handled without any document retrieval
 SOCIAL_RE = re.compile(
@@ -354,6 +362,14 @@ def not_found_reply(question):
         "I don't have enough information in the available VU sources to answer that accurately. "
         f"Please contact {office} for the correct and current information."
     )
+
+ACADEMIC_HINT_RE = re.compile(
+    r"\b(course|courses|credit|credits|semester|programme|program|degree|minor|minors|major|majors|"
+    r"faculty|professor|syllabus|exam|exams|class|classes|attendance|cgpa|admission|campus|vu|"
+    r"vidyashilp|university|student|btech|b\.tech|bms|llb|law|economics|psychology|design|elective|subject)\b",
+    re.I
+)
+COURSE_CODE_ASK_RE = re.compile(r"\bcourse\s*codes?\b", re.I)
 
 OUT_OF_SCOPE_REPLY = (
     "I’m VU’s AI Academic Advisor, so I can help with Vidyashilp University "
@@ -470,8 +486,18 @@ with st.sidebar:
 # ============================================================
 
 def get_api_key():
-    return "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"
+    if EMBEDDED_KEY.strip():
+        return EMBEDDED_KEY.strip()
+    try:
+        secret_key = st.secrets.get("GROQ_API_KEY", "")
+        if secret_key:
+            return secret_key
+    except Exception:
+        pass
+    return os.getenv("GROQ_API_KEY", "")
+
 api_key = get_api_key()
+
 
 # ============================================================
 # STUDENT PROFILE
@@ -697,6 +723,8 @@ def fetch_webpage(url):
     except Exception:
         return {"title": "", "sections": []}
 
+SKIP_LINK_PARTS = ("/wp-content/", "/wp-json", "/wp-admin", "/feed", "/tag/", "/author/", "/cdn-cgi/")
+
 SKIP_LINK_EXT = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp", ".zip",
                  ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".mp4", ".mp3")
 
@@ -724,6 +752,8 @@ def fetch_sublinks(url):
                 continue
             if parsed.path.lower().endswith(SKIP_LINK_EXT):
                 continue
+            if any(part in parsed.path.lower() for part in SKIP_LINK_PARTS):
+                continue
             if not full.endswith("/") and "." not in parsed.path.rsplit("/", 1)[-1]:
                 full += "/"
             if full not in links:
@@ -732,35 +762,83 @@ def fetch_sublinks(url):
     except Exception:
         return []
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_sitemap_urls(origin):
+    """Read the website's sitemap(s) (if any) and return all page URLs listed there."""
+    found = []
+    queue = [origin + "/sitemap.xml", origin + "/sitemap_index.xml", origin + "/wp-sitemap.xml"]
+    visited = set()
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    while queue and len(visited) < 40:
+        sitemap = queue.pop(0)
+        if sitemap in visited:
+            continue
+        visited.add(sitemap)
+        try:
+            response = requests.get(sitemap, headers=headers, timeout=20)
+            if response.status_code != 200:
+                continue
+            locations = re.findall(r"<loc>\s*(.*?)\s*</loc>", response.text, re.S)
+        except Exception:
+            continue
+        for loc in locations:
+            loc = html.unescape(loc.strip())
+            if loc.lower().endswith(".xml"):
+                queue.append(loc)
+            elif loc not in found:
+                found.append(loc)
+    return found
+
 def expand_with_sublinks(sources):
-    """Add sub-pages of each listed link (one level deep) to the source list."""
+    """Add every sub-page of each listed link (one level deep) plus sitemap pages to the source list."""
     if not CRAWL_SUBLINKS:
         return sources
+    from urllib.parse import urlparse
     expanded = list(sources)
     seen = {src.get("url", "").rstrip("/") for src in sources}
+
+    def add(name, link):
+        key = link.rstrip("/")
+        if key in seen or len(expanded) >= MAX_TOTAL_PAGES:
+            return
+        seen.add(key)
+        expanded.append({"name": name, "url": link})
+
+    origins = {}
     for source in sources:
         url = source.get("url", "")
         if not url:
             continue
-        added = 0
+        parsed = urlparse(url)
+        origins[f"{parsed.scheme}://{parsed.netloc}"] = parsed.netloc.replace("www.", "")
         for link in fetch_sublinks(url):
-            if added >= MAX_SUBLINKS_PER_SOURCE:
-                break
-            if link.rstrip("/") in seen:
+            add(source.get("name", "VU Official Website"), link)
+
+    for origin, host in origins.items():
+        for link in fetch_sitemap_urls(origin):
+            parsed = urlparse(link)
+            if parsed.scheme not in ("http", "https") or parsed.netloc.replace("www.", "") != host:
                 continue
-            seen.add(link.rstrip("/"))
-            expanded.append({"name": source.get("name", "VU Official Website"), "url": link})
-            added += 1
+            if parsed.path.lower().endswith(SKIP_LINK_EXT):
+                continue
+            if any(part in parsed.path.lower() for part in SKIP_LINK_PARTS):
+                continue
+            add("VU Official Website", link)
     return expanded
 
 def load_website_documents():
+    from concurrent.futures import ThreadPoolExecutor
     documents = []
-    for source in expand_with_sublinks(load_website_sources()):
+    sources = [src for src in expand_with_sublinks(load_website_sources()) if src.get("url")]
+    # Fetch many pages at the same time so loading stays fast
+    try:
+        with ThreadPoolExecutor(max_workers=12) as pool:
+            pages = list(pool.map(lambda src: fetch_webpage(src["url"]), sources))
+    except Exception:
+        pages = [fetch_webpage(src["url"]) for src in sources]
+    for source, page in zip(sources, pages):
         name = source.get("name", "VU Official Website")
         url = source.get("url", "")
-        if not url:
-            continue
-        page = fetch_webpage(url)
         for section_info in page.get("sections", []):
             text = section_info.get("text", "")
             if not text:
@@ -858,6 +936,132 @@ def retrieve(query, documents, top_k=5, minimum_score=0.05):
         r["_score"] = score
         results.append(r)
     return results
+
+
+# ============================================================
+# KEYWORD SEARCH (like Ctrl+F) + AI QUESTION UNDERSTANDING
+# ============================================================
+
+def build_search_text(documents):
+    """Prepare a lowercase searchable text (file / sheet / page name + content) for every chunk, once."""
+    for d in documents:
+        if "_s" in d:
+            continue
+        raw = " ".join(str(d.get(k, "")) for k in ("source", "title", "section", "sheet", "text"))
+        spaced = re.sub(r"[^a-z0-9]+", " ", raw.lower()).strip()
+        d["_s"] = " " + spaced + " "
+        d["_c"] = spaced.replace(" ", "")
+
+def strip_search_fields(results):
+    return [{k: v for k, v in r.items() if k not in ("_s", "_c")} for r in results]
+
+def keyword_search(keywords, documents, top_k=8):
+    """Find every chunk containing the keywords (all of them first, then any), like Ctrl+F."""
+    cleaned = []
+    for k in keywords or []:
+        ks = re.sub(r"[^a-z0-9]+", " ", str(k).lower()).strip()
+        if len(ks.replace(" ", "")) >= 2 and ks not in cleaned:
+            cleaned.append(ks)
+    if not cleaned or not documents:
+        return []
+    scored = []
+    for d in documents:
+        s_text, c_text = d.get("_s", ""), d.get("_c", "")
+        hits, count = 0, 0
+        for ks in cleaned:
+            kc = ks.replace(" ", "")
+            n = s_text.count(" " + ks)
+            if n == 0 and kc != ks:
+                n = s_text.count(" " + kc)
+            if n == 0 and " " in ks and len(kc) >= 5 and kc in c_text:
+                n = 1
+            if n:
+                hits += 1
+                count += n
+        if hits:
+            scored.append((hits, count / (len(s_text) + 300), d))
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    ranked = [d for _, _, d in scored]
+
+    # Take the best chunk from each different sheet / page first (so every sheet or page that
+    # matches is represented), then fill the remaining slots with the next best chunks.
+    chosen, chosen_ids, groups = [], set(), set()
+    distinct_limit = max(1, top_k - 2)
+    for d in ranked:
+        group = (d.get("source"), d.get("sheet"), d.get("page"), d.get("url"))
+        if group in groups:
+            continue
+        groups.add(group)
+        chosen.append(d)
+        chosen_ids.add(id(d))
+        if len(chosen) >= distinct_limit:
+            break
+    for d in ranked:
+        if len(chosen) >= top_k:
+            break
+        if id(d) not in chosen_ids:
+            chosen.append(d)
+            chosen_ids.add(id(d))
+    return strip_search_fields(chosen)
+
+def previous_exchange_text():
+    previous = get_last_user_question(skip_current=True)
+    previous_answer = ""
+    for msg in reversed(st.session_state.messages):
+        if msg.get("role") == "assistant":
+            previous_answer = msg.get("content", "")
+            break
+    if not previous and not previous_answer:
+        return ""
+    return (
+        f"Previous student question: {previous}\n"
+        f"Previous advisor answer: {previous_answer[:600]}"
+    )
+
+def last_bot_asked_question():
+    for msg in reversed(st.session_state.messages):
+        if msg.get("role") == "assistant":
+            return msg.get("content", "").strip().endswith("?")
+    return False
+
+UNDERSTAND_SYSTEM = (
+    "You help a university chatbot understand student messages. "
+    "Rewrite the student's latest message as one clear, complete, standalone question: fix spelling mistakes, "
+    "typos and abbreviations (e.g. btech -> B.Tech, minors -> minor), and use the previous conversation only if "
+    "the message is a short follow-up or an answer to the advisor's question. Do not add facts and do not answer it. "
+    "Then list 2 to 5 search keywords: the specific words likely to appear in a document that answers it "
+    "(course names, programme names, topics, codes), in singular form. "
+    "Do NOT use generic words such as course, code, available, offered, list, tell, what, which, how. "
+    'Reply ONLY with JSON like {"question": "...", "keywords": ["...", "..."]}.'
+)
+
+def understand_question(client, question, previous_exchange=""):
+    prompt = f"Previous conversation (may be empty):\n{previous_exchange}\n\nStudent message: {question}"
+    for m in UNDERSTAND_MODELS:
+        try:
+            response = client.chat.completions.create(
+                model=m,
+                messages=[
+                    {"role": "system", "content": UNDERSTAND_SYSTEM},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0,
+                max_tokens=200
+            )
+            raw = response.choices[0].message.content.strip()
+            data = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
+            cleaned_question = str(data.get("question") or "").strip()
+            keywords = [str(k).strip() for k in (data.get("keywords") or []) if str(k).strip()]
+            if cleaned_question:
+                return {"question": cleaned_question, "keywords": keywords[:6]}
+        except Exception:
+            continue
+    return {"question": question, "keywords": []}
+
+
+# Prepare the searchable text of every chunk once (skips chunks already prepared)
+build_search_text(academic_kb)
+build_search_text(website_kb)
 
 
 # ============================================================
@@ -965,6 +1169,11 @@ BEHAVIOUR RULES:
     for example: "According to the Student Handbook 2026, ..." or "According to the VU official website, ...".
     Use only source names actually present in the retrieved information; never invent a source name.
     Do not use technical source labels or placeholders.
+
+16. If the answer depends on something about the student that is unknown (their degree/programme, semester or batch)
+    and the student profile or message does not give it, first give the general answer from the sources, then ask
+    ONE short follow-up question (for example "Which programme are you in?") so you can tailor the answer.
+    Do not ask if it is already known, and ask at most one question.
 
 SOURCE RULES:
 - Do not put source placeholders such as [Academic Source 1] in the answer.
@@ -1334,7 +1543,7 @@ if user_question:
         })
         st.stop()
 
-    if OUT_OF_SCOPE_RE.search(user_question):
+    if OUT_OF_SCOPE_RE.search(user_question) and not ACADEMIC_HINT_RE.search(user_question):
         answer = OUT_OF_SCOPE_REPLY
         show_bot_bubble(answer)
         st.session_state.messages.append({
@@ -1347,6 +1556,9 @@ if user_question:
     category = classify_query(user_question)
     effective_profile = effective_profile_for_question(user_question)
     conversation_context = conversation_context_for(user_question)
+    if not conversation_context and last_bot_asked_question():
+        # the student is probably answering the advisor's follow-up question
+        conversation_context = previous_exchange_text()
 
     # Use the previous topic only for a genuine follow-up. Otherwise retrieve using the new topic.
     retrieval_query = user_question
@@ -1365,29 +1577,47 @@ if user_question:
         try:
             client = Groq(api_key=api_key)
 
-            # Website-heavy questions use website retrieval first; academic rules use documents first.
+            # AI fixes typos, completes follow-ups and picks the keywords to search for
+            understood = understand_question(client, user_question, previous_exchange_text())
+            clean_question = understood["question"]
+            keywords = understood["keywords"]
+            combined_question = f"{user_question} {clean_question}"
+            category = classify_query(combined_question)
+            effective_profile = effective_profile_for_question(combined_question)
+
+            # Ctrl+F style search over all documents and website pages at once
             if category == "website":
-                website_results = retrieve(retrieval_query, website_kb, top_k=6, minimum_score=0.035)
-                academic_results = retrieve(retrieval_query, academic_kb, top_k=4, minimum_score=0.045)
+                website_results = keyword_search(keywords, website_kb, top_k=10)
+                academic_results = keyword_search(keywords, academic_kb, top_k=4)
             else:
-                academic_results = retrieve(retrieval_query, academic_kb, top_k=6, minimum_score=0.045)
-                website_results = retrieve(retrieval_query, website_kb, top_k=4, minimum_score=0.035)
+                academic_results = keyword_search(keywords, academic_kb, top_k=10)
+                website_results = keyword_search(keywords, website_kb, top_k=4)
+
+            # If the keyword search found nothing, fall back to the normal ranked search
+            if not academic_results and not website_results:
+                if category == "website":
+                    website_results = strip_search_fields(retrieve(clean_question, website_kb, top_k=6, minimum_score=0.035))
+                    academic_results = strip_search_fields(retrieve(clean_question, academic_kb, top_k=4, minimum_score=0.045))
+                else:
+                    academic_results = strip_search_fields(retrieve(clean_question, academic_kb, top_k=6, minimum_score=0.045))
+                    website_results = strip_search_fields(retrieve(clean_question, website_kb, top_k=4, minimum_score=0.035))
 
             # If nothing relevant was retrieved, do not let the model hallucinate from unrelated chunks.
-            if COURSE_CODE_RE.search(user_question) and not course_code_in_sources(user_question, academic_kb, website_kb):
+            if COURSE_CODE_RE.search(combined_question) and not course_code_in_sources(combined_question, academic_kb, website_kb):
                 # Course code not present in any file -> only refer to Digicampus
                 answer = DIGICAMPUS_ONLY_REPLY
                 academic_results, website_results = [], []
             elif not academic_results and not website_results:
-                answer = not_found_reply(user_question)
+                answer = not_found_reply(clean_question)
             else:
                 context = create_context(academic_results, website_results, conversation_context)
                 with st.spinner("Thinking..."):
                     answer = generate_answer(
-                        client, user_question, context, category, effective_profile, conversation_context
+                        client, clean_question, context, category, effective_profile, conversation_context
                     )
 
-            if COURSE_CODE_RE.search(user_question) and "digicampus" not in answer.lower():
+            if (COURSE_CODE_RE.search(combined_question) or COURSE_CODE_ASK_RE.search(combined_question)) \
+                    and "digicampus" not in answer.lower():
                 answer += DIGICAMPUS_NOTE
 
             show_bot_bubble(answer)

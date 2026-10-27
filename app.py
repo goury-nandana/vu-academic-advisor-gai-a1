@@ -118,7 +118,8 @@ MODEL = "llama-3.3-70b-versatile"
 FALLBACK_MODELS = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]
 
 ACADEMIC_EXTENSIONS = (".pdf", ".txt", ".csv", ".xlsx", ".xls")
-EXCLUDED_FILES = ("advisor_eval", "eval_results", "phase4", "summary_metrics", "website_sources")
+EXCLUDED_FILES = ("advisor_eval", "eval_results", "phase4", "summary_metrics", "website_sources",
+                  "requirements", "readme", "license", "packages")
 
 DEFAULT_WEBSITE_SOURCES = [
     {"name": "VU Official Website", "url": "https://vidyashilp.edu.in/"},
@@ -150,6 +151,11 @@ SOCIAL_RE = re.compile(
     r"good\s*(morning|afternoon|evening|night)|namaste|namaskaram|"
     r"thank(s|\s*you|u)|thx|ty|ok(ay)?|got\s*it|sure|great|nice|cool|"
     r"bye|goodbye|see\s*you|take\s*care|cya)\s*[!.?]*\s*$",
+    re.I,
+)
+CAPABILITY_RE = re.compile(
+    r"^\s*(what\s+(can|do)\s+(you|u)\s+(do|know)|what\s+you\s+know|what\s+u\s+know|help|help\s+me|"
+    r"how\s+can\s+you\s+help|what\s+is\s+this)\s*[!.?]*\s*$",
     re.I,
 )
 GREETING_REPLY = (
@@ -473,18 +479,31 @@ def download_page(url):
         for tag in soup(["script", "style", "noscript", "svg", "iframe", "nav", "footer"]):
             tag.decompose()
         title = clean_text(soup.title.get_text()) if soup.title else ""
-        sections, current, seen_text = [], title or "VU Official Website", set()
-        for el in soup.find_all(["h1", "h2", "h3", "p", "li", "td", "th", "div"]):
-            if el.name == "div" and el.find(["div", "p", "li", "h1", "h2", "h3", "table", "ul", "ol"]):
+        heading_tags = {"h1", "h2", "h3", "h4", "h5", "h6"}
+        block_tags = {"div", "p", "li", "ul", "ol", "table", "tr", "td", "th", "section", "article",
+                      "header", "aside", "form", "figure", "main", "details", "summary",
+                      "blockquote", "dl", "dt", "dd"}
+        nested = list(block_tags | heading_tags)
+        current, groups, seen_text = (title or "VU Official Website"), {}, set()
+        for el in soup.find_all(True):
+            if el.name in heading_tags:
+                htxt = clean_text(el.get_text(" "))
+                if htxt:
+                    current = htxt
+                    groups.setdefault(current, [])
                 continue
-            txt = clean_text(el.get_text(" "))
-            if not txt or txt in seen_text:
+            if el.name not in block_tags:
+                continue
+            if el.find(nested):  # only the text sitting directly in this block
+                txt = clean_text(" ".join(str(t) for t in el.find_all(string=True, recursive=False)
+                                          if t.__class__.__name__ == "NavigableString"))
+            else:
+                txt = clean_text(el.get_text(" "))
+            if len(txt) < 2 or txt in seen_text:
                 continue
             seen_text.add(txt)
-            if el.name in ("h1", "h2", "h3"):
-                current = txt
-            else:
-                sections.append({"section": current, "text": txt})
+            groups.setdefault(current, []).append(txt)
+        sections = [{"section": h, "text": " | ".join(items)} for h, items in groups.items() if items]
         if not sections:
             sections = [{"section": title or "VU Official Website",
                          "text": clean_text(soup.get_text(separator=" "))}]
@@ -521,8 +540,10 @@ def load_website_documents():
         page = pages.get(url, {})
         for sec in page.get("sections", []):
             for i, c in enumerate(chunk_text(sec.get("text", ""), 180, 40), start=1):
+                heading = sec.get("section", "")
                 documents.append({
-                    "text": c, "source": source.get("name", "VU Official Website"),
+                    "text": (f"{heading}: " if heading else "") + c,
+                    "source": source.get("name", "VU Official Website"),
                     "url": url, "title": page.get("title", ""),
                     "section": sec.get("section", ""), "type": "website", "chunk": i,
                 })
@@ -669,9 +690,9 @@ def profile_to_text(profile):
         lines.append(f"CGPA: {profile['cgpa']}")
     return "\n".join(lines) if lines else "No student profile information was provided."
 
-def effective_profile_for_question(question):
+def effective_profile_for_question(question, base=None):
     """Let details stated in the message override the sidebar for that question."""
-    profile = dict(student_profile)
+    profile = dict(base or student_profile)
     q = question.lower()
     aliases = {
         "b.tech": "B.Tech", "btech": "B.Tech", "bms llb": "BMS LLB", "ba llb": "BA LLB",
@@ -729,20 +750,20 @@ def is_follow_up_question(question, previous):
     if not previous:
         return False
     q = question.lower().strip()
-    if len(q.split()) <= 5 and not any(t in q for t in NEW_TOPIC_TERMS):
+    if not any(t in q for t in NEW_TOPIC_TERMS):  # no topic word of its own -> depends on earlier turn
         return True
     return bool(FOLLOW_UP_RE.search(q))
 
 def conversation_context_for(question):
-    previous = get_last_user_question(skip_current=True)
-    if not is_follow_up_question(question, previous):
+    """Last few turns, so short follow-ups ('b tech cs', 'I have completed 45') keep their meaning."""
+    msgs = [m for m in st.session_state.messages[:-1] if m.get("role") in ("user", "assistant")]
+    if not msgs:
         return ""
-    prev_answer = ""
-    for msg in reversed(st.session_state.messages):
-        if msg.get("role") == "assistant":
-            prev_answer = msg.get("content", "")
-            break
-    return f"Previous student question: {previous}\nPrevious advisor answer: {prev_answer[:1800]}"
+    lines = []
+    for m in msgs[-4:]:
+        who = "Student" if m["role"] == "user" else "Advisor"
+        lines.append(f"{who}: {m.get('content', '')[:600]}")
+    return "\n".join(lines)
 
 # ============================================================
 # SYSTEM PROMPT
@@ -809,6 +830,14 @@ BEHAVIOUR RULES:
     guess (the app adds the contact details).
 18. LISTS (minors, majors, electives): give the complete list exactly as the source you are
     using states it. Never present a partial list as complete.
+19. NEVER ask the student to tell you a university rule, requirement or total (for example "what
+    is the total credit requirement?"). You may only ask for the student's OWN details (programme,
+    semester, completed courses, credits, CGPA). If the rule is in neither source, say sorry and use
+    the [[INSUFFICIENT]] marker.
+20. CREDIT MATH: if the student says how many credits they completed and the sources give the
+    programme's total credits, calculate remaining = total - completed and show the working.
+21. Use the previous conversation for short follow-ups ("b tech cs", "I have completed 45"): they
+    refer to the topic just discussed. A new topic ignores the old one.
 16. SPECIFIC LOOKUPS (course codes, credits of a course, which courses run in a given
     year/semester): answer ONLY with codes/numbers written in the sources for that exact
     programme, batch/year and semester. Never guess or reuse a code from another programme or
@@ -883,9 +912,11 @@ Do not add source placeholders such as [Academic Source 1] to your response."""
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.1,
-                max_tokens=800,
+                max_tokens=1500,
             )
-            return resp.choices[0].message.content.strip()
+            text = (resp.choices[0].message.content or "").strip()
+            if text:
+                return text
         except Exception:
             continue
     return "[[INSUFFICIENT]] I couldn't get a response right now. Please try again."
@@ -1008,7 +1039,9 @@ if user_question:
     show_user_bubble(user_question)
 
     # --- Shortcuts: greetings, personal, out-of-scope (no retrieval, no sources) ---
-    if SOCIAL_RE.match(re.sub(r"(.)\1{2,}", r"\1", user_question.strip())):
+    if CAPABILITY_RE.match(user_question.strip()):
+        reply(GREETING_REPLY)
+    elif SOCIAL_RE.match(re.sub(r"(.)\1{2,}", r"\1", user_question.strip())):
         is_thanks = re.search(r"\b(thank(s|\s*you|u)|thx|ty)\b", user_question, re.I)
         reply(THANKS_REPLY if is_thanks else GREETING_REPLY)
     elif PERSONAL_RE.search(user_question):
@@ -1021,16 +1054,18 @@ if user_question:
         # --- Academic question: retrieval + LLM ---
         try:
             category = classify_query(user_question)
-            profile = effective_profile_for_question(user_question)
+            previous_q = get_last_user_question(skip_current=True)
+            base_profile = effective_profile_for_question(previous_q) if previous_q else None
+            profile = effective_profile_for_question(user_question, base_profile)
             conv_ctx = conversation_context_for(user_question)
 
             retrieval_query = user_question
-            if conv_ctx:
-                retrieval_query = f"{get_last_user_question(skip_current=True)} {user_question}"
+            if previous_q and is_follow_up_question(user_question, previous_q):
+                retrieval_query = f"{previous_q} {user_question}"
 
             # Website first, documents as fallback (both retrieved; the prompt enforces the order)
             website_results = retrieve(retrieval_query, website_kb, top_k=8, minimum_score=0.035)
-            academic_results = retrieve(retrieval_query, academic_kb, top_k=6, minimum_score=0.045)
+            academic_results = retrieve(retrieval_query, academic_kb, top_k=8, minimum_score=0.045)
 
             if not academic_results and not website_results:
                 reply(NO_INFO_REPLY)
@@ -1046,6 +1081,11 @@ if user_question:
                 src = re.search(r"\[\[SRC:(WEB|DOCS|BOTH)\]\]", answer)
                 needs_contact = "[[INSUFFICIENT]]" in answer
                 answer = re.sub(r"\[\[[A-Z_:]+\]\]\s*", "", answer).strip()
+                if not answer:  # never show an empty bubble
+                    answer = "Sorry, I couldn't put together an answer for that."
+                    needs_contact, show_src = True, False
+                if answer.endswith("?"):  # a clarifying question is not a sourced answer
+                    show_src = False
                 if needs_contact and "vidyashilp.edu.in/contact" not in answer:
                     answer += "\n\n" + CONTACT_LINE
                 which = src.group(1) if src else ("WEB" if website_results else "DOCS")

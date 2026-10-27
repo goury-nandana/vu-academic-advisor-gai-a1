@@ -471,7 +471,7 @@ with st.sidebar:
 
 def get_api_key():
     return "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"
-
+api_key = get_api_key()
 
 # ============================================================
 # STUDENT PROFILE

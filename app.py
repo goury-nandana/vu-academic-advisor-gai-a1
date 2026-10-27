@@ -1285,8 +1285,18 @@ BEHAVIOUR RULES:
 7a. PROGRAMME-SPECIFIC MINOR RULE (CRITICAL):
    - Never reuse one programme's minor list for another programme.
    - First identify the student's programme/major from the question or sidebar profile.
-   - For B.Tech, use the official page for the exact B.Tech track (Data Science or AI/ML) and
-     relevant batch/curriculum documents. Do not use the BMS minor list as a B.Tech answer.
+   - B.TECH MINORS — VERIFIED OFFICIAL-PAGE FACT:
+     The official VU B.Tech Data Science page lists Economics, Marketing, Psychology, Finance,
+     Design, and Law as minors. The official VU B.Tech AI & Machine Learning page lists the same
+     six: Economics, Marketing, Psychology, Finance, Design, and Law.
+     Therefore, do NOT claim that B.Tech Data Science offers only Marketing, Finance, and Law.
+     Do NOT claim that AI/ML has a larger list than Data Science. For a general question asking
+     "minors offered in B.Tech", state that the two published tracks list these six options and
+     name them. If a retrieved snippet contradicts this explicit rule, prefer this verified list
+     unless a newer official VU source clearly says the curriculum has changed.
+     Official sources: https://vidyashilp.edu.in/data-science/ and
+     https://vidyashilp.edu.in/schools/b_tech_ai_ml/ .
+   - Do not use the BMS minor list as a B.Tech answer.
    - For BMS (Digital Business), use the official BMS programme page and BMS-specific documents.
    - For BA Economics, BA Psychology, B.Des, BA LL.B., and BMS LL.B., use that programme's own
      official page/documents. Do not infer minor choices from another programme's page.
@@ -1489,6 +1499,13 @@ def generate_answer(client, user_question, context, category, effective_profile,
         priority = "Prioritize VU academic documents for regulations and student eligibility."
 
     user_prompt = f"""{priority}
+
+MINOR-OPTIONS FACT CHECK:
+If the question asks about B.Tech minors, the official VU pages list the following for BOTH
+B.Tech Data Science and B.Tech AI & Machine Learning: Economics, Marketing, Psychology, Finance,
+Design, and Law. Do not produce different lists for these two tracks unless a clearly newer
+official source in the retrieved information explicitly documents a change. Do not mistake BMS
+minor options for B.Tech options.
 
 RETRIEVED INFORMATION:
 {context}

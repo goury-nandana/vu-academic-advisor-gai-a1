@@ -613,7 +613,8 @@ def stem(t):
 def tokenize(text):
     text = re.sub(r"\bb\.?\s?tech\b", "btech", text.lower())
     text = re.sub(r"\bb\.?\s?des\b", "bdes", text)
-    return [stem(t) for t in re.findall(r"[a-zA-Z0-9]+", text) if t not in STOPWORDS]
+    return [stem(t) if t.isalpha() else t
+            for t in re.findall(r"[a-z]+|[0-9]+", text) if t not in STOPWORDS]
 
 GENERIC_FILE_TOKENS = {"student", "sept", "2026", "aug", "final", "for", "spread", "structure", "plan",
                        "vu", "vidyashilp", "university", "hon", "bangalore", "bengaluru"}
@@ -637,11 +638,15 @@ def retrieve(query, documents, top_k=5, minimum_score=0.05):
     query_counter = Counter(tokenize(query))
     if not query_counter:
         return []
+    for generic in ("course", "code"):  # too common to help once the query has real keywords
+        if generic in query_counter and len(query_counter) > 2:
+            del query_counter[generic]
     doc_freq = Counter()
     for doc in documents:
         _index_doc(doc)
         doc_freq.update(set(doc["_t"]))
     total, ql, qset, scored = len(documents), query.lower(), set(query_counter), []
+    qnums = {t for t in qset if t.isdigit() and len(t) >= 2}
     for doc in documents:
         toks = doc["_t"]
         if not toks:
@@ -655,6 +660,7 @@ def retrieve(query, documents, top_k=5, minimum_score=0.05):
         score += 0.15 * sum(1 for p in BOOST_PHRASES if p in ql and p in tl)
         # A query word that appears in the FILE / PAGE NAME is a strong signal
         score += 0.25 * len(doc["_f"] & qset)
+        score += 0.3 * sum(1 for n in qnums if n in tc)  # exact course-number match
         if score >= minimum_score:
             scored.append((score, doc))
     scored.sort(key=lambda x: x[0], reverse=True)
@@ -1064,8 +1070,12 @@ if user_question:
                 retrieval_query = f"{previous_q} {user_question}"
 
             # Website first, documents as fallback (both retrieved; the prompt enforces the order)
-            website_results = retrieve(retrieval_query, website_kb, top_k=8, minimum_score=0.035)
-            academic_results = retrieve(retrieval_query, academic_kb, top_k=8, minimum_score=0.045)
+            lookup_q = bool(re.search(r"\b(code|prerequisite|prereq|credit|credits|belong|belongs|syllabus|offered)\b"
+                                     r"|\b[a-z]{2,6}\s?\d{3}\b", retrieval_query.lower()))
+            website_results = retrieve(retrieval_query, website_kb, top_k=5 if lookup_q else 8,
+                                       minimum_score=0.035)
+            academic_results = retrieve(retrieval_query, academic_kb, top_k=12 if lookup_q else 8,
+                                        minimum_score=0.045)
 
             if not academic_results and not website_results:
                 reply(NO_INFO_REPLY)

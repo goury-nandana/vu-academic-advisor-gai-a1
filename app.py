@@ -240,6 +240,8 @@ div[data-testid="stButton"] > button:hover {
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
+APP_VERSION = "2026-10-27-course-index-v1"
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 ACADEMIC_EXTENSIONS = (".pdf", ".txt", ".csv", ".xlsx", ".xls")
 
@@ -259,11 +261,11 @@ DEFAULT_WEBSITE_SOURCES = [
 # so you only need to add the main links. MAX_TOTAL_PAGES is only a safety cap on the total
 # number of web pages read (so the app does not run out of memory). Raise it if needed.
 CRAWL_SUBLINKS = True
-MAX_TOTAL_PAGES = 500
+MAX_TOTAL_PAGES = 120  # Keep startup bounded; add specific B.Tech pages to website_sources.json
 
 # Paste your Groq API key between the quotes below (it is used first if filled).
 # If left empty, the app uses GROQ_API_KEY from Streamlit secrets / environment.
-EMBEDDED_KEY = "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"
+EMBEDDED_KEY = ""  # Set GROQ_API_KEY in Streamlit secrets or environment.
 
 # Small fast model used only to fix typos and pick search keywords from the question
 UNDERSTAND_MODELS = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"]
@@ -301,28 +303,217 @@ PERSONAL_RE = re.compile(
 )
 
 # Course-code style questions (e.g. DATA204, UCOR103, MGMT801)
+
 COURSE_CODE_RE = re.compile(r"\b[A-Za-z]{3,5}[\s-]?\d{3}\b")
+
+def normalize_course_code(value):
+    return re.sub(r"[\s-]", "", str(value or "")).upper()
+
+def extract_course_codes(text):
+    return list(dict.fromkeys(normalize_course_code(x) for x in COURSE_CODE_RE.findall(str(text or ""))))
+
+def is_real_course_code(value):
+    value = str(value or "").strip()
+    return bool(re.fullmatch(r"[A-Za-z]{3,5}[\s-]?\d{3}", value))
+
+def _cell_text(value):
+    if value is None:
+        return ""
+    return re.sub(r"\s+", " ", str(value)).strip()
+
+def load_structured_course_records():
+    """Read course rows without flattening spreadsheet tables into arbitrary text chunks."""
+    from openpyxl import load_workbook
+    records = []
+    spread_file = "Semester_Spread_Structures_Sept_2026.xlsx"
+    spread_path = os.path.join(APP_DIR, spread_file)
+    if os.path.exists(spread_path):
+        try:
+            wb = load_workbook(spread_path, read_only=True, data_only=True)
+            # Course Code / Course / Pre-Req / L / T / P / C blocks, keyed by semester.
+            blocks = [(5, 1), (12, 2), (20, 3), (27, 4), (35, 5), (42, 6), (50, 7), (57, 8)]
+            for ws in wb.worksheets:
+                if not (ws.title.lower().startswith("sem") and "spread" in ws.title.lower()):
+                    continue
+                match = re.search(r"(20\d{2})", ws.title)
+                batch = match.group(1) if match else "Not specified"
+                programme = "B.Tech (Data Science)" if "DS" in ws.title.upper() else "B.Tech"
+                basket = ""
+                for row in ws.iter_rows(min_row=3, values_only=True):
+                    vals = list(row)
+                    vals += [None] * max(0, 65 - len(vals))
+                    if _cell_text(vals[1]):
+                        basket = _cell_text(vals[1])
+                    for code_col, sem in blocks:
+                        code = _cell_text(vals[code_col - 1])
+                        title = _cell_text(vals[code_col])
+                        if not title:
+                            continue
+                        prereq = _cell_text(vals[code_col + 1])
+                        credits = _cell_text(vals[code_col + 5])
+                        if not code and not title:
+                            continue
+                        # Ignore spreadsheet subtotal/placeholder rows; retain named courses only.
+                        if not is_real_course_code(code):
+                            continue
+                        record = {
+                            "course_code": normalize_course_code(code),
+                            "course_title": title,
+                            "semester": sem,
+                            "batch": batch,
+                            "programme": programme,
+                            "basket": basket,
+                            "prerequisite": prereq or "Not specified in this spreadsheet",
+                            "credits": credits or "Not specified in this spreadsheet",
+                            "source": spread_file,
+                            "sheet": ws.title,
+                            "type": "academic",
+                            "is_course_record": True,
+                        }
+                        record["text"] = (
+                            f"Programme: {programme}; batch: {batch}; semester: {sem}; basket: {basket}. "
+                            f"Course code: {record['course_code']}. Course title: {title}. "
+                            f"Prerequisite: {record['prerequisite']}. Credits: {record['credits']}. "
+                            f"Source: {spread_file}, sheet {ws.title}."
+                        )
+                        records.append(record)
+            wb.close()
+        except Exception as exc:
+            st.session_state.setdefault("load_errors", []).append(
+                f"Could not parse {spread_file}: {type(exc).__name__}: {exc}"
+            )
+
+    minor_file = "Minor_Courses_for_BTech_Students.xlsx"
+    minor_path = os.path.join(APP_DIR, minor_file)
+    if os.path.exists(minor_path):
+        try:
+            wb = load_workbook(minor_path, read_only=True, data_only=True)
+            for ws in wb.worksheets:
+                header_row = None
+                headers = []
+                for row_num, row in enumerate(ws.iter_rows(min_row=1, max_row=min(ws.max_row, 12), values_only=True), 1):
+                    normalized = [_cell_text(v).lower().replace("-", " ") for v in row]
+                    if any("course code" in x for x in normalized) and any("course title" in x or x == "course" for x in normalized):
+                        header_row, headers = row_num, normalized
+                        break
+                if not header_row:
+                    continue
+                def col_for(*terms):
+                    # Terms are ordered from most specific to least specific.
+                    for term in terms:
+                        for idx, value in enumerate(headers):
+                            if value == term or term in value:
+                                return idx
+                    return None
+                code_idx = col_for("course code")
+                title_idx = col_for("course title", "course")
+                credit_idx = col_for("credit")
+                sem_idx = col_for("semester")
+                prereq_idx = col_for("pre rq", "prereq", "pre requisite")
+                batch = "Not specified"
+                for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+                    vals = list(row)
+                    vals += [None] * max(0, len(headers) - len(vals))
+                    first = _cell_text(vals[0]) if vals else ""
+                    bm = re.search(r"(20\d{2})\s*Batch", first, re.I)
+                    if bm:
+                        batch = bm.group(1)
+                    title = _cell_text(vals[title_idx]) if title_idx is not None else ""
+                    code_raw = _cell_text(vals[code_idx]) if code_idx is not None else ""
+                    if not title or title.lower() in {"course title", "course"}:
+                        continue
+                    code = normalize_course_code(code_raw) if is_real_course_code(code_raw) else ""
+                    semester_value = _cell_text(vals[sem_idx]) if sem_idx is not None else ""
+                    try:
+                        semester_value = int(float(semester_value))
+                    except (TypeError, ValueError):
+                        pass
+                    prereq = _cell_text(vals[prereq_idx]) if prereq_idx is not None else ""
+                    credits = _cell_text(vals[credit_idx]) if credit_idx is not None else ""
+                    record = {
+                        "course_code": code,
+                        "course_title": title,
+                        "semester": semester_value or "Not specified",
+                        "batch": batch,
+                        "programme": "B.Tech",
+                        "basket": f"{ws.title} minor",
+                        "prerequisite": prereq or "Not specified in this spreadsheet",
+                        "credits": credits or "Not specified in this spreadsheet",
+                        "source": minor_file,
+                        "sheet": ws.title,
+                        "type": "academic",
+                        "is_course_record": True,
+                    }
+                    record["text"] = (
+                        f"Programme: B.Tech; batch: {batch}; minor: {ws.title}; semester: {record['semester']}. "
+                        f"Course code: {code or 'not provided in source'}. Course title: {title}. "
+                        f"Prerequisite: {record['prerequisite']}. Credits: {record['credits']}. "
+                        f"Source: {minor_file}, sheet {ws.title}."
+                    )
+                    records.append(record)
+            wb.close()
+        except Exception as exc:
+            st.session_state.setdefault("load_errors", []).append(
+                f"Could not parse {minor_file}: {type(exc).__name__}: {exc}"
+            )
+    # De-duplicate exact repeats but preserve different batch/sheet versions.
+    unique, seen = [], set()
+    for r in records:
+        key = (r.get("course_code"), r.get("course_title", "").lower(), str(r.get("semester")), r.get("batch"), r.get("sheet"))
+        if key not in seen:
+            seen.add(key)
+            unique.append(r)
+    return unique
+
+def course_records_for_code(code, records):
+    normalized = normalize_course_code(code)
+    return [dict(r) for r in records if normalize_course_code(r.get("course_code")) == normalized]
+
+def course_records_for_semester(question, records):
+    q = str(question or "").lower()
+    if not re.search(r"\b(b\.?tech|btech|engineering)\b", q):
+        return []
+    match = re.search(r"\b(?:semester|sem)\s*(?:no\.?\s*)?(\d{1,2}|first|second|third|fourth|fifth|sixth|seventh|eighth)\b", q)
+    if not match:
+        return []
+    word_to_num = {"first":1,"second":2,"third":3,"fourth":4,"fifth":5,"sixth":6,"seventh":7,"eighth":8}
+    try:
+        sem = int(match.group(1))
+    except ValueError:
+        sem = word_to_num.get(match.group(1), 0)
+    if not sem:
+        return []
+    # If user specifies a batch, filter it. Otherwise return all available batches.
+    bm = re.search(r"\b(2022|2023|2024|2025|2026)\b", q)
+    batch = bm.group(1) if bm else None
+    found = [dict(r) for r in records if r.get("is_course_record") and str(r.get("semester")) == str(sem)
+             and "B.Tech" in str(r.get("programme", ""))
+             and r.get("source") == "Semester_Spread_Structures_Sept_2026.xlsx"
+             and (not batch or str(r.get("batch")) == batch)]
+    return found[:40]
 
 DIGICAMPUS_NOTE = "\n\nFor more details on this course, please refer to the Digicampus portal."
 DIGICAMPUS_ONLY_REPLY = "I don't have details for that course code in my sources. Please refer to the Digicampus portal."
 
 def course_code_in_sources(question, *knowledge_bases):
-    """True if any course code mentioned in the question appears in the loaded documents."""
-    codes = {re.sub(r"[\s-]", "", m).upper() for m in COURSE_CODE_RE.findall(question)}
+    """Check exact course-code tokens in loaded source evidence (not in the user's question)."""
+    codes = extract_course_codes(question)
     if not codes:
         return True
     for kb in knowledge_bases:
         for doc in kb:
-            text = re.sub(r"[\s-]", "", doc["text"]).upper()
-            if any(code in text for code in codes):
+            text = str(doc.get("text", ""))
+            found = {normalize_course_code(x) for x in COURSE_CODE_RE.findall(text)}
+            if any(code in found for code in codes):
                 return True
     return False
+
 def remove_unsupported_codes(answer, allowed_text):
     """Drop any line showing a course code (e.g. DATA301) that is not in the retrieved sources."""
     allowed = re.sub(r"[\s-]", "", allowed_text).upper()
     kept, removed = [], False
     for line in answer.split("\n"):
-        codes = re.findall(r"\b[A-Z]{3,5}[\s-]?\d{3}\b", line)
+        codes = re.findall(r"\b[A-Z]{3,5}[\s-]?\d{3}\b", line, re.I)
         if any(re.sub(r"[\s-]", "", c) not in allowed for c in codes):
             removed = True
             continue
@@ -399,6 +590,15 @@ PERSONAL_REPLY = (
 # SESSION STATE
 # ============================================================
 
+if st.session_state.get("app_version") != APP_VERSION:
+    st.session_state.app_version = APP_VERSION
+    st.session_state.knowledge_loaded = False
+    st.session_state.website_loaded = False
+    st.session_state.academic_kb = []
+    st.session_state.website_kb = []
+    st.session_state.course_records = []
+    st.session_state.load_errors = []
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "academic_kb" not in st.session_state:
@@ -418,16 +618,16 @@ if "pending_question" not in st.session_state:
 # ============================================================
 
 def find_logo():
-    for filename in os.listdir("."):
+    for filename in os.listdir(APP_DIR):
         if filename.startswith("."):
             continue
         lower = filename.lower()
         if lower.endswith((".png", ".jpg", ".jpeg")) and "logo" in lower:
-            return filename
-    for filename in os.listdir("."):
+            return os.path.join(APP_DIR, filename)
+    for filename in os.listdir(APP_DIR):
         lower = filename.lower()
         if lower.endswith((".png", ".jpg", ".jpeg")):
-            return filename
+            return os.path.join(APP_DIR, filename)
     return None
 
 logo_path = find_logo()
@@ -638,7 +838,13 @@ def chunk_text(text, chunk_size=150, overlap=30):
 
 def load_academic_documents():
     documents = []
-    for filename in sorted(os.listdir(".")):
+    errors = []
+    # Structured course records are the primary source for B.Tech code/title/semester/prerequisite queries.
+    course_records = load_structured_course_records()
+    documents.extend(course_records)
+    st.session_state.course_records = course_records
+
+    for filename in sorted(os.listdir(APP_DIR)):
         if filename.startswith("."):
             continue
         lower = filename.lower()
@@ -646,45 +852,43 @@ def load_academic_documents():
             continue
         if any(ex in lower for ex in EXCLUDED_FILES):
             continue
-
-        filepath = os.path.join(".", filename)
+        # These workbooks have already been parsed into structured rows above.
+        if lower in {"semester_spread_structures_sept_2026.xlsx", "minor_courses_for_btech_students.xlsx"}:
+            continue
+        filepath = os.path.join(APP_DIR, filename)
         ext = os.path.splitext(filename)[1].lower()
-
-        if ext == ".pdf":
-            for page_info in extract_pdf_pages(filepath):
-                chunks = chunk_text(page_info["text"])
-                for i, chunk in enumerate(chunks, start=1):
-                    documents.append({
-                        "text": chunk,
-                        "source": filename,
-                        "type": "academic",
-                        "chunk": i,
-                        "page": page_info.get("page"),
-                        "section": page_info.get("section", "")
-                    })
-
-        elif ext in (".xlsx", ".xls"):
-            for sheet_info in extract_excel_sheets(filepath):
-                chunks = chunk_text(sheet_info["text"])
-                for i, chunk in enumerate(chunks, start=1):
-                    documents.append({
-                        "text": chunk,
-                        "source": filename,
-                        "type": "academic",
-                        "chunk": i,
-                        "sheet": sheet_info.get("sheet", "")
-                    })
-
-        else:
-            text = extract_file_text(filepath)
-            for i, chunk in enumerate(chunk_text(text), start=1):
-                documents.append({
-                    "text": chunk,
-                    "source": filename,
-                    "type": "academic",
-                    "chunk": i
-                })
-
+        try:
+            if ext == ".pdf":
+                pages = extract_pdf_pages(filepath)
+                for page_info in pages:
+                    for i, chunk in enumerate(chunk_text(page_info["text"]), start=1):
+                        documents.append({"text": chunk, "source": filename, "type": "academic",
+                                          "chunk": i, "page": page_info.get("page"),
+                                          "section": page_info.get("section", "")})
+                if not pages:
+                    errors.append(f"No extractable text found in PDF: {filename}")
+            elif ext in (".xlsx", ".xls"):
+                if ext == ".xls":
+                    errors.append(f"Legacy .xls is not supported by openpyxl: {filename}; save it as .xlsx")
+                else:
+                    for sheet_info in extract_excel_sheets(filepath):
+                        for i, chunk in enumerate(chunk_text(sheet_info["text"]), start=1):
+                            documents.append({"text": chunk, "source": filename, "type": "academic",
+                                              "chunk": i, "sheet": sheet_info.get("sheet", "")})
+            else:
+                text = extract_file_text(filepath)
+                for i, chunk in enumerate(chunk_text(text), start=1):
+                    documents.append({"text": chunk, "source": filename, "type": "academic", "chunk": i})
+                if not text:
+                    errors.append(f"No text extracted from: {filename}")
+        except Exception as exc:
+            errors.append(f"Failed to load {filename}: {type(exc).__name__}: {exc}")
+    st.session_state.academic_load_errors = errors
+    st.session_state.academic_load_summary = {
+        "course_records": len(course_records),
+        "academic_chunks": len(documents),
+        "files_seen": sum(1 for f in os.listdir(APP_DIR) if f.lower().endswith(ACADEMIC_EXTENSIONS)),
+    }
     return documents
 
 
@@ -693,7 +897,7 @@ def load_academic_documents():
 # ============================================================
 
 def load_website_sources():
-    source_file = "website_sources.json"
+    source_file = os.path.join(APP_DIR, "website_sources.json")
     if os.path.exists(source_file):
         try:
             with open(source_file, "r", encoding="utf-8") as f:
@@ -767,8 +971,8 @@ def fetch_webpage(url):
 def fetch_webpage_safe(url):
     try:
         return fetch_webpage(url)
-    except Exception:
-        return {"title": "", "sections": []}
+    except Exception as exc:
+        return {"title": "", "sections": [], "_error": f"{type(exc).__name__}: {exc}"}
 
 SKIP_LINK_PARTS = ("/wp-content/", "/wp-json", "/wp-admin", "/feed", "/tag/", "/author/", "/cdn-cgi/")
 
@@ -880,13 +1084,18 @@ def load_website_documents():
     # Fetch many pages at the same time so loading stays fast
     with ThreadPoolExecutor(max_workers=6) as pool:
         pages = list(pool.map(lambda src: fetch_webpage_safe(src["url"]), sources))
+    failed_urls = []
+    loaded_urls = set()
     for source, page in zip(sources, pages):
+        if page.get("_error") or not page.get("sections"):
+            failed_urls.append({"url": source.get("url", ""), "error": page.get("_error", "No text extracted")})
         name = source.get("name", "VU Official Website")
         url = source.get("url", "")
         for section_info in page.get("sections", []):
             text = section_info.get("text", "")
             if not text:
                 continue
+            loaded_urls.add(url)
             for i, chunk in enumerate(chunk_text(text, chunk_size=180, overlap=40), start=1):
                 documents.append({
                     "text": chunk,
@@ -897,6 +1106,10 @@ def load_website_documents():
                     "type": "website",
                     "chunk": i
                 })
+    st.session_state.website_load_summary = {
+        "configured_pages": len(sources), "pages_with_text": len(loaded_urls),
+        "website_chunks": len(documents), "failed_pages": failed_urls[:30]
+    }
     return documents
 
 
@@ -906,6 +1119,7 @@ def load_website_documents():
 
 if not st.session_state.knowledge_loaded:
     with st.spinner("Loading academic documents..."):
+        st.session_state.load_errors = []
         st.session_state.academic_kb = load_academic_documents()
         st.session_state.knowledge_loaded = True
 
@@ -921,8 +1135,14 @@ DEBUG = st.query_params.get("debug") == "1"
 if DEBUG:
     with st.sidebar:
         st.markdown("---")
-        st.markdown(f"**DEBUG** doc chunks: {len(academic_kb)} | website chunks: {len(website_kb)}")
-        st.markdown(f"Website pages with text: {len({d.get('url') for d in website_kb})}")
+        st.markdown(f"**DEBUG** app version: {APP_VERSION}")
+        st.markdown(f"Academic records/chunks: {len(academic_kb)} | structured courses: {len(st.session_state.get('course_records', []))}")
+        st.markdown(f"Website chunks: {len(website_kb)} | pages with text: {len({d.get('url') for d in website_kb})}")
+        with st.expander("Source loading report"):
+            st.json({"academic": st.session_state.get("academic_load_summary", {}),
+                     "academic_errors": st.session_state.get("academic_load_errors", []),
+                     "website": st.session_state.get("website_load_summary", {}),
+                     "course_parse_errors": st.session_state.get("load_errors", [])})
         aiml = [d for d in website_kb if "b_tech_ai_ml" in d.get("url", "")]
         st.markdown(f"AI/ML page chunks loaded: {len(aiml)}")
         mins = [d for d in website_kb if all(w in d["text"].lower() for w in ("economics", "marketing", "finance"))]
@@ -1650,22 +1870,50 @@ if user_question:
             category = classify_query(combined_question)
             effective_profile = effective_profile_for_question(combined_question)
 
-            # Ctrl+F style search over all documents and website pages at once
-            if category == "website":
-                website_results = keyword_search(keywords, website_kb, top_k=10)
-                academic_results = keyword_search(keywords, academic_kb, top_k=4)
-            else:
-                academic_results = keyword_search(keywords, academic_kb, top_k=10)
-                website_results = keyword_search(keywords, website_kb, top_k=8)
+            # 1) Exact course-code lookup from structured records. 2) Structured B.Tech semester lookup.
+            # 3) Keyword search. 4) Ranked retrieval is always tried if either source side is empty.
+            course_codes = extract_course_codes(combined_question)
+            structured_semester_results = course_records_for_semester(combined_question, st.session_state.get("course_records", []))
+            missing_course_code = False
 
-            # If the keyword search found nothing, fall back to the normal ranked search
-            if not academic_results and not website_results:
-                if category == "website":
-                    website_results = strip_search_fields(retrieve(clean_question, website_kb, top_k=6, minimum_score=0.035))
-                    academic_results = strip_search_fields(retrieve(clean_question, academic_kb, top_k=4, minimum_score=0.045))
+            if course_codes:
+                exact_records = []
+                for code in course_codes:
+                    exact_records.extend(course_records_for_code(code, st.session_state.get("course_records", [])))
+                if exact_records:
+                    # Exact structured rows outrank generic chunks and retain batch/semester/prerequisite metadata.
+                    academic_results = exact_records[:8]
+                    website_results = keyword_search(keywords, website_kb, top_k=3)
                 else:
-                    academic_results = strip_search_fields(retrieve(clean_question, academic_kb, top_k=6, minimum_score=0.045))
-                    website_results = strip_search_fields(retrieve(clean_question, website_kb, top_k=4, minimum_score=0.035))
+                    # Search for an exact token in all academic evidence (e.g. handbook/course-plan text).
+                    exact_evidence = []
+                    for doc in academic_kb:
+                        found_codes = {normalize_course_code(x) for x in COURSE_CODE_RE.findall(str(doc.get("text", "")))}
+                        if any(code in found_codes for code in course_codes):
+                            exact_evidence.append(dict(doc))
+                    if exact_evidence:
+                        academic_results = exact_evidence[:8]
+                        website_results = keyword_search(keywords, website_kb, top_k=3)
+                    else:
+                        academic_results, website_results = [], []
+                        missing_course_code = True
+            elif structured_semester_results:
+                # If the user asks for a semester list, show structured records rather than random text chunks.
+                academic_results = structured_semester_results
+                website_results = []
+            else:
+                # Ranked retrieval always gets a chance; LLM-selected keywords are only a fallback.
+                # This avoids a weak/irrelevant keyword hit suppressing better evidence.
+                if category == "website":
+                    website_results = strip_search_fields(retrieve(clean_question, website_kb, top_k=8, minimum_score=0.02))
+                    academic_results = strip_search_fields(retrieve(clean_question, academic_kb, top_k=5, minimum_score=0.025))
+                else:
+                    academic_results = strip_search_fields(retrieve(clean_question, academic_kb, top_k=8, minimum_score=0.02))
+                    website_results = strip_search_fields(retrieve(clean_question, website_kb, top_k=5, minimum_score=0.02))
+                if not academic_results:
+                    academic_results = keyword_search(keywords, academic_kb, top_k=6)
+                if not website_results:
+                    website_results = keyword_search(keywords, website_kb, top_k=5)
 
             if DEBUG:
                 with st.expander("Debug: search"):
@@ -1676,12 +1924,43 @@ if user_question:
                         st.text(r["text"][:200])
             
             # If nothing relevant was retrieved, do not let the model hallucinate from unrelated chunks.
-            if COURSE_CODE_RE.search(combined_question) and not course_code_in_sources(combined_question, academic_kb, website_kb):
-                # Course code not present in any file -> only refer to Digicampus
+            if missing_course_code:
                 answer = DIGICAMPUS_ONLY_REPLY
                 academic_results, website_results = [], []
             elif not academic_results and not website_results:
                 answer = not_found_reply(clean_question)
+            elif course_codes and any(r.get("is_course_record") for r in academic_results):
+                # Deterministic response for exact course-code hits; no model guesswork on codes/credits/prerequisites.
+                code_lines = [f"**Exact course record(s) found for {', '.join(course_codes)}:**"]
+                batches = sorted({str(r.get("batch", "Not specified")) for r in academic_results})
+                for batch in batches:
+                    batch_rows = [r for r in academic_results if str(r.get("batch")) == batch]
+                    code_lines.append(f"\n**Batch {batch} · {batch_rows[0].get('sheet', 'course record')}**")
+                    for r in batch_rows:
+                        code_lines.append(f"- **{r.get('course_code') or 'Code not provided'} — {r.get('course_title')}**")
+                        code_lines.append(f"  - Semester: {r.get('semester', 'Not specified')}; credits: {r.get('credits', 'Not specified')}")
+                        code_lines.append(f"  - Prerequisite: {r.get('prerequisite', 'Not specified')}")
+                code_lines.append("\nThe spreadsheet may contain different versions by batch. Check your registered curriculum in Digicampus if you need the current offering or full syllabus.")
+                answer = "\n".join(code_lines)
+            elif structured_semester_results and not course_codes:
+                # Deterministic output for spreadsheet-backed semester lists; no model guesswork.
+                batches = sorted({str(r.get("batch", "Not specified")) for r in structured_semester_results})
+                lines = [f"**B.Tech courses listed for semester {structured_semester_results[0].get('semester')}:**"]
+                if len(batches) > 1:
+                    lines.append("The spreadsheet contains multiple batches; courses are grouped by batch.")
+                for batch in batches:
+                    lines.append(f"\n**Batch {batch}**")
+                    for r in structured_semester_results:
+                        if str(r.get("batch")) != batch:
+                            continue
+                        line = f"- {r.get('course_code')}: {r.get('course_title')}"
+                        if r.get("credits") and "Not specified" not in str(r.get("credits")):
+                            line += f" ({r.get('credits')} credits)"
+                        if r.get("prerequisite") and "not specified" not in str(r.get("prerequisite")).lower() and str(r.get("prerequisite")).lower() not in {"nil", "nil.", "none"}:
+                            line += f"; prerequisite: {r.get('prerequisite')}"
+                        lines.append(line)
+                lines.append("\nCourse offerings can vary by batch. Check the relevant programme structure or Digicampus for your registered curriculum.")
+                answer = "\n".join(lines)
             else:
                 context = create_context(academic_results, website_results, conversation_context)
                 with st.spinner("Thinking..."):
@@ -1689,7 +1968,7 @@ if user_question:
                         client, clean_question, context, category, effective_profile, conversation_context
                     )
             if academic_results or website_results:
-                allowed_text = " ".join(r.get("text", "") for r in academic_results + website_results) + " " + combined_question
+                allowed_text = " ".join(r.get("text", "") for r in academic_results + website_results)
                 answer, removed_codes = remove_unsupported_codes(answer, allowed_text)
                 if not answer:
                     answer = DIGICAMPUS_ONLY_REPLY
@@ -1712,7 +1991,9 @@ if user_question:
                 "website_sources": website_results
             })
 
-        except Exception:
+        except Exception as exc:
+            if DEBUG:
+                st.error(f"Question processing failed: {type(exc).__name__}: {exc}")
             answer = "I couldn't process that request right now. Please try again."
             show_bot_bubble(answer)
             st.session_state.messages.append({

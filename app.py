@@ -317,7 +317,17 @@ def course_code_in_sources(question, *knowledge_bases):
             if any(code in text for code in codes):
                 return True
     return False
-
+def remove_unsupported_codes(answer, allowed_text):
+    """Drop any line showing a course code (e.g. DATA301) that is not in the retrieved sources."""
+    allowed = re.sub(r"[\s-]", "", allowed_text).upper()
+    kept, removed = [], False
+    for line in answer.split("\n"):
+        codes = re.findall(r"\b[A-Z]{3,5}[\s-]?\d{3}\b", line)
+        if any(re.sub(r"[\s-]", "", c) not in allowed for c in codes):
+            removed = True
+            continue
+        kept.append(line)
+    return "\n".join(kept).strip(), removed
 # Personal distress / bereavement — direct to VU's counsellor
 DISTRESS_RE = re.compile(
     r"\b(?:(?:i\s*am|i'?m|im|i\s+feel|feeling|i\s+have|i\s+got|suffering\s+from)\s+"
@@ -358,10 +368,13 @@ def concerned_office_for(question):
 
 def not_found_reply(question):
     office = concerned_office_for(question)
-    return (
+    reply = (
         "I don't have enough information in the available VU sources to answer that accurately. "
         f"Please contact {office} for the correct and current information."
     )
+    if office.startswith("the concerned department") or re.search(r"course|subject|syllabus|code|credit", question, re.I):
+        reply += " For course details you can also refer to the Digicampus portal."
+    return reply
 
 ACADEMIC_HINT_RE = re.compile(
     r"\b(course|courses|credit|credits|semester|programme|program|degree|minor|minors|major|majors|"
@@ -1154,6 +1167,11 @@ BEHAVIOUR RULES:
     what the sources contain and tell the student to refer to the Digicampus portal for more details.
 9b. If the student mentions personal distress, depression, bereavement or a mental-health problem,
     respond with care and tell them to contact VU's counsellor. Do not give an academic answer then.
+9c. NEVER write a course code (such as DATA301) unless that exact code appears in the retrieved
+    information. Never guess course codes, credits, prerequisites or syllabus details, and do not
+    fill gaps with general knowledge about what a course "usually" contains. If the retrieved
+    information does not contain it, say it is not in the available sources and refer the student
+    to the Digicampus portal.
 10. If a question has multiple parts, answer each part separately.
 11. If the sources do not contain enough information, say so clearly instead of guessing, and direct the
     student to the specific office concerned with that topic (for example the Accounts office for fees,
@@ -1615,7 +1633,14 @@ if user_question:
                     answer = generate_answer(
                         client, clean_question, context, category, effective_profile, conversation_context
                     )
-
+            if academic_results or website_results:
+                allowed_text = " ".join(r.get("text", "") for r in academic_results + website_results) + " " + combined_question
+                answer, removed_codes = remove_unsupported_codes(answer, allowed_text)
+                if not answer:
+                    answer = DIGICAMPUS_ONLY_REPLY
+                elif removed_codes:
+                    answer += "\n\nI couldn't find the exact course code in the available sources." + DIGICAMPUS_NOTE
+                    
             if (COURSE_CODE_RE.search(combined_question) or COURSE_CODE_ASK_RE.search(combined_question)) \
                     and "digicampus" not in answer.lower():
                 answer += DIGICAMPUS_NOTE

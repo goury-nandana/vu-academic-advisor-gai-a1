@@ -917,7 +917,20 @@ if not st.session_state.website_loaded:
 academic_kb = st.session_state.academic_kb
 website_kb = st.session_state.website_kb
 
-
+DEBUG = st.query_params.get("debug") == "1"
+if DEBUG:
+    with st.sidebar:
+        st.markdown("---")
+        st.markdown(f"**DEBUG** doc chunks: {len(academic_kb)} | website chunks: {len(website_kb)}")
+        st.markdown(f"Website pages with text: {len({d.get('url') for d in website_kb})}")
+        aiml = [d for d in website_kb if "b_tech_ai_ml" in d.get("url", "")]
+        st.markdown(f"AI/ML page chunks loaded: {len(aiml)}")
+        mins = [d for d in website_kb if all(w in d["text"].lower() for w in ("economics", "marketing", "finance"))]
+        st.markdown(f"Chunks listing Economics+Marketing+Finance: {len(mins)}")
+        if st.button("Clear website cache & reload"):
+            st.cache_data.clear()
+            st.session_state.website_loaded = False
+            st.rerun()
 # ============================================================
 # TOKENIZER & RETRIEVAL
 # ============================================================
@@ -1654,6 +1667,14 @@ if user_question:
                     academic_results = strip_search_fields(retrieve(clean_question, academic_kb, top_k=6, minimum_score=0.045))
                     website_results = strip_search_fields(retrieve(clean_question, website_kb, top_k=4, minimum_score=0.035))
 
+            if DEBUG:
+                with st.expander("Debug: search"):
+                    st.write("Rewritten question:", clean_question)
+                    st.write("Keywords:", keywords)
+                    for r in website_results + academic_results:
+                        st.markdown(f"**{r.get('type')} · {r.get('source')} · {r.get('url', '')}**")
+                        st.text(r["text"][:200])
+            
             # If nothing relevant was retrieved, do not let the model hallucinate from unrelated chunks.
             if COURSE_CODE_RE.search(combined_question) and not course_code_in_sources(combined_question, academic_kb, website_kb):
                 # Course code not present in any file -> only refer to Digicampus

@@ -1896,8 +1896,8 @@ if user_question:
                     # Exact structured rows outrank generic chunks and retain batch/semester/prerequisite metadata.
                     academic_results = exact_records[:8]
                     website_results = keyword_search(keywords, website_kb, top_k=3)
-                elif batch_clarification:
-                    # Do not fall through to unfiltered text evidence after deciding a batch is required.
+                elif batch_clarification or (clarification_reply and requested_batch_years):
+                    # Never fall through to unfiltered evidence when a specific cohort was requested.
                     academic_results, website_results = [], []
                 else:
                     # Search for an exact token in all academic evidence (e.g. handbook/course-plan text).
@@ -1958,6 +1958,13 @@ if user_question:
             elif missing_course_code:
                 answer = DIGICAMPUS_ONLY_REPLY
                 academic_results, website_results = [], []
+            elif clarification_reply and requested_batch_years and not academic_results:
+                requested_label = " and ".join(requested_batch_years)
+                answer = (
+                    f"I couldn't find a structured record for {', '.join(course_codes)} "
+                    f"for the requested admission batch(es): {requested_label}. "
+                    "I won't substitute details from a different batch."
+                )
             elif not academic_results and not website_results:
                 answer = not_found_reply(clean_question)
             elif course_codes and any(r.get("is_course_record") for r in academic_results):
@@ -1973,6 +1980,12 @@ if user_question:
                         code_lines.append(f"  - Prerequisite: {r.get('prerequisite', 'Not specified')}")
                 code_lines.append("\nThe spreadsheet may contain different versions by batch. Check your registered curriculum in Digicampus if you need the current offering or full syllabus.")
                 answer = "\n".join(code_lines)
+                if requested_unsupported_batches:
+                    answer += (
+                        "\n\nNo B.Tech curriculum records are available for admission batch(es): "
+                        + ", ".join(requested_unsupported_batches)
+                        + ". The available semester-spread data covers batches 2022–2026."
+                    )
             elif structured_semester_results and not course_codes:
                 # Deterministic output for spreadsheet-backed semester lists; no model guesswork.
                 batches = sorted({str(r.get("batch", "Not specified")) for r in structured_semester_results})

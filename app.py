@@ -1780,9 +1780,23 @@ if user_question:
             client = Groq(api_key=api_key)
 
             # AI fixes typos, completes follow-ups and picks the keywords to search for
-            understood = understand_question(client, user_question, previous_exchange_text())
-            clean_question = understood["question"]
-            keywords = understood["keywords"]
+            # Resolve explicit "all batches" replies deterministically when the advisor has just
+            # asked the student to choose an admission batch for a course-code question.
+            context_anchor = get_context_anchor_question()
+            latest_text = str(user_question or "").strip().lower()
+            all_batches_followup = bool(
+                re.fullmatch(r"(?:for\s+)?all(?:\s+batches)?", latest_text)
+                and re.search(r"\b(which admission batch|admission batch are you asking)\b",
+                              previous_exchange_text(), re.I)
+                and extract_course_codes(context_anchor)
+            )
+            if all_batches_followup:
+                clean_question = f"{context_anchor} for all available admission batches"
+                keywords = []
+            else:
+                understood = understand_question(client, user_question, previous_exchange_text())
+                clean_question = understood["question"]
+                keywords = understood["keywords"]
             # Preserve the prior question when the user is answering a clarification (e.g. replying only “2025”).
             combined_question = f"{user_question} {clean_question} {conversation_context}"
             category = classify_query(combined_question)
@@ -1805,7 +1819,7 @@ if user_question:
                 exact_records = []
                 for code in course_codes:
                     exact_records.extend(course_records_for_code(code, all_course_records, batch=batch))
-                if exact_records and not batch:
+                if exact_records and not batch and not all_batches_followup:
                     # If the same code has different curriculum details across batches,
                     # ask for the cohort instead of presenting a mixed answer.
                     details_by_batch = {

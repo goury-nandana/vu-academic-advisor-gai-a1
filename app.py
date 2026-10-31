@@ -1960,6 +1960,12 @@ if user_question:
                     f"for the requested admission batch(es): {requested_label}. "
                     "I won't substitute details from a different batch."
                 )
+                if requested_unsupported_batches:
+                    answer += (
+                        "\n\nThe source data does not include admission batch(es): "
+                        + ", ".join(requested_unsupported_batches)
+                        + ". The available B.Tech semester-spread data covers batches 2022–2026."
+                    )
             elif not academic_results and not website_results:
                 answer = not_found_reply(clean_question)
             elif course_codes and any(r.get("is_course_record") for r in academic_results):

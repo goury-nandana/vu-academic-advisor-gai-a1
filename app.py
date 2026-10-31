@@ -343,7 +343,7 @@ def load_structured_course_records():
     return []
 
 def batch_from_question(question):
-    match = re.search(r"\\b(2022|2023|2024|2025|2026)\\b", str(question or ""))
+    match = re.search(r"\b(2022|2023|2024|2025|2026)\b", str(question or ""))
     return match.group(1) if match else None
 
 def batch_clarification_reply():
@@ -373,13 +373,13 @@ def course_records_for_semester(question, records):
         sem = word_to_num.get(match.group(1), 0)
     if not sem:
         return []
-    # If user specifies a batch, filter it. Otherwise return all available batches.
-    bm = re.search(r"\b(2022|2023|2024|2025|2026)\b", q)
-    batch = bm.group(1) if bm else None
+    batch = batch_from_question(q)
+    if not batch:
+        return []
     found = [dict(r) for r in records if r.get("is_course_record") and str(r.get("semester")) == str(sem)
              and "B.Tech" in str(r.get("programme", ""))
              and r.get("source") == "Semester_Spread_Structures_Sept_2026.xlsx"
-             and (not batch or str(r.get("batch")) == batch)]
+             and str(r.get("batch")) == batch]
     return found[:40]
 
 DIGICAMPUS_NOTE = "\n\nFor more details on this course, please refer to the Digicampus portal."
@@ -1845,8 +1845,8 @@ if user_question:
             # If nothing relevant was retrieved, do not let the model hallucinate from unrelated chunks.
             if batch_clarification or (
                 not course_codes
-                and re.search(r"\\b(b\\.?tech|btech|engineering)\\b", combined_question, re.I)
-                and re.search(r"\\b(?:semester|sem)\\s*(?:no\\.?\\s*)?(?:\\d{1,2}|first|second|third|fourth|fifth|sixth|seventh|eighth)\\b", combined_question, re.I)
+                and re.search(r"\b(b\.?tech|btech|engineering)\b", combined_question, re.I)
+                and re.search(r"\b(?:semester|sem)\s*(?:no\.?\s*)?(?:\d{1,2}|first|second|third|fourth|fifth|sixth|seventh|eighth)\b", combined_question, re.I)
                 and not batch
             ):
                 answer = batch_clarification_reply()

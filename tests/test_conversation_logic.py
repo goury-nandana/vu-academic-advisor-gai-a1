@@ -13,6 +13,7 @@ NEEDED_FUNCTIONS = {
     "batch_from_question",
     "normalize_course_code",
     "course_records_for_code",
+    "filter_course_records_for_batches",
     "course_records_for_semester",
     "latest_assistant_message",
     "assistant_is_asking_batch_clarification",
@@ -102,6 +103,44 @@ class ConversationLogicTests(unittest.TestCase):
             "B.Tech semester 3 for 2021 and 2026", records
         )
         self.assertEqual({row["batch"] for row in found}, {"2026"})
+
+    def test_mixed_supported_and_unsupported_years_keeps_supported_course_record(self):
+        records = [
+            {"course_code": "UCOR205", "batch": "2025", "credits": "3"},
+            {"course_code": "UCOR205", "batch": "2026", "credits": "3"},
+        ]
+        found = namespace["filter_course_records_for_batches"](
+            records, ["2021", "2026"]
+        )
+        self.assertEqual([row["batch"] for row in found], ["2026"])
+
+    def test_multiple_supported_years_keep_all_matching_records(self):
+        records = [
+            {"course_code": "UCOR205", "batch": "2022"},
+            {"course_code": "UCOR205", "batch": "2025"},
+            {"course_code": "UCOR205", "batch": "2026"},
+        ]
+        found = namespace["filter_course_records_for_batches"](
+            records, ["2022", "2026"]
+        )
+        self.assertEqual({row["batch"] for row in found}, {"2022", "2026"})
+
+    def test_only_unsupported_years_return_no_course_records(self):
+        records = [{"course_code": "UCOR205", "batch": "2026"}]
+        self.assertEqual(
+            namespace["filter_course_records_for_batches"](records, ["2021"]),
+            [],
+        )
+
+    def test_latest_batch_selection_does_not_retain_old_batch(self):
+        records = [
+            {"course_code": "UCOR205", "batch": "2025"},
+            {"course_code": "UCOR205", "batch": "2026"},
+        ]
+        found = namespace["filter_course_records_for_batches"](
+            records, [], batch="2026"
+        )
+        self.assertEqual([row["batch"] for row in found], ["2026"])
 
     def test_course_code_lookup_does_not_change_code_normalisation(self):
         records = [{"course_code": "UCOR205", "batch": "2026"}]

@@ -1432,15 +1432,47 @@ def get_last_user_question(skip_current=False):
             return msg.get("content", "")
     return ""
 
+def extract_batch_years(text):
+    """Return every explicitly mentioned admission year, preserving order."""
+    return list(dict.fromkeys(re.findall(r"\b(?:19|20)\d{2}\b", str(text or ""))))
+
+def latest_assistant_message():
+    for msg in reversed(st.session_state.messages):
+        if msg.get("role") == "assistant":
+            return str(msg.get("content", "")).strip()
+    return ""
+
+def assistant_is_asking_batch_clarification():
+    answer = latest_assistant_message().lower()
+    return (
+        "which admission batch are you asking about" in answer
+        or ("admission batch" in answer and "course structure can differ by batch" in answer)
+    )
+
+def is_clarification_reply(text):
+    """Recognise short answers to the advisor's cohort clarification, including multiple years."""
+    q = re.sub(r"[^a-z0-9]+", " ", str(text or "").lower()).strip()
+    if not q:
+        return False
+    years = extract_batch_years(text)
+    if years and len(q.split()) <= 10:
+        remainder = re.sub(r"\b(?:19|20)\d{2}\b", " ", q)
+        remainder = re.sub(r"\b(and|or|for|batch|batches|give|show|provide|please|me|you|do|can|could|what|about)\b", " ", remainder)
+        if not remainder.strip():
+            return True
+    return q in {
+        "all", "for all", "all batches", "for all batches",
+        "any", "any batch", "all of them", "every batch",
+        "yes", "no", "okay", "ok", "sure", "correct"
+    }
+
 def get_context_anchor_question():
-    """Find the last substantive user question, skipping short clarification replies such as batch years."""
+    """Find the last substantive question, skipping replies to a pending clarification."""
     for msg in reversed(st.session_state.messages):
         if msg.get("role") != "user":
             continue
         candidate = str(msg.get("content", "")).strip()
-        if re.fullmatch(r"(?:batch\s*)?20\d{2}", candidate, re.I):
-            continue
-        if len(candidate.split()) <= 2 and re.fullmatch(r"(?:yes|no|okay|ok|sure|correct)", candidate, re.I):
+        if is_clarification_reply(candidate):
             continue
         return candidate
     return ""
@@ -1448,6 +1480,8 @@ def get_context_anchor_question():
 def is_follow_up_question(question, previous_question):
     if not previous_question:
         return False
+    if assistant_is_asking_batch_clarification() and is_clarification_reply(question):
+        return True
     q = question.lower().strip()
     if len(q.split()) <= 5 and not any(term in q for term in NEW_TOPIC_TERMS):
         return True
@@ -1457,13 +1491,12 @@ def is_follow_up_question(question, previous_question):
 
 def conversation_context_for(question):
     previous = get_context_anchor_question()
-    if not is_follow_up_question(question, previous):
+    if not previous:
         return ""
-    previous_answer = ""
-    for msg in reversed(st.session_state.messages):
-        if msg.get("role") == "assistant":
-            previous_answer = msg.get("content", "")
-            break
+    pending_batch_clarification = assistant_is_asking_batch_clarification()
+    if not pending_batch_clarification and not is_follow_up_question(question, previous):
+        return ""
+    previous_answer = latest_assistant_message()
     return (
         f"Previous student question: {previous}\n"
         f"Previous advisor answer: {previous_answer[:1800]}"
@@ -1779,37 +1812,51 @@ if user_question:
         try:
             client = Groq(api_key=api_key)
 
-            # AI fixes typos, completes follow-ups and picks the keywords to search for
-            # Resolve explicit "all batches" replies deterministically when the advisor has just
-            # asked the student to choose an admission batch for a course-code question.
+            # Resolve replies to the advisor's pending batch question before asking the LLM
+            # to rewrite them. This prevents short answers from losing their original topic.
             context_anchor = get_context_anchor_question()
+            pending_batch_clarification = assistant_is_asking_batch_clarification()
+            clarification_reply = pending_batch_clarification and is_clarification_reply(user_question)
             latest_text = str(user_question or "").strip().lower()
-            all_batches_followup = bool(
-                re.fullmatch(r"(?:for\s+)?all(?:\s+batches)?", latest_text)
-                and re.search(r"\b(which admission batch|admission batch are you asking)\b",
-                              previous_exchange_text(), re.I)
-                and extract_course_codes(context_anchor)
-            )
-            if all_batches_followup:
-                clean_question = f"{context_anchor} for all available admission batches"
+            all_batches_followup = clarification_reply and latest_text in {
+                "all", "for all", "all batches", "for all batches", "every batch", "all of them"
+            }
+            requested_batch_years = extract_batch_years(user_question) if clarification_reply else []
+            supported_batch_years = {"2022", "2023", "2024", "2025", "2026"}
+            requested_supported_batches = [y for y in requested_batch_years if y in supported_batch_years]
+            requested_unsupported_batches = [y for y in requested_batch_years if y not in supported_batch_years]
+
+            if clarification_reply and extract_course_codes(context_anchor):
+                if all_batches_followup:
+                    clean_question = f"{context_anchor} for all available admission batches"
+                elif requested_batch_years:
+                    clean_question = (
+                        f"{context_anchor} for admission batch"
+                        f"{'es' if len(requested_batch_years) > 1 else ''} "
+                        f"{' and '.join(requested_batch_years)}"
+                    )
+                else:
+                    clean_question = f"{context_anchor} for all available admission batches"
                 keywords = []
             else:
                 understood = understand_question(client, user_question, previous_exchange_text())
                 clean_question = understood["question"]
                 keywords = understood["keywords"]
-            # Preserve the prior question when the user is answering a clarification (e.g. replying only “2025”).
+
             combined_question = f"{user_question} {clean_question} {conversation_context}"
             category = classify_query(combined_question)
             effective_profile = effective_profile_for_question(combined_question)
 
-            # 1) Exact course-code lookup from structured records. 2) Structured B.Tech semester lookup.
-            # 3) Keyword search. 4) Ranked retrieval is always tried if either source side is empty.
+            # Parse every explicitly requested cohort; do not stop at the first year.
             course_codes = extract_course_codes(combined_question)
-            # The latest student message takes precedence; never infer the batch from an earlier answer.
             latest_question_text = f"{user_question} {clean_question}"
-            batch = batch_from_question(latest_question_text)
-            requested_batch_year_match = re.search(r"\b(20\d{2})\b", latest_question_text)
-            unsupported_batch = bool(requested_batch_year_match and requested_batch_year_match.group(1) not in {"2022", "2023", "2024", "2025", "2026"})
+            if clarification_reply and requested_batch_years:
+                batch = requested_supported_batches[0] if len(requested_supported_batches) == 1 else None
+            else:
+                batch = batch_from_question(latest_question_text)
+            unsupported_batch = bool(
+                requested_unsupported_batches and not requested_supported_batches
+            )
             all_course_records = st.session_state.get("course_records", [])
             structured_semester_results = course_records_for_semester(combined_question, all_course_records, batch=batch)
             missing_course_code = False
@@ -1818,8 +1865,22 @@ if user_question:
             if course_codes:
                 exact_records = []
                 for code in course_codes:
-                    exact_records.extend(course_records_for_code(code, all_course_records, batch=batch))
-                if exact_records and not batch and not all_batches_followup:
+                    exact_records.extend(course_records_for_code(code, all_course_records, batch=None))
+                if clarification_reply and requested_batch_years:
+                    if requested_supported_batches:
+                        exact_records = [
+                            row for row in exact_records
+                            if str(row.get("batch")) in requested_supported_batches
+                        ]
+                    else:
+                        exact_records = []
+                elif batch:
+                    exact_records = [
+                        row for row in exact_records if str(row.get("batch")) == str(batch)
+                    ]
+                if exact_records and not batch and not all_batches_followup and not (
+                    clarification_reply and requested_batch_years
+                ):
                     # If the same code has different curriculum details across batches,
                     # ask for the cohort instead of presenting a mixed answer.
                     details_by_batch = {
@@ -1879,7 +1940,12 @@ if user_question:
             
             # If nothing relevant was retrieved, do not let the model hallucinate from unrelated chunks.
             if unsupported_batch:
-                answer = "I don’t currently have B.Tech curriculum records for admission batch " + requested_batch_year_match.group(1) + ". The available semester-spread data covers batches 2022–2026."
+                unsupported_list = ", ".join(requested_unsupported_batches)
+                answer = (
+                    f"I don’t currently have B.Tech curriculum records for admission batch"
+                    f"{'es' if len(requested_unsupported_batches) > 1 else ''} {unsupported_list}. "
+                    "The available semester-spread data covers batches 2022–2026."
+                )
                 academic_results, website_results = [], []
             elif batch_clarification or (
                 not course_codes
@@ -1941,6 +2007,7 @@ if user_question:
                     answer += "\n\nI couldn't find the exact course code in the available sources." + DIGICAMPUS_NOTE
                     
             if (COURSE_CODE_RE.search(combined_question) or COURSE_CODE_ASK_RE.search(combined_question)) \
+                    and not batch_clarification and "which admission batch are you asking about" not in answer.lower() \
                     and "digicampus" not in answer.lower():
                 answer += DIGICAMPUS_NOTE
 

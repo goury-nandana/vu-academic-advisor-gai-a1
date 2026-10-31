@@ -1770,7 +1770,8 @@ if user_question:
             understood = understand_question(client, user_question, previous_exchange_text())
             clean_question = understood["question"]
             keywords = understood["keywords"]
-            combined_question = f"{user_question} {clean_question}"
+            # Preserve the prior question when the user is answering a clarification (e.g. replying only “2025”).
+            combined_question = f"{user_question} {clean_question} {conversation_context}"
             category = classify_query(combined_question)
             effective_profile = effective_profile_for_question(combined_question)
 

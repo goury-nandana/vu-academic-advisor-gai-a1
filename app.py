@@ -359,7 +359,7 @@ def course_records_for_code(code, records, batch=None):
         found = [r for r in found if str(r.get("batch")) == str(batch)]
     return found
 
-def course_records_for_semester(question, records):
+def course_records_for_semester(question, records, batch=None):
     q = str(question or "").lower()
     if not re.search(r"\b(b\.?tech|btech|engineering)\b", q):
         return []
@@ -373,7 +373,7 @@ def course_records_for_semester(question, records):
         sem = word_to_num.get(match.group(1), 0)
     if not sem:
         return []
-    batch = batch_from_question(q)
+    batch = batch or batch_from_question(q)
     if not batch:
         return []
     found = [dict(r) for r in records if r.get("is_course_record") and str(r.get("semester")) == str(sem)
@@ -1778,9 +1778,13 @@ if user_question:
             # 1) Exact course-code lookup from structured records. 2) Structured B.Tech semester lookup.
             # 3) Keyword search. 4) Ranked retrieval is always tried if either source side is empty.
             course_codes = extract_course_codes(combined_question)
-            batch = batch_from_question(combined_question)
+            # The latest student message takes precedence; never infer the batch from an earlier answer.
+            latest_question_text = f"{user_question} {clean_question}"
+            batch = batch_from_question(latest_question_text)
+            requested_batch_year_match = re.search(r"\b(20\d{2})\b", latest_question_text)
+            unsupported_batch = bool(requested_batch_year_match and requested_batch_year_match.group(1) not in {"2022", "2023", "2024", "2025", "2026"})
             all_course_records = st.session_state.get("course_records", [])
-            structured_semester_results = course_records_for_semester(combined_question, all_course_records)
+            structured_semester_results = course_records_for_semester(combined_question, all_course_records, batch=batch)
             missing_course_code = False
             batch_clarification = False
 
@@ -1847,7 +1851,10 @@ if user_question:
                         st.text(r["text"][:200])
             
             # If nothing relevant was retrieved, do not let the model hallucinate from unrelated chunks.
-            if batch_clarification or (
+            if unsupported_batch:
+                answer = "I don’t currently have B.Tech curriculum records for admission batch " + requested_batch_year_match.group(1) + ". The available semester-spread data covers batches 2022–2026."
+                academic_results, website_results = [], []
+            elif batch_clarification or (
                 not course_codes
                 and re.search(r"\b(b\.?tech|btech|engineering)\b", combined_question, re.I)
                 and re.search(r"\b(?:semester|sem)\s*(?:no\.?\s*)?(?:\d{1,2}|first|second|third|fourth|fifth|sixth|seventh|eighth)\b", combined_question, re.I)

@@ -373,13 +373,23 @@ def course_records_for_semester(question, records, batch=None):
         sem = word_to_num.get(match.group(1), 0)
     if not sem:
         return []
-    batch = batch or batch_from_question(q)
-    if not batch:
-        return []
+    # Honour every explicitly requested cohort; never silently collapse a multi-batch
+    # request to the first year mentioned in the question.
+    explicit_years = extract_batch_years(q)
+    supported_years = {"2022", "2023", "2024", "2025", "2026"}
+    if explicit_years:
+        selected_batches = {year for year in explicit_years if year in supported_years}
+        if not selected_batches:
+            return []
+    else:
+        selected_batch = batch or batch_from_question(q)
+        if not selected_batch:
+            return []
+        selected_batches = {str(selected_batch)}
     found = [dict(r) for r in records if r.get("is_course_record") and str(r.get("semester")) == str(sem)
              and "B.Tech" in str(r.get("programme", ""))
              and r.get("source") == "Semester_Spread_Structures_Sept_2026.xlsx"
-             and str(r.get("batch")) == batch]
+             and str(r.get("batch")) in selected_batches]
     return found[:40]
 
 DIGICAMPUS_NOTE = "\n\nFor more details on this course, please refer to the Digicampus portal."
@@ -2004,6 +2014,12 @@ if user_question:
                         if r.get("prerequisite") and "not specified" not in str(r.get("prerequisite")).lower() and str(r.get("prerequisite")).lower() not in {"nil", "nil.", "none"}:
                             line += f"; prerequisite: {r.get('prerequisite')}"
                         lines.append(line)
+                if requested_unsupported_batches:
+                    lines.append(
+                        "\nNo B.Tech semester-spread records are available for admission batch(es): "
+                        + ", ".join(requested_unsupported_batches)
+                        + ". The available data covers batches 2022–2026."
+                    )
                 lines.append("\nCourse offerings can vary by batch. Check the relevant programme structure or Digicampus for your registered curriculum.")
                 answer = "\n".join(lines)
             else:

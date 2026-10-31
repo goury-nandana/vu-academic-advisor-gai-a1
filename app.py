@@ -1173,9 +1173,10 @@ def previous_exchange_text():
     )
 
 def last_bot_asked_question():
+    """Detect a question anywhere in the latest assistant turn, even if a note follows it."""
     for msg in reversed(st.session_state.messages):
         if msg.get("role") == "assistant":
-            return msg.get("content", "").strip().endswith("?")
+            return "?" in str(msg.get("content", ""))
     return False
 
 UNDERSTAND_SYSTEM = (

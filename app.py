@@ -1829,7 +1829,8 @@ if user_question:
             clarification_reply = pending_batch_clarification and is_clarification_reply(user_question)
             latest_text = str(user_question or "").strip().lower()
             all_batches_followup = latest_text in {
-                "all", "for all", "all batches", "for all batches", "every batch", "all of them"
+                "all", "for all", "all batches", "for all batches", "every batch",
+                "all of them", "any", "any batch", "any of them"
             } and (clarification_reply or "batch" in latest_text or latest_text in {"all", "for all"})
             requested_batch_years = extract_batch_years(user_question)
             supported_batch_years = {"2022", "2023", "2024", "2025", "2026"}
@@ -1846,7 +1847,8 @@ if user_question:
                         f"{' and '.join(requested_batch_years)}"
                     )
                 else:
-                    clean_question = f"{context_anchor} for all available admission batches"
+                    # A yes/no or unclear reply is not permission to assume "all batches".
+                    clean_question = context_anchor
                 keywords = []
             else:
                 understood = understand_question(client, user_question, previous_exchange_text())
@@ -1870,7 +1872,10 @@ if user_question:
             all_course_records = st.session_state.get("course_records", [])
             structured_semester_results = course_records_for_semester(combined_question, all_course_records, batch=batch)
             missing_course_code = False
-            batch_clarification = False
+            batch_clarification = bool(
+                clarification_reply and extract_course_codes(context_anchor)
+                and not all_batches_followup and not requested_batch_years
+            )
 
             if course_codes:
                 exact_records = []

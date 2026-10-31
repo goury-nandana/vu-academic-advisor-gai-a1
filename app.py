@@ -1803,6 +1803,9 @@ if user_question:
                     # Exact structured rows outrank generic chunks and retain batch/semester/prerequisite metadata.
                     academic_results = exact_records[:8]
                     website_results = keyword_search(keywords, website_kb, top_k=3)
+                elif batch_clarification:
+                    # Do not fall through to unfiltered text evidence after deciding a batch is required.
+                    academic_results, website_results = [], []
                 else:
                     # Search for an exact token in all academic evidence (e.g. handbook/course-plan text).
                     exact_evidence = []

@@ -241,7 +241,7 @@ div[data-testid="stButton"] > button:hover {
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
-APP_VERSION = "2026-10-27-self-contained-v1"
+APP_VERSION = "2026-10-31-batch-aware-v2"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Self-contained academic knowledge base: allows deployment when GitHub permits
@@ -342,9 +342,22 @@ def load_structured_course_records():
         return [dict(r) for r in embedded]
     return []
 
-def course_records_for_code(code, records):
+def batch_from_question(question):
+    match = re.search(r"\\b(2022|2023|2024|2025|2026)\\b", str(question or ""))
+    return match.group(1) if match else None
+
+def batch_clarification_reply():
+    return (
+        "Which admission batch are you asking about: 2022, 2023, 2024, 2025 or 2026? "
+        "The course structure can differ by batch, so I need that detail before giving the curriculum answer."
+    )
+
+def course_records_for_code(code, records, batch=None):
     normalized = normalize_course_code(code)
-    return [dict(r) for r in records if normalize_course_code(r.get("course_code")) == normalized]
+    found = [dict(r) for r in records if normalize_course_code(r.get("course_code")) == normalized]
+    if batch:
+        found = [r for r in found if str(r.get("batch")) == str(batch)]
+    return found
 
 def course_records_for_semester(question, records):
     q = str(question or "").lower()
@@ -1201,11 +1214,13 @@ build_search_text(website_kb)
 
 def classify_query(query):
     q = query.lower().strip()
+    # Minor/major questions often require programme-specific curriculum evidence.
+    # Keep them in academic retrieval rather than routing them to general website content.
     website_patterns = [
         "admission", "apply", "application", "how do i join", "join vu",
         "contact", "phone number", "email", "address", "campus", "location",
         "where is vu", "where is vidyashilp", "programmes offered",
-        "about vu", "vidyashilp university", "law programme", "minor", "major"
+        "about vu", "vidyashilp university", "law programme"
     ]
     for pattern in website_patterns:
         if pattern in q:
@@ -1762,14 +1777,29 @@ if user_question:
             # 1) Exact course-code lookup from structured records. 2) Structured B.Tech semester lookup.
             # 3) Keyword search. 4) Ranked retrieval is always tried if either source side is empty.
             course_codes = extract_course_codes(combined_question)
-            structured_semester_results = course_records_for_semester(combined_question, st.session_state.get("course_records", []))
+            batch = batch_from_question(combined_question)
+            all_course_records = st.session_state.get("course_records", [])
+            structured_semester_results = course_records_for_semester(combined_question, all_course_records)
             missing_course_code = False
+            batch_clarification = False
 
             if course_codes:
                 exact_records = []
                 for code in course_codes:
-                    exact_records.extend(course_records_for_code(code, st.session_state.get("course_records", [])))
-                if exact_records:
+                    exact_records.extend(course_records_for_code(code, all_course_records, batch=batch))
+                if exact_records and not batch:
+                    # If the same code has different curriculum details across batches,
+                    # ask for the cohort instead of presenting a mixed answer.
+                    details_by_batch = {
+                        str(row.get("batch")): (
+                            str(row.get("course_title")), str(row.get("semester")),
+                            str(row.get("credits")), str(row.get("prerequisite"))
+                        )
+                        for row in exact_records
+                    }
+                    if len(set(details_by_batch.values())) > 1:
+                        batch_clarification = True
+                if exact_records and not batch_clarification:
                     # Exact structured rows outrank generic chunks and retain batch/semester/prerequisite metadata.
                     academic_results = exact_records[:8]
                     website_results = keyword_search(keywords, website_kb, top_k=3)
@@ -1813,7 +1843,15 @@ if user_question:
                         st.text(r["text"][:200])
             
             # If nothing relevant was retrieved, do not let the model hallucinate from unrelated chunks.
-            if missing_course_code:
+            if batch_clarification or (
+                not course_codes
+                and re.search(r"\\b(b\\.?tech|btech|engineering)\\b", combined_question, re.I)
+                and re.search(r"\\b(?:semester|sem)\\s*(?:no\\.?\\s*)?(?:\\d{1,2}|first|second|third|fourth|fifth|sixth|seventh|eighth)\\b", combined_question, re.I)
+                and not batch
+            ):
+                answer = batch_clarification_reply()
+                academic_results, website_results = [], []
+            elif missing_course_code:
                 answer = DIGICAMPUS_ONLY_REPLY
                 academic_results, website_results = [], []
             elif not academic_results and not website_results:

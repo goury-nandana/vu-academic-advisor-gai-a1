@@ -1818,10 +1818,10 @@ if user_question:
             pending_batch_clarification = assistant_is_asking_batch_clarification()
             clarification_reply = pending_batch_clarification and is_clarification_reply(user_question)
             latest_text = str(user_question or "").strip().lower()
-            all_batches_followup = clarification_reply and latest_text in {
+            all_batches_followup = latest_text in {
                 "all", "for all", "all batches", "for all batches", "every batch", "all of them"
-            }
-            requested_batch_years = extract_batch_years(user_question) if clarification_reply else []
+            } and (clarification_reply or "batch" in latest_text or latest_text in {"all", "for all"})
+            requested_batch_years = extract_batch_years(user_question)
             supported_batch_years = {"2022", "2023", "2024", "2025", "2026"}
             requested_supported_batches = [y for y in requested_batch_years if y in supported_batch_years]
             requested_unsupported_batches = [y for y in requested_batch_years if y not in supported_batch_years]
@@ -1850,12 +1850,12 @@ if user_question:
             # Parse every explicitly requested cohort; do not stop at the first year.
             course_codes = extract_course_codes(combined_question)
             latest_question_text = f"{user_question} {clean_question}"
-            if clarification_reply and requested_batch_years:
+            if requested_batch_years:
                 batch = requested_supported_batches[0] if len(requested_supported_batches) == 1 else None
             else:
                 batch = batch_from_question(latest_question_text)
             unsupported_batch = bool(
-                requested_unsupported_batches and not requested_supported_batches
+                course_codes and requested_unsupported_batches and not requested_supported_batches
             )
             all_course_records = st.session_state.get("course_records", [])
             structured_semester_results = course_records_for_semester(combined_question, all_course_records, batch=batch)
@@ -1866,21 +1866,16 @@ if user_question:
                 exact_records = []
                 for code in course_codes:
                     exact_records.extend(course_records_for_code(code, all_course_records, batch=None))
-                if clarification_reply and requested_batch_years:
-                    if requested_supported_batches:
-                        exact_records = [
-                            row for row in exact_records
-                            if str(row.get("batch")) in requested_supported_batches
-                        ]
-                    else:
-                        exact_records = []
+                if requested_batch_years:
+                    exact_records = [
+                        row for row in exact_records
+                        if str(row.get("batch")) in requested_supported_batches
+                    ]
                 elif batch:
                     exact_records = [
                         row for row in exact_records if str(row.get("batch")) == str(batch)
                     ]
-                if exact_records and not batch and not all_batches_followup and not (
-                    clarification_reply and requested_batch_years
-                ):
+                if exact_records and not batch and not all_batches_followup and not requested_batch_years:
                     # If the same code has different curriculum details across batches,
                     # ask for the cohort instead of presenting a mixed answer.
                     details_by_batch = {
@@ -1896,7 +1891,7 @@ if user_question:
                     # Exact structured rows outrank generic chunks and retain batch/semester/prerequisite metadata.
                     academic_results = exact_records[:8]
                     website_results = keyword_search(keywords, website_kb, top_k=3)
-                elif batch_clarification or (clarification_reply and requested_batch_years):
+                elif batch_clarification or requested_batch_years:
                     # Never fall through to unfiltered evidence when a specific cohort was requested.
                     academic_results, website_results = [], []
                 else:
@@ -1958,7 +1953,7 @@ if user_question:
             elif missing_course_code:
                 answer = DIGICAMPUS_ONLY_REPLY
                 academic_results, website_results = [], []
-            elif clarification_reply and requested_batch_years and not academic_results:
+            elif requested_batch_years and course_codes and not academic_results:
                 requested_label = " and ".join(requested_batch_years)
                 answer = (
                     f"I couldn't find a structured record for {', '.join(course_codes)} "

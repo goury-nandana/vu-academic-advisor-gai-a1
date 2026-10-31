@@ -1149,7 +1149,7 @@ def keyword_search(keywords, documents, top_k=8):
     return strip_search_fields(chosen)
 
 def previous_exchange_text():
-    previous = get_last_user_question(skip_current=True)
+    previous = get_context_anchor_question()
     previous_answer = ""
     for msg in reversed(st.session_state.messages):
         if msg.get("role") == "assistant":
@@ -1432,6 +1432,19 @@ def get_last_user_question(skip_current=False):
             return msg.get("content", "")
     return ""
 
+def get_context_anchor_question():
+    """Find the last substantive user question, skipping short clarification replies such as batch years."""
+    for msg in reversed(st.session_state.messages):
+        if msg.get("role") != "user":
+            continue
+        candidate = str(msg.get("content", "")).strip()
+        if re.fullmatch(r"(?:batch\s*)?20\d{2}", candidate, re.I):
+            continue
+        if len(candidate.split()) <= 2 and re.fullmatch(r"(?:yes|no|okay|ok|sure|correct)", candidate, re.I):
+            continue
+        return candidate
+    return ""
+
 def is_follow_up_question(question, previous_question):
     if not previous_question:
         return False
@@ -1443,7 +1456,7 @@ def is_follow_up_question(question, previous_question):
     return False
 
 def conversation_context_for(question):
-    previous = get_last_user_question(skip_current=True)
+    previous = get_context_anchor_question()
     if not is_follow_up_question(question, previous):
         return ""
     previous_answer = ""

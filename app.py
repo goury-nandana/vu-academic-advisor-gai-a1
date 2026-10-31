@@ -359,6 +359,19 @@ def course_records_for_code(code, records, batch=None):
         found = [r for r in found if str(r.get("batch")) == str(batch)]
     return found
 
+def filter_course_records_for_batches(records, requested_years=None, batch=None):
+    """Select exact course rows for every requested supported cohort without losing valid cohorts."""
+    rows = [dict(r) for r in records]
+    if requested_years:
+        supported = {str(year) for year in requested_years} & {"2022", "2023", "2024", "2025", "2026"}
+        if not supported:
+            return []
+        return [r for r in rows if str(r.get("batch")) in supported]
+    if batch:
+        return [r for r in rows if str(r.get("batch")) == str(batch)]
+    return rows
+
+
 def course_records_for_semester(question, records, batch=None):
     q = str(question or "").lower()
     if not re.search(r"\b(b\.?tech|btech|engineering)\b", q):
@@ -1882,15 +1895,9 @@ if user_question:
                 exact_records = []
                 for code in course_codes:
                     exact_records.extend(course_records_for_code(code, all_course_records, batch=None))
-                if requested_batch_years:
-                    exact_records = [
-                        row for row in exact_records
-                        if str(row.get("batch")) in requested_supported_batches
-                    ]
-                elif batch:
-                    exact_records = [
-                        row for row in exact_records if str(row.get("batch")) == str(batch)
-                    ]
+                exact_records = filter_course_records_for_batches(
+                    exact_records, requested_batch_years, batch=batch
+                )
                 if exact_records and not batch and not all_batches_followup and not requested_batch_years:
                     # If the same code has different curriculum details across batches,
                     # ask for the cohort instead of presenting a mixed answer.

@@ -2101,11 +2101,21 @@ if user_question:
                 batches = sorted({str(r.get("batch", "Not specified")) for r in academic_results})
                 for batch in batches:
                     batch_rows = [r for r in academic_results if str(r.get("batch")) == batch]
-                    code_lines.append(f"\n**Batch {batch} · {batch_rows[0].get('sheet', 'course record')}**")
+                    source_name = batch_rows[0].get("source", "semester-spread workbook")
+                    code_lines.append(
+                        f"\n**Batch {batch} · source: {source_name}**"
+                    )
                     for r in batch_rows:
                         code_lines.append(f"- **{r.get('course_code') or 'Code not provided'} — {r.get('course_title')}**")
                         code_lines.append(f"  - Semester: {r.get('semester', 'Not specified')}; credits: {r.get('credits', 'Not specified')}")
                         code_lines.append(f"  - Prerequisite: {r.get('prerequisite', 'Not specified')}")
+                        cells = r.get("cells", {})
+                        if cells:
+                            code_lines.append(
+                                "  - Source cells: " + ", ".join(
+                                    f"{field} {cell}" for field, cell in cells.items()
+                                )
+                            )
                         ltp_value = next((r.get(key) for key in ("ltp", "l_t_p", "L-T-P", "LTP", "lecture_tutorial_practical") if r.get(key) not in (None, "")), None)
                         if ltp_value is None and all(r.get(key) not in (None, "") for key in ("L", "T", "P")):
                             ltp_value = f"{r.get('L')}-{r.get('T')}-{r.get('P')}"
@@ -2113,7 +2123,11 @@ if user_question:
                             code_lines.append(f"  - L-T-P: {ltp_value}")
                         elif re.search(r"\bL\s*[-/]?\s*T\s*[-/]?\s*P\b|\bLTP\b", combined_question, re.I):
                             code_lines.append("  - L-T-P: Not specified in the available structured record")
-                code_lines.append("\nThe spreadsheet may contain different versions by batch. Check your registered curriculum in Digicampus if you need the current offering or full syllabus.")
+                code_lines.append(
+                    "\n[Open the original semester-spread workbook archive](https://github.com/goury-nandana/vu-academic-advisor-gai-a1/blob/main/VU_Semester_Data_Split.zip). "
+                    "The source workbook name and cell coordinates above identify the exact source entries. "
+                    "Check your registered curriculum in Digicampus for the current offering or full syllabus."
+                )
                 answer = "\n".join(code_lines)
                 if requested_unsupported_batches:
                     answer += (

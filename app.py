@@ -5,6 +5,7 @@
 import streamlit as st
 from groq import Groq
 from pypdf import PdfReader
+from upload_support import uploaded_files_context, transcribe_audio
 
 import os
 import re
@@ -1815,6 +1816,43 @@ for msg in st.session_state.messages:
 
 
 # ============================================================
+# FILE ATTACHMENTS AND VOICE INPUT
+# ============================================================
+
+st.markdown("#### Attach files or record a voice question")
+uploaded_files = st.file_uploader(
+    "Upload documents, spreadsheets, presentations or images",
+    type=["pdf", "docx", "txt", "md", "csv", "xlsx", "pptx",
+          "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"],
+    accept_multiple_files=True,
+    key="advisor_file_uploads",
+    help="Up to 15 MB per file. Scanned PDFs may not contain extractable text; upload a clear image or OCR-enabled PDF."
+)
+if uploaded_files:
+    st.caption("Attached: " + ", ".join(file.name for file in uploaded_files))
+
+voice_recording = st.audio_input("Record a voice question", key="advisor_voice_recording")
+if voice_recording is not None:
+    st.audio(voice_recording)
+    if st.button("Transcribe recording and ask", key="transcribe_voice"):
+        if not api_key:
+            st.error("Voice transcription is unavailable because the advisor API is not configured.")
+        else:
+            try:
+                voice_client = Groq(api_key=api_key)
+                transcript = transcribe_audio(
+                    voice_client, voice_recording.getvalue(),
+                    getattr(voice_recording, "name", "voice_input.wav")
+                )
+                if transcript:
+                    st.session_state.pending_question = transcript
+                    st.rerun()
+                else:
+                    st.warning("No speech was detected. Try recording again.")
+            except Exception as exc:
+                st.error(f"Could not transcribe the recording: {exc}")
+
+# ============================================================
 # GET QUESTION
 # ============================================================
 
@@ -1971,6 +2009,13 @@ if user_question:
     else:
         try:
             client = Groq(api_key=api_key)
+
+            # Extract only the files explicitly attached to this turn. Uploaded material is
+            # treated as user-provided context, not as verified VU policy or curriculum data.
+            uploaded_context, upload_notes = uploaded_files_context(uploaded_files, client)
+            if upload_notes:
+                for note in upload_notes:
+                    st.caption(note)
 
             # Resolve replies to the advisor's pending batch question before asking the LLM
             # to rewrite them. This prevents short answers from losing their original topic.
@@ -2213,6 +2258,12 @@ if user_question:
                 answer = "\n".join(lines)
             else:
                 context = create_context(academic_results, website_results, conversation_context)
+                if uploaded_context:
+                    context += (
+                        "\\n\\nSTUDENT-ATTACHED MATERIAL (use only to answer the student's "
+                        "question about these files; it is not independently verified VU policy):\\n"
+                        + uploaded_context
+                    )
                 with st.spinner("Thinking..."):
                     answer = generate_answer(
                         client, clean_question, context, category, effective_profile, conversation_context

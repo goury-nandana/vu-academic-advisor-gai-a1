@@ -17,7 +17,10 @@ import html
 
 from collections import Counter
 
-from course_data import (\n    load_course_records as _load_course_records,\n    course_records_for_question as _course_records_for_question,\n)
+from course_data import (
+    load_course_records as _load_course_records,
+    course_records_for_question as _course_records_for_question,
+)
 
 
 # ============================================================

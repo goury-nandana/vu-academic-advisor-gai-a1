@@ -2107,6 +2107,8 @@ if user_question:
                         code_lines.append(f"  - Semester: {r.get('semester', 'Not specified')}; credits: {r.get('credits', 'Not specified')}")
                         code_lines.append(f"  - Prerequisite: {r.get('prerequisite', 'Not specified')}")
                         ltp_value = next((r.get(key) for key in ("ltp", "l_t_p", "L-T-P", "LTP", "lecture_tutorial_practical") if r.get(key) not in (None, "")), None)
+                        if ltp_value is None and all(r.get(key) not in (None, "") for key in ("L", "T", "P")):
+                            ltp_value = f"{r.get('L')}-{r.get('T')}-{r.get('P')}"
                         if ltp_value is not None:
                             code_lines.append(f"  - L-T-P: {ltp_value}")
                         elif re.search(r"\bL\s*[-/]?\s*T\s*[-/]?\s*P\b|\bLTP\b", combined_question, re.I):

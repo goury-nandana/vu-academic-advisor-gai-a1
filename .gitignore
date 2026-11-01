@@ -1,0 +1,26 @@
+# Local secrets
+.streamlit/secrets.toml
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local virtual environments
+.venv/
+venv/
+ENV/
+
+# Streamlit
+.streamlit/config.toml
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

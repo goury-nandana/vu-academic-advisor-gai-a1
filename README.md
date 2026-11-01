@@ -24,6 +24,21 @@ The 2026 semester-spread source is identified as the B.Tech Data Science track. 
 - French greetings (including "bonjour") are handled as social openers without document retrieval.
 - Numeric policy thresholds, including grading cut-offs, require explicit source evidence.
 
+## User file uploads and voice input
+
+The chat screen supports multiple attachments and recorded voice questions.
+
+- Documents: PDF, DOCX, TXT, Markdown, CSV, XLSX and PPTX.
+- Images: PNG, JPG/JPEG, WEBP, BMP and TIFF. Image text/content is extracted through a Groq vision-capable model available to the configured account.
+- Audio files: MP3, WAV, M4A, OGG and FLAC. The chat also includes a microphone recorder; recordings are transcribed with Groq Whisper before being submitted as a question.
+- Limit: 15 MB per file; extracted text is capped to keep prompts within practical limits.
+- Legacy DOC/XLS, video files and arbitrary binary formats are not supported. Scanned PDFs may return no text; upload a clear image or OCR-enabled PDF instead.
+- Uploaded content is treated as user-provided material, not automatically as verified VU policy. The chatbot must distinguish it from official university sources.
+- Image understanding depends on a vision model being enabled for the existing Groq account. If unavailable, the app reports the model error rather than inventing image contents.
+- Audio transcription uses Groq's speech endpoint and is subject to the account's model availability and free-tier limits.
+
+Files are processed in memory for the current Streamlit session; this feature does not add permanent file storage.
+
 ## Ten-model benchmark
 
 `benchmark_runner.py` runs the same benchmark questions, source context, and grounding prompt against ten Groq model candidates available to the configured account. It uses the configured `GROQ_API_KEY` only; it does not require paid API access. Unavailable models are not silently replaced. The script records responses, latency and token usage; the four rubric scores are intentionally left blank for consistent human evaluation.

@@ -24,7 +24,7 @@ NEEDED_FUNCTIONS = {
     "update_conversation_state",
     "extract_course_codes",
 }
-NEEDED_ASSIGNMENTS = {"FOLLOW_UP_RE", "NEW_TOPIC_TERMS", "ACADEMIC_SOURCE_ALLOWLIST", "EXCLUDED_FILES"}
+NEEDED_ASSIGNMENTS = {"FOLLOW_UP_RE", "NEW_TOPIC_TERMS", "ACADEMIC_SOURCE_ALLOWLIST", "EXCLUDED_FILES", "COURSE_CODE_RE"}
 selected = []
 for node in TREE.body:
     if isinstance(node, ast.FunctionDef) and node.name in NEEDED_FUNCTIONS:
@@ -172,7 +172,7 @@ class ConversationLogicTests(unittest.TestCase):
         )
         state = namespace["update_conversation_state"]("For 2021 and 2026, give me both.")
         self.assertEqual(state["active_entity"], "UCOR205")
-        self.assertEqual(state["batch"], ["2021", "2026"] if False else "2026")
+        self.assertEqual(state["batch"], "2026")
 
     def test_comparison_followup_switches_to_all_batches(self):
         namespace["st"].session_state.conversation_state = {

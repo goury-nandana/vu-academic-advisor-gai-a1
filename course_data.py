@@ -117,3 +117,32 @@ def load_course_records(archive_path=DATA_ARCHIVE):
             seen.add(identity)
             unique.append(record)
     return unique
+
+
+def normalize_course_code(value):
+    """Normalize a course code without changing its letters or digits."""
+    return re.sub(r"[\\s-]", "", str(value or "")).upper()
+
+
+def extract_course_codes(question):
+    """Extract exact three-digit course-code tokens from a question."""
+    pattern = re.compile(r"\\b[A-Za-z]{3,5}[\\s-]?\\d{3}\\b")
+    return list(dict.fromkeys(normalize_course_code(x) for x in pattern.findall(str(question or ""))))
+
+
+def course_records_for_question(question, records, batch=None):
+    """Return structured rows for exact course codes mentioned in a question.
+
+    Shared by the Streamlit advisor and benchmark harness. Callers should
+    place these records before generic handbook/course-plan chunks.
+    """
+    codes = set(extract_course_codes(question))
+    if not codes:
+        return []
+    return [
+        dict(record) for record in records or []
+        if normalize_course_code(record.get("course_code")) in codes
+        and (batch is None or str(record.get("batch")) == str(batch))
+        and record.get("document_type") == "semester_spread"
+        and record.get("is_course_record")
+    ]

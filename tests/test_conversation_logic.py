@@ -99,17 +99,17 @@ class ConversationLogicTests(unittest.TestCase):
     def test_semester_lookup_keeps_every_supported_requested_batch(self):
         records = [
             {
-                "is_course_record": True, "semester": "3", "programme": "B.Tech",
+                "is_course_record": True, "document_type": "semester_spread", "semester": "3", "programme": "B.Tech",
                 "source": "Semester_Spread_Structures_Sept_2026.xlsx", "batch": "2025",
                 "course_code": "MATH209",
             },
             {
-                "is_course_record": True, "semester": "3", "programme": "B.Tech",
+                "is_course_record": True, "document_type": "semester_spread", "semester": "3", "programme": "B.Tech",
                 "source": "Semester_Spread_Structures_Sept_2026.xlsx", "batch": "2026",
                 "course_code": "MATH210",
             },
             {
-                "is_course_record": True, "semester": "3", "programme": "B.Tech",
+                "is_course_record": True, "document_type": "semester_spread", "semester": "3", "programme": "B.Tech",
                 "source": "Semester_Spread_Structures_Sept_2026.xlsx", "batch": "2024",
                 "course_code": "MATH208",
             },

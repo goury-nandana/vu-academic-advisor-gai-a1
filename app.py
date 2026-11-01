@@ -272,7 +272,6 @@ ACADEMIC_SOURCE_ALLOWLIST = {
     "4. Student Handbook Aug 2026.pdf",
     "SOP STUDENT 17082026 - Final.pdf",
     "Course_Plans.txt",
-    "Programme_Structure.txt",
     "Minor_Courses_for_BTech_Students.xlsx",
 }
 

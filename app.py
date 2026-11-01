@@ -1881,7 +1881,10 @@ with st.container(key="whatsapp_composer"):
             "Message",
             placeholder="Type an academic question...",
             label_visibility="collapsed",
-            key="advisor_message_draft"
+            key="advisor_message_draft",
+            on_change=lambda: st.session_state.update({
+                "pending_question": st.session_state.advisor_message_draft.strip()
+            })
         )
 
     with composer_voice:

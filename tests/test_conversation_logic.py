@@ -21,8 +21,10 @@ NEEDED_FUNCTIONS = {
     "get_context_anchor_question",
     "is_follow_up_question",
     "conversation_context_for",
+    "update_conversation_state",
+    "extract_course_codes",
 }
-NEEDED_ASSIGNMENTS = {"FOLLOW_UP_RE", "NEW_TOPIC_TERMS"}
+NEEDED_ASSIGNMENTS = {"FOLLOW_UP_RE", "NEW_TOPIC_TERMS", "ACADEMIC_SOURCE_ALLOWLIST", "EXCLUDED_FILES", "COURSE_CODE_RE"}
 selected = []
 for node in TREE.body:
     if isinstance(node, ast.FunctionDef) and node.name in NEEDED_FUNCTIONS:
@@ -32,9 +34,14 @@ for node in TREE.body:
         if names & NEEDED_ASSIGNMENTS:
             selected.append(node)
 
+class SessionState(SimpleNamespace):
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+
 namespace = {
     "re": re,
-    "st": SimpleNamespace(session_state=SimpleNamespace(messages=[])),
+    "st": SimpleNamespace(session_state=SessionState(messages=[])),
 }
 exec(compile(ast.Module(body=selected, type_ignores=[]), str(APP_PATH), "exec"), namespace)
 
@@ -156,6 +163,40 @@ class ConversationLogicTests(unittest.TestCase):
             records, [], batch="2026"
         )
         self.assertEqual([row["batch"] for row in found], ["2026"])
+
+    
+    def test_recognises_natural_both_batch_reply(self):
+        self.assertTrue(namespace["is_clarification_reply"]("For 2021 and 2026, give me both."))
+
+    def test_conversation_state_retains_course_and_selected_batch(self):
+        namespace["st"].session_state.conversation_state = {
+            "programme": None, "batch": None, "active_entity": "UCOR205", "active_intent": "credits"
+        }
+        namespace["st"].session_state.messages.append(
+            {"role": "user", "content": "For 2021 and 2026, give me both."}
+        )
+        state = namespace["update_conversation_state"]("For 2021 and 2026, give me both.")
+        self.assertEqual(state["active_entity"], "UCOR205")
+        self.assertEqual(state["batch"], "2026")
+
+    def test_comparison_followup_switches_to_all_batches(self):
+        namespace["st"].session_state.conversation_state = {
+            "programme": None, "batch": "2026", "active_entity": "UCOR205", "active_intent": "ltp"
+        }
+        namespace["st"].session_state.messages.extend([
+            {"role": "user", "content": "What is L-T-P for UCOR205?"},
+            {"role": "assistant", "content": "L-T-P: 2-1-0"},
+        ])
+        state = namespace["update_conversation_state"]("Is it different for each?")
+        self.assertEqual(state["batch"], "all")
+        self.assertEqual(state["active_entity"], "UCOR205")
+
+    def test_academic_corpus_allowlist_excludes_developer_files(self):
+        allowed = namespace["ACADEMIC_SOURCE_ALLOWLIST"]
+        self.assertNotIn("README_TESTING.txt", allowed)
+        self.assertNotIn("requirements.txt", allowed)
+        self.assertIn("4. Student Handbook Aug 2026.pdf", allowed)
+        self.assertNotIn("Programme_Structure.txt", allowed)
 
     def test_course_code_lookup_does_not_change_code_normalisation(self):
         records = [{"course_code": "UCOR205", "batch": "2026"}]

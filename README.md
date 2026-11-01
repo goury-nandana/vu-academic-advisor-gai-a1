@@ -16,6 +16,27 @@ Streamlit-based academic advising chatbot for Vidyashilp University (VU). It use
 
 The 2026 semester-spread source is identified as the B.Tech Data Science track. The 2022–2025 semester-spread files do not explicitly identify a track in the source metadata, so the application does not infer one.
 
+## Assignment 2 reliability safeguards
+
+- Personal-profile questions are answered from explicitly supplied sidebar/chat details only; the chatbot does not claim access to university student records.
+- Unsupported personal or academic profile claims are retracted when challenged.
+- Short acknowledgements such as "oh" and "ok" do not replace the active conversation topic.
+- French greetings (including "bonjour") are handled as social openers without document retrieval.
+- Numeric policy thresholds, including grading cut-offs, require explicit source evidence.
+
+## Ten-model benchmark
+
+`benchmark_runner.py` runs the same benchmark questions, source context, and grounding prompt against ten Groq model candidates available to the configured account. It uses the configured `GROQ_API_KEY` only; it does not require paid API access. Unavailable models are not silently replaced. The script records responses, latency and token usage; the four rubric scores are intentionally left blank for consistent human evaluation.
+
+Place `VU_LLM_Benchmark_Framework.xlsx` in the repository root, then run:
+
+```bash
+python benchmark_runner.py --limit 3
+python benchmark_runner.py
+```
+
+The first command is a small smoke run; the second runs the full question set. The workbook is an evaluation input and is not currently committed to this repository. A benchmark run has not yet been performed from the deployment environment. Groq model availability and free-tier rate limits depend on the account at run time.
+
 ## Run locally
 
 Python 3.11+ is recommended.

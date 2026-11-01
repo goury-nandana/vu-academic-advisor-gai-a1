@@ -1863,7 +1863,35 @@ if user_question:
     # ---- Academic question ----
     category = classify_query(user_question)
     effective_profile = effective_profile_for_question(user_question)
+    # Persist course/batch context across short follow-up turns.
+    current_codes_for_state = extract_course_codes(user_question)
+    if current_codes_for_state:
+        st.session_state.active_course_code = current_codes_for_state[-1]
+    current_years_for_state = extract_batch_years(user_question)
+    supported_years_for_state = [y for y in current_years_for_state
+                                 if y in {"2022", "2023", "2024", "2025", "2026"}]
+    compare_all_for_state = bool(
+        st.session_state.get("active_course_code")
+        and re.search(r"\\b(all|every|each|both|different|compare|comparison|varies|vary)\\b",
+                      str(user_question), re.I)
+    )
+    if compare_all_for_state:
+        st.session_state.active_course_batch = None
+    elif len(supported_years_for_state) == 1 and len(current_years_for_state) == 1:
+        st.session_state.active_course_batch = supported_years_for_state[0]
+    if current_codes_for_state and not current_years_for_state:
+        # A new explicit course code starts a new topic; do not inherit another course's batch.
+        if current_codes_for_state[-1] != st.session_state.get("active_course_code"):
+            st.session_state.active_course_batch = None
+
     conversation_context = conversation_context_for(user_question)
+    if st.session_state.get("active_course_code"):
+        course_state_context = (
+            f"Active course code: {st.session_state.active_course_code}. "
+            f"Previously selected admission batch: "
+            f"{st.session_state.get('active_course_batch') or 'not selected'}."
+        )
+        conversation_context = (conversation_context + "\\n" + course_state_context).strip()
     if not conversation_context and last_bot_asked_question():
         # the student is probably answering the advisor's follow-up question
         conversation_context = previous_exchange_text()
@@ -1891,10 +1919,14 @@ if user_question:
             pending_batch_clarification = assistant_is_asking_batch_clarification()
             clarification_reply = pending_batch_clarification and is_clarification_reply(user_question)
             latest_text = str(user_question or "").strip().lower()
-            all_batches_followup = latest_text in {
+            all_batches_followup = bool(
+                st.session_state.get("active_course_code")
+                and re.search(r"\\b(all|every|each|both|different|compare|comparison|varies|vary)\\b",
+                              latest_text, re.I)
+            ) or (latest_text in {
                 "all", "for all", "all batches", "for all batches", "every batch",
                 "all of them", "any", "any batch", "any of them"
-            } and (clarification_reply or "batch" in latest_text or latest_text in {"all", "for all"})
+            } and (clarification_reply or "batch" in latest_text or latest_text in {"all", "for all"}))
             requested_batch_years = extract_batch_years(user_question)
             supported_batch_years = {"2022", "2023", "2024", "2025", "2026"}
             requested_supported_batches = [y for y in requested_batch_years if y in supported_batch_years]
@@ -1919,6 +1951,15 @@ if user_question:
                 keywords = understood["keywords"]
 
             combined_question = f"{user_question} {clean_question} {conversation_context}"
+            if all_batches_followup and st.session_state.get("active_course_code"):
+                combined_question += f" course {st.session_state.active_course_code} for all available admission batches"
+            elif (st.session_state.get("active_course_code")
+                  and st.session_state.get("active_course_batch")
+                  and not requested_batch_years):
+                combined_question += (
+                    f" course {st.session_state.active_course_code} "
+                    f"admission batch {st.session_state.active_course_batch}"
+                )
             category = classify_query(combined_question)
             effective_profile = effective_profile_for_question(combined_question)
 
@@ -1929,6 +1970,10 @@ if user_question:
                 batch = requested_supported_batches[0] if len(requested_supported_batches) == 1 else None
             else:
                 batch = batch_from_question(latest_question_text)
+                if (not batch and st.session_state.get("active_course_code")
+                        and extract_course_codes(combined_question)
+                        and not all_batches_followup):
+                    batch = st.session_state.get("active_course_batch")
             unsupported_batch = bool(
                 course_codes and requested_unsupported_batches and not requested_supported_batches
             )

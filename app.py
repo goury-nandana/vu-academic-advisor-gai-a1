@@ -1504,7 +1504,7 @@ def get_context_anchor_question():
         # Short references such as "is it different for each?" depend on the prior
         # course question; they must not replace that active topic.
         words = candidate.lower().split()
-        if len(words) <= 7 and re.search(r"\\b(it|this|that|they|those|each|same|different)\\b", candidate, re.I):
+        if len(words) <= 7 and re.search(r"\b(it|this|that|they|those|each|same|different)\b", candidate, re.I):
             continue
         return candidate
     return ""
@@ -2006,7 +2006,7 @@ if user_question:
                         ltp_value = next((r.get(key) for key in ("ltp", "l_t_p", "L-T-P", "LTP", "lecture_tutorial_practical") if r.get(key) not in (None, "")), None)
                         if ltp_value is not None:
                             code_lines.append(f"  - L-T-P: {ltp_value}")
-                        elif re.search(r"\\bL\\s*[-/]?\\s*T\\s*[-/]?\\s*P\\b|\\bLTP\\b", combined_question, re.I):
+                        elif re.search(r"\bL\s*[-/]?\s*T\s*[-/]?\s*P\b|\bLTP\b", combined_question, re.I):
                             code_lines.append("  - L-T-P: Not specified in the available structured record")
                 code_lines.append("\nThe spreadsheet may contain different versions by batch. Check your registered curriculum in Digicampus if you need the current offering or full syllabus.")
                 answer = "\n".join(code_lines)

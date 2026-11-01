@@ -17,7 +17,7 @@ import html
 
 from collections import Counter
 
-from course_data import load_course_records as _load_course_records
+from course_data import (\n    load_course_records as _load_course_records,\n    course_records_for_question as _course_records_for_question,\n)
 
 
 # ============================================================
@@ -1996,9 +1996,11 @@ if user_question:
             )
 
             if course_codes:
-                exact_records = []
-                for code in course_codes:
-                    exact_records.extend(course_records_for_code(code, all_course_records, batch=None))
+                # Shared exact-code lookup is also used by the benchmark harness.
+                # Structured semester rows always outrank generic handbook chunks.
+                exact_records = _course_records_for_question(
+                    combined_question, all_course_records, batch=None
+                )
                 exact_records = filter_course_records_for_batches(
                     exact_records, requested_batch_years, batch=batch
                 )

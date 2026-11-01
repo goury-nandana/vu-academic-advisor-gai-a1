@@ -78,6 +78,21 @@ class ConversationLogicTests(unittest.TestCase):
         self.assertIn("UCOR205", context)
         self.assertIn("Which admission batch", context)
 
+    def test_pronoun_followup_does_not_replace_active_course_topic(self):
+        namespace["st"].session_state.messages.extend([
+            {"role": "user", "content": "ltp structure for the ucor205?"},
+            {"role": "assistant", "content": "Which admission batch are you asking about: 2022, 2023, 2024, 2025 or 2026? The course structure can differ by batch."},
+            {"role": "user", "content": "is it different for each?"},
+        ])
+        self.assertEqual(
+            namespace["get_context_anchor_question"](),
+            "ltp structure for the ucor205?",
+        )
+
+    def test_minor_fact_check_is_not_globally_injected(self):
+        source = APP_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("MINOR-OPTIONS FACT CHECK:", source)
+
     def test_all_batches_is_a_clarification_reply(self):
         self.assertTrue(namespace["is_clarification_reply"]("for all"))
 

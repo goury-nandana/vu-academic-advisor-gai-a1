@@ -12,7 +12,7 @@ CHALLENGE_RE = re.compile(
     r"\b(?:wrong|incorrect|a lie|not true|made that up|false|inaccurate)\b|"
     r"\bno,?\s+that'?s?\s+(?:a )?lie\b", re.I)
 UNSUPPORTED_PROFILE_CLAIM_RE = re.compile(
-    r"\b(?:you[’']?re|you are)\s+(?:a|an)\s+.+\b(?:student|semester|cgpa|gpa|credits?)\b|"
+    r"\b(?:you[’']?re|you are)\s+.{0,120}\b(?:student|semester|cgpa|gpa|credits?)\b|"
     r"\b(?:your|you have)\s+.{0,50}\b(?:cgpa|gpa|credits?|semester)\b", re.I)
 
 def is_personal_knowledge_question(text: str) -> bool:

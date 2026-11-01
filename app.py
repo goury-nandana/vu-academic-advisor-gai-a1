@@ -150,6 +150,43 @@ html, body, [class*="css"] {
     color: #9aa7b5 !important;
 }
 
+/* -------------------- WhatsApp-style composer -------------------- */
+.st-key-whatsapp_composer {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    background: #f7f9fc;
+    border-top: 1px solid #e3e8ef;
+    padding: 12px 10px 14px;
+    margin-top: 18px;
+}
+.st-key-whatsapp_composer [data-testid="stTextInput"] input {
+    min-height: 46px !important;
+    border-radius: 24px !important;
+    border: 1px solid #d6dee8 !important;
+    background: #ffffff !important;
+    color: #172033 !important;
+    padding: 0 18px !important;
+}
+.st-key-whatsapp_composer [data-testid="stAudioInput"] {
+    min-width: 0 !important;
+}
+.st-key-whatsapp_composer [data-testid="stAudioInput"] button {
+    min-height: 46px !important;
+    border-radius: 50% !important;
+}
+.st-key-whatsapp_composer [data-testid="stPopover"] > button {
+    min-height: 46px !important;
+    width: 46px !important;
+    border-radius: 50% !important;
+    font-size: 23px !important;
+}
+.st-key-whatsapp_composer [data-testid="stButton"] > button[kind="primary"] {
+    min-height: 46px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+}
+
 /* -------------------- General buttons -------------------- */
 div[data-testid="stButton"] > button {
     background: #ffffff !important;
@@ -257,7 +294,7 @@ div[data-testid="stButton"] > button:hover {
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
-APP_VERSION = "2026-11-01-assignment2-upload-voice-v1"
+APP_VERSION = "2026-11-01-assignment2-whatsapp-composer-v1"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Self-contained academic knowledge base: allows deployment when GitHub permits
@@ -1816,25 +1853,56 @@ for msg in st.session_state.messages:
 
 
 # ============================================================
-# FILE ATTACHMENTS AND VOICE INPUT
+# WHATSAPP-STYLE MESSAGE COMPOSER
 # ============================================================
 
-st.markdown("#### Attach files or record a voice question")
-uploaded_files = st.file_uploader(
-    "Upload documents, spreadsheets, presentations or images",
-    type=["pdf", "docx", "txt", "md", "csv", "xlsx", "pptx",
-          "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff", "mp3", "wav", "m4a", "ogg", "flac"],
-    accept_multiple_files=True,
-    key="advisor_file_uploads",
-    help="Up to 15 MB per file. Scanned PDFs may not contain extractable text; upload a clear image or OCR-enabled PDF."
-)
+# Keep attachments behind the paperclip so the conversation remains the focus.
+# The upload widget key is stable, so selected files remain attached while typing.
+with st.container(key="whatsapp_composer"):
+    composer_attach, composer_text, composer_voice, composer_send = st.columns(
+        [0.75, 7.0, 1.35, 0.9], vertical_alignment="bottom"
+    )
+
+    with composer_attach:
+    with st.popover("＋", help="Attach files"):
+        st.markdown("**Attach files**")
+        uploaded_files = st.file_uploader(
+            "Choose documents, spreadsheets, presentations, images or audio",
+            type=["pdf", "docx", "txt", "md", "csv", "xlsx", "pptx",
+                  "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff",
+                  "mp3", "wav", "m4a", "ogg", "flac"],
+            accept_multiple_files=True,
+            key="advisor_file_uploads",
+            help="Up to 15 MB per file. Scanned PDFs may need OCR."
+        )
+
+    with composer_text:
+        typed_question = st.text_input(
+        "Message",
+        placeholder="Type an academic question...",
+        label_visibility="collapsed",
+        key="advisor_message_draft"
+    )
+
+    with composer_voice:
+        voice_recording = st.audio_input(
+        "Voice",
+        key="advisor_voice_recording",
+        label_visibility="collapsed"
+    )
+
+    with composer_send:
+        send_clicked = st.button(
+        "Send", key="advisor_send_message", type="primary",
+        use_container_width=True, disabled=not bool(typed_question.strip())
+    )
+
 if uploaded_files:
     st.caption("Attached: " + ", ".join(file.name for file in uploaded_files))
 
-voice_recording = st.audio_input("Record a voice question", key="advisor_voice_recording")
+# A recorded clip is transcribed only after the user explicitly sends it.
 if voice_recording is not None:
-    st.audio(voice_recording)
-    if st.button("Transcribe recording and ask", key="transcribe_voice"):
+    if st.button("Send voice recording", key="send_voice_recording"):
         if not api_key:
             st.error("Voice transcription is unavailable because the advisor API is not configured.")
         else:
@@ -1856,16 +1924,15 @@ if voice_recording is not None:
 # GET QUESTION
 # ============================================================
 
-# Always render the chat input first. Do not use `pending or st.chat_input(...)`
-# because Python short-circuiting can prevent Streamlit from rendering the widget.
-typed_question = st.chat_input("Ask your academic question...")
-
 pending = st.session_state.get("pending_question")
 if pending:
     user_question = pending
     st.session_state.pending_question = None
+elif send_clicked:
+    user_question = typed_question.strip()
+    st.session_state.advisor_message_draft = ""
 else:
-    user_question = typed_question
+    user_question = None
 
 
 # ============================================================

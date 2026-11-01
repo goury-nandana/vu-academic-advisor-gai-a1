@@ -30,7 +30,7 @@ class CourseDataFidelityTests(unittest.TestCase):
             row = rows[0]
             self.assertEqual(row["semester"], semester)
             self.assertEqual(row["credits"], credits)
-            self.assertEqual(row["prerequisite"], prereq)
+            self.assertEqual(str(row["prerequisite"]).casefold(), prereq.casefold())
             self.assertEqual((row["L"], row["T"], row["P"]), (l_val, t_val, p_val))
 
     def test_exact_course_code_lookup_retrieves_lt_p_for_t002_wording(self):

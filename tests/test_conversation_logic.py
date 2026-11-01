@@ -34,9 +34,14 @@ for node in TREE.body:
         if names & NEEDED_ASSIGNMENTS:
             selected.append(node)
 
+class SessionState(SimpleNamespace):
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+
 namespace = {
     "re": re,
-    "st": SimpleNamespace(session_state=SimpleNamespace(messages=[])),
+    "st": SimpleNamespace(session_state=SessionState(messages=[])),
 }
 exec(compile(ast.Module(body=selected, type_ignores=[]), str(APP_PATH), "exec"), namespace)
 

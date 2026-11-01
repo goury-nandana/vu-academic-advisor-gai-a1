@@ -1864,38 +1864,38 @@ with st.container(key="whatsapp_composer"):
     )
 
     with composer_attach:
-    with st.popover("＋", help="Attach files"):
-        st.markdown("**Attach files**")
-        uploaded_files = st.file_uploader(
-            "Choose documents, spreadsheets, presentations, images or audio",
-            type=["pdf", "docx", "txt", "md", "csv", "xlsx", "pptx",
-                  "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff",
-                  "mp3", "wav", "m4a", "ogg", "flac"],
-            accept_multiple_files=True,
-            key="advisor_file_uploads",
-            help="Up to 15 MB per file. Scanned PDFs may need OCR."
-        )
+        with st.popover("＋", help="Attach files"):
+            st.markdown("**Attach files**")
+            uploaded_files = st.file_uploader(
+                "Choose documents, spreadsheets, presentations, images or audio",
+                type=["pdf", "docx", "txt", "md", "csv", "xlsx", "pptx",
+                      "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff",
+                      "mp3", "wav", "m4a", "ogg", "flac"],
+                accept_multiple_files=True,
+                key="advisor_file_uploads",
+                help="Up to 15 MB per file. Scanned PDFs may need OCR."
+            )
 
     with composer_text:
         typed_question = st.text_input(
-        "Message",
-        placeholder="Type an academic question...",
-        label_visibility="collapsed",
-        key="advisor_message_draft"
-    )
+            "Message",
+            placeholder="Type an academic question...",
+            label_visibility="collapsed",
+            key="advisor_message_draft"
+        )
 
     with composer_voice:
         voice_recording = st.audio_input(
-        "Voice",
-        key="advisor_voice_recording",
-        label_visibility="collapsed"
-    )
+            "Voice",
+            key="advisor_voice_recording",
+            label_visibility="collapsed"
+        )
 
     with composer_send:
         send_clicked = st.button(
-        "Send", key="advisor_send_message", type="primary",
-        use_container_width=True, disabled=not bool(typed_question.strip())
-    )
+            "Send", key="advisor_send_message", type="primary",
+            use_container_width=True, disabled=not bool(typed_question.strip())
+        )
 
 if uploaded_files:
     st.caption("Attached: " + ", ".join(file.name for file in uploaded_files))

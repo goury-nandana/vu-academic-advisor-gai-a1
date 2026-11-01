@@ -1541,7 +1541,7 @@ def get_context_anchor_question():
         if msg.get("role") != "user":
             continue
         candidate = str(msg.get("content", "")).strip()
-        if is_acknowledgement(candidate):
+        if re.fullmatch(r"\\s*(oh+|ok(?:ay)?|got it|understood|right|i see|hmm+|alright|sure|thanks?|thank you|thx|ty|cool|nice|great)\\s*[.!?]*\\s*", candidate, re.I):
             continue
         if pending_batch and is_clarification_reply(candidate):
             continue

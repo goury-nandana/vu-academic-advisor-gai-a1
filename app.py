@@ -22,6 +22,16 @@ from course_data import (
     course_records_for_question as _course_records_for_question,
 )
 
+from advisor_guardrails import (
+    acknowledgement_reply,
+    correction_reply,
+    is_acknowledgement,
+    is_answer_challenge,
+    is_personal_knowledge_question,
+    personal_knowledge_reply,
+    should_retract_personal_claim,
+)
+
 
 # ============================================================
 # PAGE CONFIG
@@ -1322,6 +1332,11 @@ RESPONSE STYLE:
   A matching word in a different programme's source is not supporting evidence.
 
 IMPORTANT PROFILE RULES:
+- You have NO access to VU student records, account identity, grades, enrolment history or private profiles.
+- Never infer or invent the student's programme, semester, credits, CGPA, name or personal history.
+- Only repeat profile details explicitly entered in the optional sidebar or explicitly shared by the student.
+- If asked what you know about the student, state this limitation; do not invent a profile.
+- If the student says a personal/profile claim is false, retract it immediately and do not repeat it.
 - Sidebar profile values are optional. Blank means unknown; never assume a value.
 - If the student's current message explicitly gives a different programme/semester/credit/CGPA,
   use that information for that question and do not pretend the sidebar has changed.
@@ -1526,6 +1541,8 @@ def get_context_anchor_question():
         if msg.get("role") != "user":
             continue
         candidate = str(msg.get("content", "")).strip()
+        if is_acknowledgement(candidate):
+            continue
         if pending_batch and is_clarification_reply(candidate):
             continue
         # Short references such as "is it different for each?" depend on the prior
@@ -1823,6 +1840,35 @@ if user_question:
     show_user_bubble(user_question)
 
     is_thanks = re.search(r"\b(thank(s|\s*you|u)|thx|ty)\b", user_question, re.I)
+
+    # ---- Deterministic personal-data and conversation guardrails ----
+    if is_personal_knowledge_question(user_question):
+        answer = personal_knowledge_reply(student_profile)
+        show_bot_bubble(answer)
+        st.session_state.messages.append({
+            "role": "assistant", "content": answer,
+            "academic_sources": [], "website_sources": []
+        })
+        st.rerun()
+
+    latest_answer = latest_assistant_message()
+    if is_answer_challenge(user_question) and should_retract_personal_claim(latest_answer):
+        answer = correction_reply()
+        show_bot_bubble(answer)
+        st.session_state.messages.append({
+            "role": "assistant", "content": answer,
+            "academic_sources": [], "website_sources": []
+        })
+        st.rerun()
+
+    if is_acknowledgement(user_question) and not is_thanks:
+        answer = acknowledgement_reply()
+        show_bot_bubble(answer)
+        st.session_state.messages.append({
+            "role": "assistant", "content": answer,
+            "academic_sources": [], "website_sources": []
+        })
+        st.rerun()
 
     # ---- Social / greeting shortcut ----
     if SOCIAL_RE.match(user_question.strip()):

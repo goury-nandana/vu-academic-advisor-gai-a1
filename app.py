@@ -243,7 +243,7 @@ div[data-testid="stButton"] > button:hover {
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
-APP_VERSION = "2026-11-01-assignment2-course-data-v5"
+APP_VERSION = "2026-11-01-assignment2-course-data-v6"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Self-contained academic knowledge base: allows deployment when GitHub permits

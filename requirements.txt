@@ -4,3 +4,6 @@ pypdf
 requests
 beautifulsoup4
 openpyxl
+python-docx
+Pillow
+pandas

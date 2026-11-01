@@ -1,6 +1,6 @@
 import unittest
 
-from course_data import load_course_records
+from course_data import load_course_records, course_records_for_question
 
 
 class CourseDataFidelityTests(unittest.TestCase):
@@ -32,6 +32,30 @@ class CourseDataFidelityTests(unittest.TestCase):
             self.assertEqual(row["credits"], credits)
             self.assertEqual(row["prerequisite"], prereq)
             self.assertEqual((row["L"], row["T"], row["P"]), (l_val, t_val, p_val))
+
+    def test_exact_course_code_lookup_retrieves_lt_p_for_t002_wording(self):
+        rows = course_records_for_question(
+            "What is the L-T-P structure for UCOR205?", self.records
+        )
+        self.assertEqual({str(row["batch"]) for row in rows},
+                         {"2022", "2023", "2024", "2025", "2026"})
+        for row in rows:
+            self.assertEqual((row["L"], row["T"], row["P"]), (2, 1, 0))
+            self.assertIn("UCOR205", row["text"])
+            self.assertIn("L-T-P 2-1-0", row["text"])
+
+    def test_exact_course_code_lookup_handles_hyphen_and_batch_filter(self):
+        rows = course_records_for_question(
+            "What is the L-T-P structure for UCOR-205?", self.records, batch="2026"
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(str(rows[0]["batch"]), "2026")
+        self.assertEqual((rows[0]["L"], rows[0]["T"], rows[0]["P"]), (2, 1, 0))
+
+    def test_course_code_lookup_does_not_match_substrings(self):
+        self.assertEqual(
+            course_records_for_question("What about XUCOR2050?", self.records), []
+        )
 
     def test_source_provenance_is_present(self):
         for row in self.records:

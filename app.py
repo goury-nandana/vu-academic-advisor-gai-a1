@@ -1886,6 +1886,13 @@ if user_question:
     elif current_codes_for_state and current_codes_for_state[-1] != previous_active_code:
         # A new explicit course code starts a new topic.
         st.session_state.active_course_batch = None
+    elif (not current_codes_for_state and st.session_state.get("active_course_code")
+          and len(str(user_question).split()) > 5
+          and not re.search(r"\\b(ltp|l-t-p|lecture|tutorial|practical|credit|prereq|prerequisite|semester|sem|course|it|its|this|that|they|them|each|every|different|same|both|compare)\\b",
+                            str(user_question), re.I)):
+        # A substantive unrelated question ends the active course topic.
+        st.session_state.active_course_code = None
+        st.session_state.active_course_batch = None
 
     conversation_context = conversation_context_for(user_question)
     if st.session_state.get("active_course_code"):

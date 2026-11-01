@@ -1491,12 +1491,20 @@ def is_clarification_reply(text):
     }
 
 def get_context_anchor_question():
-    """Find the last substantive question, skipping replies to a pending clarification."""
-    for msg in reversed(st.session_state.messages):
+    """Return the active topic, not a short clarification answer or pronoun-only follow-up."""
+    messages = st.session_state.messages
+    pending_batch = assistant_is_asking_batch_clarification()
+    for index in range(len(messages) - 1, -1, -1):
+        msg = messages[index]
         if msg.get("role") != "user":
             continue
         candidate = str(msg.get("content", "")).strip()
-        if is_clarification_reply(candidate):
+        if pending_batch and is_clarification_reply(candidate):
+            continue
+        # Short references such as "is it different for each?" depend on the prior
+        # course question; they must not replace that active topic.
+        words = candidate.lower().split()
+        if len(words) <= 7 and re.search(r"\\b(it|this|that|they|those|each|same|different)\\b", candidate, re.I):
             continue
         return candidate
     return ""
@@ -1584,13 +1592,6 @@ def generate_answer(client, user_question, context, category, effective_profile,
         priority = "Prioritize VU academic documents for regulations and student eligibility."
 
     user_prompt = f"""{priority}
-
-MINOR-OPTIONS FACT CHECK:
-If the question asks about B.Tech minors, the official VU pages list the following for BOTH
-B.Tech Data Science and B.Tech AI & Machine Learning: Economics, Marketing, Psychology, Finance,
-Design, and Law. Do not produce different lists for these two tracks unless a clearly newer
-official source in the retrieved information explicitly documents a change. Do not mistake BMS
-minor options for B.Tech options.
 
 RETRIEVED INFORMATION:
 {context}
@@ -2002,6 +2003,11 @@ if user_question:
                         code_lines.append(f"- **{r.get('course_code') or 'Code not provided'} — {r.get('course_title')}**")
                         code_lines.append(f"  - Semester: {r.get('semester', 'Not specified')}; credits: {r.get('credits', 'Not specified')}")
                         code_lines.append(f"  - Prerequisite: {r.get('prerequisite', 'Not specified')}")
+                        ltp_value = next((r.get(key) for key in ("ltp", "l_t_p", "L-T-P", "LTP", "lecture_tutorial_practical") if r.get(key) not in (None, "")), None)
+                        if ltp_value is not None:
+                            code_lines.append(f"  - L-T-P: {ltp_value}")
+                        elif re.search(r"\\bL\\s*[-/]?\\s*T\\s*[-/]?\\s*P\\b|\\bLTP\\b", combined_question, re.I):
+                            code_lines.append("  - L-T-P: Not specified in the available structured record")
                 code_lines.append("\nThe spreadsheet may contain different versions by batch. Check your registered curriculum in Digicampus if you need the current offering or full syllabus.")
                 answer = "\n".join(code_lines)
                 if requested_unsupported_batches:

@@ -25,7 +25,7 @@ CODE_RE = re.compile(r"^[A-Za-z]{2,6}\s*[-]?\s*\d{3,4}[A-Za-z]?$")
 
 
 def _clean(value):
-    return re.sub(r"\s+", " ", str(value)).strip() if value is not None else ""
+    return re.sub(r"[\s-]", "", str(value or "")).upper()
 
 
 def load_course_records(archive_path=DATA_ARCHIVE):
@@ -121,12 +121,12 @@ def load_course_records(archive_path=DATA_ARCHIVE):
 
 def normalize_course_code(value):
     """Normalize a course code without changing its letters or digits."""
-    return re.sub(r"[\\s-]", "", str(value or "")).upper()
+    return re.sub(r"[\s-]", "", str(value or "")).upper()
 
 
 def extract_course_codes(question):
     """Extract exact three-digit course-code tokens from a question."""
-    pattern = re.compile(r"\\b[A-Za-z]{3,5}[\\s-]?\\d{3}\\b")
+    pattern = re.compile(r"\b[A-Za-z]{3,5}[\s-]?\d{3}\b")
     return list(dict.fromkeys(normalize_course_code(x) for x in pattern.findall(str(question or ""))))
 
 

@@ -88,6 +88,7 @@ GitHub Actions runs the syntax check and unittest suite on pushes and pull reque
 
 - Structured semester-spread curriculum coverage is B.Tech batches 2022–2026. Do not assume a different cohort is covered.
 - The 2022–2025 workbook metadata does not establish a named track; the application leaves track unspecified.
+- Ambiguous elective cells, TBA placeholders, and combined alternative-course cells (for example, slash-separated codes with multiple titles or L-T-P values) are not converted into single course records. They require a separate source-aware treatment; the loader does not guess how to split them.
 - Minor-workbook extraction and non-B.Tech programme semester structures are not yet fully normalized into the structured course-record loader.
 - Website information depends on the official pages being reachable when the website knowledge base is refreshed.
 - Real Groq API behaviour and the deployed Streamlit instance must be smoke-tested with the configured deployment secret; automated tests do not validate external API credentials.

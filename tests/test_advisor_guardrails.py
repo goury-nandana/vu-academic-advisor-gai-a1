@@ -35,7 +35,7 @@ class AdvisorGuardrailTests(unittest.TestCase):
     def test_challenge_retracts_unsupported_profile_claim(self):
         self.assertTrue(is_answer_challenge("no thats a lie"))
         self.assertTrue(should_retract_personal_claim(
-            "You’re a second-semester B.A. Psychology student with a 9.0 CGPA."
+            "You’re a second-semester B.A. Psychology student, having completed 41 credits so far and maintaining a 9.0 CGPA."
         ))
         self.assertIn("retract", correction_reply().lower())
 

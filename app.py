@@ -14,6 +14,9 @@ import base64
 import json
 import requests
 import html
+import hmac
+import io
+import zipfile
 
 from collections import Counter
 
@@ -241,7 +244,7 @@ div[data-testid="stButton"] > button:hover {
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
-APP_VERSION = "2026-11-01-followup-context-v3"
+APP_VERSION = "2026-11-01-p0-reliability-v1"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Self-contained academic knowledge base: allows deployment when GitHub permits
@@ -258,7 +261,20 @@ def _embedded_payload():
 
 ACADEMIC_EXTENSIONS = (".pdf", ".txt", ".csv", ".xlsx", ".xls")
 
-EXCLUDED_FILES = ("advisor_eval", "eval_results", "phase4", "summary_metrics", "website_sources")
+EXCLUDED_FILES = (
+    "advisor_eval", "eval_results", "phase4", "summary_metrics",
+    "website_sources", "readme_testing", "requirements", "test_", "testing"
+)
+
+# Only these project documents are permitted into academic retrieval. This prevents
+# developer notes, dependency manifests and test fixtures becoming student evidence.
+ACADEMIC_SOURCE_ALLOWLIST = {
+    "4. Student Handbook Aug 2026.pdf",
+    "SOP STUDENT 17082026 - Final.pdf",
+    "Course_Plans.txt",
+    "Programme_Structure.txt",
+    "Minor_Courses_for_BTech_Students.xlsx",
+}
 
 DEFAULT_WEBSITE_SOURCES = [
     {"name": "VU Official Website", "url": "https://vidyashilp.edu.in/"},
@@ -334,13 +350,77 @@ def _cell_text(value):
         return ""
     return re.sub(r"\s+", " ", str(value)).strip()
 
+def _enrich_course_records_with_ltp(records):
+    """Restore L/T/P from the canonical semester ZIP without guessing missing cells."""
+    zip_path = os.path.join(APP_DIR, "VU_Semester_Data_Split.zip")
+    if not os.path.isfile(zip_path):
+        return records
+    try:
+        from openpyxl import load_workbook
+    except Exception:
+        return records
+
+    workbook_files = {
+        "01_Semester_Spread_BTech_2022.xlsx": ("2022", "B.Tech"),
+        "02_Semester_Spread_BTech_2023.xlsx": ("2023", "B.Tech"),
+        "03_Semester_Spread_BTech_2024.xlsx": ("2024", "B.Tech"),
+        "04_Semester_Spread_BTech_2025.xlsx": ("2025", "B.Tech"),
+        "05_Semester_Spread_BTech_DS_2026.xlsx": ("2026", "B.Tech (Data Science)"),
+    }
+    # Zero-based first columns for the eight semester blocks in the source sheets.
+    block_starts = (4, 11, 19, 26, 34, 41, 49, 56)
+    ltp_by_key = {}
+    try:
+        with zipfile.ZipFile(zip_path) as archive:
+            for filename, (batch_year, programme) in workbook_files.items():
+                if filename not in archive.namelist():
+                    continue
+                workbook = load_workbook(
+                    io.BytesIO(archive.read(filename)), read_only=True, data_only=True
+                )
+                for sheet in workbook.worksheets:
+                    for row in sheet.iter_rows(min_row=3, values_only=True):
+                        for semester, start in enumerate(block_starts, start=1):
+                            values = list(row[start:start + 7])
+                            if len(values) < 7:
+                                continue
+                            code, title, prerequisite, lecture, tutorial, practical, credits = values
+                            if not is_real_course_code(code) or not str(title or "").strip():
+                                continue
+                            if any(value is None for value in (lecture, tutorial, practical)):
+                                continue
+                            code_key = normalize_course_code(code)
+                            ltp = "-".join(str(int(v)) if isinstance(v, (int, float)) and float(v).is_integer() else str(v).strip()
+                                           for v in (lecture, tutorial, practical))
+                            ltp_by_key[(batch_year, code_key, str(semester))] = {
+                                "L": lecture, "T": tutorial, "P": practical, "ltp": ltp,
+                                "programme": programme, "source_file": filename,
+                                "sheet": sheet.title,
+                            }
+                workbook.close()
+    except Exception:
+        # A failed optional enrichment must not destroy the existing embedded records.
+        return records
+
+    enriched = []
+    for original in records:
+        record = dict(original)
+        key = (
+            str(record.get("batch", "")),
+            normalize_course_code(record.get("course_code")),
+            str(record.get("semester", "")),
+        )
+        source = ltp_by_key.get(key)
+        if source:
+            record.update(source)
+        enriched.append(record)
+    return enriched
+
+
 def load_structured_course_records():
-    """Load pre-parsed course records embedded in app.py; fall back to local workbook."""
-    payload = _embedded_payload()
-    embedded = payload.get("records", [])
-    if embedded:
-        return [dict(r) for r in embedded]
-    return []
+    """Load embedded course records and enrich L/T/P from the canonical semester ZIP."""
+    embedded = _embedded_payload().get("records", [])
+    return _enrich_course_records_with_ltp([dict(r) for r in embedded])
 
 def batch_from_question(question):
     match = re.search(r"\b(2022|2023|2024|2025|2026)\b", str(question or ""))
@@ -524,6 +604,10 @@ if "website_loaded" not in st.session_state:
     st.session_state.website_loaded = False
 if "pending_question" not in st.session_state:
     st.session_state.pending_question = None
+if "conversation_state" not in st.session_state:
+    st.session_state.conversation_state = {
+        "programme": None, "batch": None, "active_entity": None, "active_intent": None
+    }
 
 
 # ============================================================
@@ -758,7 +842,14 @@ def load_academic_documents():
     documents.extend(course_records)
     st.session_state.course_records = course_records
     embedded_docs = payload.get("documents", [])
+    allowed_docs = []
     for item in embedded_docs:
+        source_name = os.path.basename(str(item.get("source", "")))
+        if source_name not in ACADEMIC_SOURCE_ALLOWLIST:
+            continue
+        if any(token in source_name.lower() for token in EXCLUDED_FILES):
+            continue
+        allowed_docs.append(item)
         text = item.get("text", "")
         if not text:
             continue
@@ -773,8 +864,13 @@ def load_academic_documents():
     st.session_state.academic_load_summary = {
         "course_records": len(course_records),
         "academic_chunks": len(documents),
-        "files_seen": len(embedded_docs),
-        "mode": "embedded in app.py",
+        "files_seen": len(allowed_docs),
+        "excluded_files": sorted({
+            os.path.basename(str(item.get("source", "")))
+            for item in embedded_docs
+            if item not in allowed_docs
+        }),
+        "mode": "embedded allow-list in app.py",
     }
     return documents
 
@@ -1021,7 +1117,24 @@ if not st.session_state.website_loaded:
 academic_kb = st.session_state.academic_kb
 website_kb = st.session_state.website_kb
 
-DEBUG = st.query_params.get("debug") == "1"
+def get_debug_access_token():
+    try:
+        token = st.secrets.get("DEBUG_ACCESS_TOKEN", "")
+        if token:
+            return str(token)
+    except Exception:
+        pass
+    return os.getenv("DEBUG_ACCESS_TOKEN", "")
+
+
+_debug_secret = get_debug_access_token()
+_debug_candidate = str(st.query_params.get("debug_token", ""))
+DEBUG = (
+    st.query_params.get("debug") == "1"
+    and bool(_debug_secret)
+    and bool(_debug_candidate)
+    and hmac.compare_digest(_debug_candidate, _debug_secret)
+)
 if DEBUG:
     with st.sidebar:
         st.markdown("---")
@@ -1491,20 +1604,21 @@ def is_clarification_reply(text):
     }
 
 def get_context_anchor_question():
-    """Return the active topic, not a short clarification answer or pronoun-only follow-up."""
+    """Return the previous user topic, never the current message appended by the UI."""
     messages = st.session_state.messages
     pending_batch = assistant_is_asking_batch_clarification()
-    for index in range(len(messages) - 1, -1, -1):
-        msg = messages[index]
+    skipped_current = False
+    for msg in reversed(messages):
         if msg.get("role") != "user":
             continue
         candidate = str(msg.get("content", "")).strip()
+        if not skipped_current:
+            skipped_current = True
+            continue
         if pending_batch and is_clarification_reply(candidate):
             continue
-        # Short references such as "is it different for each?" depend on the prior
-        # course question; they must not replace that active topic.
         words = candidate.lower().split()
-        if len(words) <= 7 and re.search(r"\b(it|this|that|they|those|each|same|different)\b", candidate, re.I):
+        if len(words) <= 10 and re.search(r"\b(it|its|their|this|that|they|those|each|same|different)\b", candidate, re.I):
             continue
         return candidate
     return ""
@@ -1522,17 +1636,59 @@ def is_follow_up_question(question, previous_question):
     return False
 
 def conversation_context_for(question):
+    state = st.session_state.get("conversation_state", {})
     previous = get_context_anchor_question()
-    if not previous:
+    active_code = state.get("active_entity")
+    if not previous and not active_code:
         return ""
     pending_batch_clarification = assistant_is_asking_batch_clarification()
     if not pending_batch_clarification and not is_follow_up_question(question, previous):
         return ""
     previous_answer = latest_assistant_message()
-    return (
-        f"Previous student question: {previous}\n"
-        f"Previous advisor answer: {previous_answer[:1800]}"
+    details = [f"Previous student question: {previous}" if previous else ""]
+    if active_code:
+        details.append(f"Active course code: {active_code}")
+    if state.get("batch"):
+        details.append(f"Confirmed admission batch: {state['batch']}")
+    details.append(f"Previous advisor answer: {previous_answer[:1800]}")
+    return "\n".join(part for part in details if part)
+
+
+def update_conversation_state(question):
+    """Maintain explicit course/batch/intent slots across clarification turns."""
+    state = dict(st.session_state.get("conversation_state", {}))
+    pending_batch = assistant_is_asking_batch_clarification()
+    codes = extract_course_codes(question)
+    years = extract_batch_years(question)
+    lowered = str(question or "").lower()
+
+    if codes:
+        state["active_entity"] = codes[-1]
+    elif re.search(r"\b(minor|minors|major|majors)\b", lowered):
+        state["active_entity"] = None
+        state["active_intent"] = "minors" if re.search(r"\bminors?\b", lowered) else "majors"
+
+    if years:
+        supported = [year for year in years if year in {"2022", "2023", "2024", "2025", "2026"}]
+        if supported:
+            state["batch"] = supported[0] if len(supported) == 1 else supported
+    elif pending_batch and re.search(r"\b(all|every)\b", lowered):
+        state["batch"] = "all"
+
+    intent_patterns = (
+        ("ltp", r"\b(l\s*[-/]?\s*t\s*[-/]?\s*p|ltp|lecture|tutorial|practical)\b"),
+        ("prerequisites", r"\b(prerequisite|prerequisites|pre-req)\b"),
+        ("credits", r"\b(credit|credits)\b"),
+        ("semester", r"\b(semester|sem)\b"),
+        ("compare", r"\b(compare|different|difference|each|both)\b"),
     )
+    for intent, pattern in intent_patterns:
+        if re.search(pattern, lowered, re.I):
+            state["active_intent"] = intent
+            break
+
+    st.session_state.conversation_state = state
+    return state
 
 
 def effective_profile_for_question(question):
@@ -1769,6 +1925,7 @@ user_question = pending or st.chat_input("Ask your academic question...")
 if user_question:
 
     st.session_state.messages.append({"role": "user", "content": user_question})
+    update_conversation_state(user_question)
     show_user_bubble(user_question)
 
     is_thanks = re.search(r"\b(thank(s|\s*you|u)|thx|ty)\b", user_question, re.I)
@@ -1870,7 +2027,9 @@ if user_question:
                 clean_question = understood["question"]
                 keywords = understood["keywords"]
 
-            combined_question = f"{user_question} {clean_question} {conversation_context}"
+            active_code = st.session_state.get("conversation_state", {}).get("active_entity")
+            state_context = f"Active course code: {active_code}" if active_code else ""
+            combined_question = f"{user_question} {clean_question} {conversation_context} {state_context}"
             category = classify_query(combined_question)
             effective_profile = effective_profile_for_question(combined_question)
 
@@ -1881,6 +2040,10 @@ if user_question:
                 batch = requested_supported_batches[0] if len(requested_supported_batches) == 1 else None
             else:
                 batch = batch_from_question(latest_question_text)
+                if not batch:
+                    stored_batch = st.session_state.get("conversation_state", {}).get("batch")
+                    if isinstance(stored_batch, str) and stored_batch != "all":
+                        batch = stored_batch
             unsupported_batch = bool(
                 course_codes and requested_unsupported_batches and not requested_supported_batches
             )

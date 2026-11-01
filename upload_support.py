@@ -9,7 +9,7 @@ MAX_FILE_BYTES = 15 * 1024 * 1024
 MAX_TEXT_CHARS_PER_FILE = 18000
 SUPPORTED_EXTENSIONS = {
     "pdf", "docx", "doc", "txt", "md", "csv", "xlsx", "xls", "pptx",
-    "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff",
+    "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff", "mp3", "wav", "m4a", "ogg", "flac",
 }
 
 
@@ -63,6 +63,8 @@ def extract_document_text(uploaded_file) -> str:
     if ext in {"png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"}:
         # Image content is sent to a vision-capable model separately, not treated as OCR text.
         return ""
+    if ext in {"mp3", "wav", "m4a", "ogg", "flac"}:
+        raise ValueError("Audio uploads are transcribed through the Groq audio endpoint.")
     if ext == "doc":
         raise ValueError("Legacy .doc files are not supported. Save as .docx or PDF.")
     if ext == "xls":
@@ -131,6 +133,8 @@ def uploaded_files_context(files, client) -> tuple[str, list[str]]:
         try:
             if ext in {"png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"}:
                 extracted = describe_image(client, uploaded.getvalue(), name)
+            elif ext in {"mp3", "wav", "m4a", "ogg", "flac"}:
+                extracted = "Voice transcript: " + transcribe_audio(client, uploaded.getvalue(), name)
             else:
                 extracted = extract_document_text(uploaded)
             if extracted.strip():

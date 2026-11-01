@@ -1864,6 +1864,7 @@ if user_question:
     category = classify_query(user_question)
     effective_profile = effective_profile_for_question(user_question)
     # Persist course/batch context across short follow-up turns.
+    previous_active_code = st.session_state.get("active_course_code")
     current_codes_for_state = extract_course_codes(user_question)
     if current_codes_for_state:
         st.session_state.active_course_code = current_codes_for_state[-1]
@@ -1871,18 +1872,20 @@ if user_question:
     supported_years_for_state = [y for y in current_years_for_state
                                  if y in {"2022", "2023", "2024", "2025", "2026"}]
     compare_all_for_state = bool(
-        st.session_state.get("active_course_code")
-        and re.search(r"\\b(all|every|each|both|different|compare|comparison|varies|vary)\\b",
+        st.session_state.get("active_course_code") and not current_years_for_state
+        and re.search(r"\b(all|every|each|both|different|compare|comparison|varies|vary)\b",
                       str(user_question), re.I)
     )
     if compare_all_for_state:
         st.session_state.active_course_batch = None
     elif len(supported_years_for_state) == 1 and len(current_years_for_state) == 1:
         st.session_state.active_course_batch = supported_years_for_state[0]
-    if current_codes_for_state and not current_years_for_state:
-        # A new explicit course code starts a new topic; do not inherit another course's batch.
-        if current_codes_for_state[-1] != st.session_state.get("active_course_code"):
-            st.session_state.active_course_batch = None
+    elif current_years_for_state:
+        # Unsupported-only or multi-year requests must not inherit a prior single batch.
+        st.session_state.active_course_batch = None
+    elif current_codes_for_state and current_codes_for_state[-1] != previous_active_code:
+        # A new explicit course code starts a new topic.
+        st.session_state.active_course_batch = None
 
     conversation_context = conversation_context_for(user_question)
     if st.session_state.get("active_course_code"):
@@ -1891,7 +1894,7 @@ if user_question:
             f"Previously selected admission batch: "
             f"{st.session_state.get('active_course_batch') or 'not selected'}."
         )
-        conversation_context = (conversation_context + "\\n" + course_state_context).strip()
+        conversation_context = (conversation_context + "\n" + course_state_context).strip()
     if not conversation_context and last_bot_asked_question():
         # the student is probably answering the advisor's follow-up question
         conversation_context = previous_exchange_text()
@@ -1920,8 +1923,8 @@ if user_question:
             clarification_reply = pending_batch_clarification and is_clarification_reply(user_question)
             latest_text = str(user_question or "").strip().lower()
             all_batches_followup = bool(
-                st.session_state.get("active_course_code")
-                and re.search(r"\\b(all|every|each|both|different|compare|comparison|varies|vary)\\b",
+                st.session_state.get("active_course_code") and not requested_batch_years
+                and re.search(r"\b(all|every|each|both|different|compare|comparison|varies|vary)\b",
                               latest_text, re.I)
             ) or (latest_text in {
                 "all", "for all", "all batches", "for all batches", "every batch",

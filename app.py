@@ -1594,7 +1594,7 @@ def is_clarification_reply(text):
     years = extract_batch_years(text)
     if years and len(q.split()) <= 10:
         remainder = re.sub(r"\b(?:19|20)\d{2}\b", " ", q)
-        remainder = re.sub(r"\b(and|or|for|batch|batches|give|show|provide|please|me|you|do|can|could|what|about)\b", " ", remainder)
+        remainder = re.sub(r"\b(and|or|for|batch|batches|give|show|provide|please|me|you|do|can|could|what|about|both|either|respectively|compare)\b", " ", remainder)
         if not remainder.strip():
             return True
     return q in {
@@ -1674,6 +1674,9 @@ def update_conversation_state(question):
             state["batch"] = supported[0] if len(supported) == 1 else supported
     elif pending_batch and re.search(r"\b(all|every)\b", lowered):
         state["batch"] = "all"
+    elif state.get("active_entity") and re.search(r"\b(each|different|compare|both)\b", lowered):
+        state["batch"] = "all"
+        state["active_intent"] = "compare"
 
     intent_patterns = (
         ("ltp", r"\b(l\s*[-/]?\s*t\s*[-/]?\s*p|ltp|lecture|tutorial|practical)\b"),
@@ -2000,10 +2003,16 @@ if user_question:
             pending_batch_clarification = assistant_is_asking_batch_clarification()
             clarification_reply = pending_batch_clarification and is_clarification_reply(user_question)
             latest_text = str(user_question or "").strip().lower()
-            all_batches_followup = latest_text in {
-                "all", "for all", "all batches", "for all batches", "every batch",
-                "all of them", "any", "any batch", "any of them"
-            } and (clarification_reply or "batch" in latest_text or latest_text in {"all", "for all"})
+            all_batches_followup = (
+                latest_text in {
+                    "all", "for all", "all batches", "for all batches", "every batch",
+                    "all of them", "any", "any batch", "any of them"
+                } and (clarification_reply or "batch" in latest_text or latest_text in {"all", "for all"})
+            ) or (
+                st.session_state.get("conversation_state", {}).get("batch") == "all"
+                and st.session_state.get("conversation_state", {}).get("active_entity")
+                and re.search(r"\b(each|different|compare|both)\b", latest_text)
+            )
             requested_batch_years = extract_batch_years(user_question)
             supported_batch_years = {"2022", "2023", "2024", "2025", "2026"}
             requested_supported_batches = [y for y in requested_batch_years if y in supported_batch_years]

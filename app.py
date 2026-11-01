@@ -241,7 +241,7 @@ div[data-testid="stButton"] > button:hover {
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
-APP_VERSION = "2026-11-01-followup-context-v3"
+APP_VERSION = "2026-11-01-chat-input-source-links-v4"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Self-contained academic knowledge base: allows deployment when GitHub permits
@@ -1629,46 +1629,63 @@ Do not add source placeholders such as [Academic Source 1] to your response."""
 # ============================================================
 
 def display_sources(academic_results, website_results):
+    """Show clickable web citations and expandable evidence for embedded academic files.
+
+    Website sources open the exact page used for retrieval. Academic files are embedded
+    in app.py rather than hosted as public files, so their citation opens the exact
+    retrieved passage plus page/sheet metadata instead of inventing a broken URL.
+    If a future source record includes source_url/file_url, that original file is linked.
+    """
+    from urllib.parse import urlparse
+
     unique = []
     seen = set()
-
-    for r in academic_results or []:
-        key = ("academic", r.get("source", ""), r.get("page"), r.get("section"), r.get("sheet"))
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(r)
-
-    for r in website_results or []:
-        key = ("website", r.get("source", ""), r.get("title", ""), r.get("section", ""), r.get("url", ""))
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(r)
+    for kind, rows in (("academic", academic_results or []), ("website", website_results or [])):
+        for row in rows:
+            url = row.get("url") or row.get("source_url") or row.get("file_url") or ""
+            key = (kind, row.get("source", ""), row.get("title", ""),
+                   row.get("page"), row.get("section", ""), row.get("sheet", ""), url)
+            if key not in seen:
+                seen.add(key)
+                unique.append((kind, row))
 
     if not unique:
         return
 
-    with st.expander("📚 Sources", expanded=False):
-        st.markdown('<div class="source-panel">', unsafe_allow_html=True)
-        for r in unique:
-            if r.get("type") == "website":
-                st.markdown(f"<span class='source-label'>🌐 {html.escape(r.get('source', 'VU Official Website'))}</span>", unsafe_allow_html=True)
-                if r.get("title"):
-                    st.caption(r["title"])
-                if r.get("section") and r.get("section") != r.get("title"):
-                    st.caption(f"Section: {r['section']}")
-                if r.get("url"):
-                    st.markdown(f"[View webpage →]({r['url']})")
+    with st.expander("📚 Sources · click to open", expanded=False):
+        for index, (kind, row) in enumerate(unique, start=1):
+            name = str(row.get("source") or ("VU Official Website" if kind == "website" else "Academic document"))
+            url = str(row.get("url") or row.get("source_url") or row.get("file_url") or "").strip()
+            parsed = urlparse(url) if url else None
+            valid_url = bool(parsed and parsed.scheme in ("http", "https") and parsed.netloc)
+
+            if kind == "website" and valid_url:
+                label = str(row.get("title") or name)
+                st.markdown(f"**{index}. 🌐 [{label}]({url})**")
+                if row.get("section") and row.get("section") != label:
+                    st.caption(f"Section: {row['section']}")
+                st.caption("Opens the official webpage used for this answer.")
             else:
-                st.markdown(f"<span class='source-label'>📄 {html.escape(r.get('source', 'Academic document'))}</span>", unsafe_allow_html=True)
-                if r.get("section"):
-                    st.caption(f"Section: {r['section']}")
-                if r.get("page"):
-                    st.caption(f"Page: {r['page']}")
-                if r.get("sheet"):
-                    st.caption(f"Sheet: {r['sheet']}")
-        st.markdown('</div>', unsafe_allow_html=True)
+                label = f"{index}. 📄 {name}"
+                if valid_url:
+                    st.markdown(f"**[{label}]({url})**")
+                else:
+                    st.markdown(f"**{label}**")
+                details = []
+                if row.get("page"):
+                    details.append(f"Page {row['page']}")
+                if row.get("sheet"):
+                    details.append(f"Sheet: {row['sheet']}")
+                if row.get("section"):
+                    details.append(f"Section: {row['section']}")
+                if details:
+                    st.caption(" · ".join(details))
+                # The knowledge base is embedded in app.py, not exposed as a public file URL.
+                # Make the citation actionable by opening the exact supporting retrieved text.
+                with st.expander(f"View supporting information — {name}", expanded=False):
+                    st.write(row.get("text") or "The source record has metadata but no extractable passage.")
+                    if not valid_url:
+                        st.caption("This document is embedded in the advisor's knowledge base; the extract above is the exact evidence retrieved.")
 
 
 # ============================================================
@@ -1781,7 +1798,7 @@ if user_question:
             "role": "assistant", "content": answer,
             "academic_sources": [], "website_sources": []
         })
-        st.stop()
+        st.rerun()
 
     # ---- Personal / out-of-scope shortcut ----
     if PERSONAL_RE.search(user_question):
@@ -1791,7 +1808,7 @@ if user_question:
             "role": "assistant", "content": answer,
             "academic_sources": [], "website_sources": []
         })
-        st.stop()
+        st.rerun()
 
     # ---- Personal distress shortcut: direct to VU's counsellor ----
     if DISTRESS_RE.search(user_question):
@@ -1801,7 +1818,7 @@ if user_question:
             "role": "assistant", "content": answer,
             "academic_sources": [], "website_sources": []
         })
-        st.stop()
+        st.rerun()
 
     if OUT_OF_SCOPE_RE.search(user_question) and not ACADEMIC_HINT_RE.search(user_question):
         answer = OUT_OF_SCOPE_REPLY
@@ -1810,7 +1827,7 @@ if user_question:
             "role": "assistant", "content": answer,
             "academic_sources": [], "website_sources": []
         })
-        st.stop()
+        st.rerun()
 
     # ---- Academic question ----
     category = classify_query(user_question)

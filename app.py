@@ -591,6 +591,9 @@ if st.session_state.get("app_version") != APP_VERSION:
     st.session_state.website_kb = []
     st.session_state.course_records = []
     st.session_state.load_errors = []
+    st.session_state.conversation_state = {
+        "programme": None, "batch": None, "active_entity": None, "active_intent": None
+    }
 
 if "messages" not in st.session_state:
     st.session_state.messages = []

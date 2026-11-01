@@ -21,11 +21,11 @@ SEMESTER_FILES = {
     "2025": "04_Semester_Spread_BTech_2025.xlsx",
     "2026": "05_Semester_Spread_BTech_DS_2026.xlsx",
 }
-CODE_RE = re.compile(r"^[A-Za-z]{2,6}\\s*[-]?\\s*\\d{3,4}[A-Za-z]?$")
+CODE_RE = re.compile(r"^[A-Za-z]{2,6}\s*[-]?\s*\d{3,4}[A-Za-z]?$")
 
 
 def _clean(value):
-    return re.sub(r"\\s+", " ", str(value)).strip() if value is not None else ""
+    return re.sub(r"\s+", " ", str(value)).strip() if value is not None else ""
 
 
 def load_course_records(archive_path=DATA_ARCHIVE):
@@ -75,7 +75,7 @@ def load_course_records(archive_path=DATA_ARCHIVE):
                         "P": sheet.cell(row, title_col + 4).coordinate,
                         "credits": sheet.cell(row, title_col + 5).coordinate,
                     }
-                    course_code = re.sub(r"\\s+", "", raw_code).upper()
+                    course_code = re.sub(r"\s+", "", raw_code).upper()
                     track = "Data Science" if batch == "2026" else None
                     record = {
                         "is_course_record": True,

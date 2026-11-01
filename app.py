@@ -1774,9 +1774,16 @@ for msg in st.session_state.messages:
 # GET QUESTION
 # ============================================================
 
-pending = st.session_state.pending_question
-st.session_state.pending_question = None
-user_question = pending or st.chat_input("Ask your academic question...")
+# Always render the chat input first. Do not use `pending or st.chat_input(...)`
+# because Python short-circuiting can prevent Streamlit from rendering the widget.
+typed_question = st.chat_input("Ask your academic question...")
+
+pending = st.session_state.get("pending_question")
+if pending:
+    user_question = pending
+    st.session_state.pending_question = None
+else:
+    user_question = typed_question
 
 
 # ============================================================

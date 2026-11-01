@@ -2173,6 +2173,19 @@ if user_question:
             ):
                 answer = batch_clarification_reply()
                 academic_results, website_results = [], []
+            elif uploaded_context and (missing_course_code or (not academic_results and not website_results)):
+                # A user attachment can answer questions about the attached material even
+                # when the university knowledge base has no matching course/document record.
+                attachment_context = (
+                    "STUDENT-ATTACHED MATERIAL (user-provided; not independently verified as "
+                    "official VU policy):\\n" + uploaded_context
+                )
+                with st.spinner("Reading your attachment..."):
+                    answer = generate_answer(
+                        client, clean_question, attachment_context, category,
+                        effective_profile, conversation_context
+                    )
+                academic_results, website_results = [], []
             elif missing_course_code:
                 answer = DIGICAMPUS_ONLY_REPLY
                 academic_results, website_results = [], []

@@ -196,6 +196,7 @@ class ConversationLogicTests(unittest.TestCase):
         self.assertNotIn("README_TESTING.txt", allowed)
         self.assertNotIn("requirements.txt", allowed)
         self.assertIn("4. Student Handbook Aug 2026.pdf", allowed)
+        self.assertNotIn("Programme_Structure.txt", allowed)
 
     def test_course_code_lookup_does_not_change_code_normalisation(self):
         records = [{"course_code": "UCOR205", "batch": "2026"}]

@@ -1888,7 +1888,7 @@ if user_question:
         st.session_state.active_course_batch = None
     elif (not current_codes_for_state and st.session_state.get("active_course_code")
           and len(str(user_question).split()) > 5
-          and not re.search(r"\\b(ltp|l-t-p|lecture|tutorial|practical|credit|prereq|prerequisite|semester|sem|course|it|its|this|that|they|them|each|every|different|same|both|compare)\\b",
+          and not re.search(r"\b(ltp|l-t-p|lecture|tutorial|practical|credit|prereq|prerequisite|semester|sem|course|it|its|this|that|they|them|each|every|different|same|both|compare)\b",
                             str(user_question), re.I)):
         # A substantive unrelated question ends the active course topic.
         st.session_state.active_course_code = None

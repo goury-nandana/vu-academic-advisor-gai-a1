@@ -1930,7 +1930,7 @@ if user_question:
             clarification_reply = pending_batch_clarification and is_clarification_reply(user_question)
             latest_text = str(user_question or "").strip().lower()
             all_batches_followup = bool(
-                st.session_state.get("active_course_code") and not requested_batch_years
+                st.session_state.get("active_course_code") and not extract_batch_years(user_question)
                 and re.search(r"\b(all|every|each|both|different|compare|comparison|varies|vary)\b",
                               latest_text, re.I)
             ) or (latest_text in {

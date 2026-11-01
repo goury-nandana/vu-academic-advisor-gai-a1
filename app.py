@@ -301,7 +301,7 @@ UNDERSTAND_MODELS = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"]
 # Greetings and social messages — handled without any document retrieval
 SOCIAL_RE = re.compile(
     r"^\s*(h+i+|h+e+l+o+|hey+|hola|yo+|sup|bro|wsp|wsup|what'?s\s*up|wassup|"
-    r"good\s*(morning|afternoon|evening|night)|namaste|namaskaram|"
+    r"good\s*(morning|afternoon|evening|night)|bonjour|bonsoir|salut|namaste|namaskaram|"
     r"thank(s|\s*you|u)|thx|ty|ok(ay)?|got\s*it|sure|great|nice|cool|"
     r"bye|goodbye|see\s*you|take\s*care|cya)\s*[!.?]*\s*$",
     re.I

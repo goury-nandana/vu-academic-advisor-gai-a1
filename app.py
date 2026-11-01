@@ -1823,7 +1823,7 @@ st.markdown("#### Attach files or record a voice question")
 uploaded_files = st.file_uploader(
     "Upload documents, spreadsheets, presentations or images",
     type=["pdf", "docx", "txt", "md", "csv", "xlsx", "pptx",
-          "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"],
+          "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff", "mp3", "wav", "m4a", "ogg", "flac"],
     accept_multiple_files=True,
     key="advisor_file_uploads",
     help="Up to 15 MB per file. Scanned PDFs may not contain extractable text; upload a clear image or OCR-enabled PDF."

@@ -1856,6 +1856,14 @@ for msg in st.session_state.messages:
 # WHATSAPP-STYLE MESSAGE COMPOSER
 # ============================================================
 
+def queue_typed_message():
+    """Move the draft into the processing queue before widgets rerender."""
+    question = st.session_state.get("advisor_message_draft", "").strip()
+    if question:
+        st.session_state.pending_question = question
+        st.session_state.advisor_message_draft = ""
+
+
 # Keep attachments behind the paperclip so the conversation remains the focus.
 # The upload widget key is stable, so selected files remain attached while typing.
 with st.container(key="whatsapp_composer"):
@@ -1882,9 +1890,7 @@ with st.container(key="whatsapp_composer"):
             placeholder="Type an academic question...",
             label_visibility="collapsed",
             key="advisor_message_draft",
-            on_change=lambda: st.session_state.update({
-                "pending_question": st.session_state.advisor_message_draft.strip()
-            })
+            on_change=queue_typed_message
         )
 
     with composer_voice:
@@ -1895,9 +1901,11 @@ with st.container(key="whatsapp_composer"):
         )
 
     with composer_send:
-        send_clicked = st.button(
-            "Send", key="advisor_send_message", type="primary",
-            use_container_width=True, disabled=not bool(typed_question.strip())
+        st.button(
+            "➤", key="advisor_send_message", type="primary",
+            use_container_width=True,
+            disabled=not bool(st.session_state.get("advisor_message_draft", "").strip()),
+            on_click=queue_typed_message
         )
 
 if uploaded_files:
@@ -1931,9 +1939,6 @@ pending = st.session_state.get("pending_question")
 if pending:
     user_question = pending
     st.session_state.pending_question = None
-elif send_clicked:
-    user_question = typed_question.strip()
-    st.session_state.advisor_message_draft = ""
 else:
     user_question = None
 

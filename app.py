@@ -17,6 +17,8 @@ import html
 
 from collections import Counter
 
+from course_data import load_course_records as _load_course_records
+
 
 # ============================================================
 # PAGE CONFIG
@@ -278,7 +280,7 @@ MAX_TOTAL_PAGES = 120  # Keep startup bounded; add specific B.Tech pages to webs
 
 # Paste your Groq API key between the quotes below (it is used first if filled).
 # If left empty, the app uses GROQ_API_KEY from Streamlit secrets / environment.
-EMBEDDED_KEY = ""  # Set GROQ_API_KEY in Streamlit secrets or environment.
+ # API keys must be configured through Streamlit Secrets or environment variables.
 
 # Small fast model used only to fix typos and pick search keywords from the question
 UNDERSTAND_MODELS = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"]
@@ -335,12 +337,14 @@ def _cell_text(value):
     return re.sub(r"\s+", " ", str(value)).strip()
 
 def load_structured_course_records():
-    """Load pre-parsed course records embedded in app.py; fall back to local workbook."""
-    payload = _embedded_payload()
-    embedded = payload.get("records", [])
-    if embedded:
-        return [dict(r) for r in embedded]
-    return []
+    """Load structured course records from the original batch-specific workbooks."""
+    try:
+        records = _load_course_records()
+        st.session_state.course_data_error = None
+        return records
+    except Exception as exc:
+        st.session_state.course_data_error = f"{type(exc).__name__}: {exc}"
+        return []
 
 def batch_from_question(question):
     match = re.search(r"\b(2022|2023|2024|2025|2026)\b", str(question or ""))
@@ -401,7 +405,7 @@ def course_records_for_semester(question, records, batch=None):
         selected_batches = {str(selected_batch)}
     found = [dict(r) for r in records if r.get("is_course_record") and str(r.get("semester")) == str(sem)
              and "B.Tech" in str(r.get("programme", ""))
-             and r.get("source") == "Semester_Spread_Structures_Sept_2026.xlsx"
+             and r.get("document_type") == "semester_spread"
              and str(r.get("batch")) in selected_batches]
     return found[:40]
 
@@ -611,16 +615,18 @@ with st.sidebar:
 # API KEY
 # ============================================================
 
-def get_api_key():
-    if EMBEDDED_KEY.strip():
-        return EMBEDDED_KEY.strip()
+def _secret_or_env(name):
+    """Read configuration from Streamlit Secrets, falling back to environment."""
     try:
-        secret_key = st.secrets.get("GROQ_API_KEY", "")
-        if secret_key:
-            return secret_key
+        value = st.secrets.get(name, "")
+        if value:
+            return str(value).strip()
     except Exception:
         pass
-    return os.getenv("GROQ_API_KEY", "")
+    return str(os.getenv(name, "")).strip()
+
+def get_api_key():
+    return _secret_or_env("GROQ_API_KEY")
 
 api_key = get_api_key()
 
@@ -757,7 +763,18 @@ def load_academic_documents():
     course_records = load_structured_course_records()
     documents.extend(course_records)
     st.session_state.course_records = course_records
-    embedded_docs = payload.get("documents", [])
+    allowed_sources = {
+        "4. Student Handbook Aug 2026.pdf",
+        "SOP STUDENT 17082026 - Final.pdf",
+        "Course_Plans.txt",
+        "Minor_Courses_for_BTech_Students.xlsx",
+    }
+    all_embedded_docs = payload.get("documents", [])
+    embedded_docs = [item for item in all_embedded_docs
+                     if item.get("source") in allowed_sources]
+    rejected_sources = sorted({str(item.get("source", "unknown"))
+                                for item in all_embedded_docs
+                                if item.get("source") not in allowed_sources})
     for item in embedded_docs:
         text = item.get("text", "")
         if not text:
@@ -774,7 +791,8 @@ def load_academic_documents():
         "course_records": len(course_records),
         "academic_chunks": len(documents),
         "files_seen": len(embedded_docs),
-        "mode": "embedded in app.py",
+        "mode": "original semester workbooks + allow-listed embedded documents",
+        "rejected_sources": rejected_sources,
     }
     return documents
 
@@ -1021,7 +1039,13 @@ if not st.session_state.website_loaded:
 academic_kb = st.session_state.academic_kb
 website_kb = st.session_state.website_kb
 
-DEBUG = st.query_params.get("debug") == "1"
+if st.session_state.get("course_data_error"):
+    st.error("Structured curriculum data could not be loaded. Course-specific answers are unavailable until the source workbook archive is restored.")
+
+_configured_debug_token = _secret_or_env("DEBUG_TOKEN")
+_supplied_debug_token = str(st.query_params.get("debug", "") or "").strip()
+DEBUG = bool(_configured_debug_token and _supplied_debug_token and
+             __import__("hmac").compare_digest(_configured_debug_token, _supplied_debug_token))
 if DEBUG:
     with st.sidebar:
         st.markdown("---")

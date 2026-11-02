@@ -69,6 +69,14 @@ class ProgrammeDataBuilderTests(unittest.TestCase):
         rows = load_minor_records()
         courses = [row for row in rows if row.get("document_type") == "minor_course"]
         self.assertGreater(len(courses), 0)
+        self.assertEqual(
+            {row["source"] for row in courses},
+            {
+                "01_Minor_Law.xlsx", "02_Minor_Design.xlsx", "03_Minor_Psychology.xlsx",
+                "04_Minor_Economics.xlsx", "05_Minor_Finance.xlsx", "06_Minor_Marketing.xlsx",
+                "07_Minor_Start-up.xlsx",
+            },
+        )
         self.assertTrue(all(row.get("source") and row.get("sheet") and row.get("cells") for row in courses))
         self.assertTrue(all(row.get("course_code") and row.get("course_title") for row in courses))
 

@@ -351,7 +351,10 @@ if "pending_question" not in st.session_state:
 # ============================================================
 
 sidebar_logo()
-st.markdown(header_html(), unsafe_allow_html=True)
+header_slot = st.empty()
+_msgs = st.session_state.messages
+_vu_turn = (len(_msgs) // 2) if (_msgs and _msgs[-1].get("role") == "assistant") else 0
+header_slot.markdown(header_html(turn=_vu_turn), unsafe_allow_html=True)
 
 
 # ============================================================
@@ -360,40 +363,26 @@ st.markdown(header_html(), unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown("### Student profile")
-    st.caption("Optional details for personalized guidance.")
-    st.markdown("---")
-
-    with st.expander("🎓 Student Profile", expanded=True):
-        st.caption("Optional details for more relevant guidance.")
-        program = st.selectbox(
-            "Program",
-            ["Not specified", "B.Tech", "BMS", "BA LLB", "BMS LLB", "B.A. Economics", "B.A. Psychology", "B.Des"],
-            index=0
-        )
-        semester = st.selectbox(
-            "Current Semester",
-            ["Not specified", "1st Semester", "2nd Semester", "3rd Semester",
-             "4th Semester", "5th Semester", "6th Semester", "7th Semester",
-             "8th Semester", "9th Semester", "10th Semester"],
-            index=0
-        )
-        completed_credits = st.number_input(
-            "Completed Credits", min_value=0, max_value=400,
-            value=None, placeholder="Optional"
-        )
-        cgpa = st.number_input(
-            "CGPA", min_value=0.0, max_value=10.0,
-            value=None, step=0.1, placeholder="Optional"
-        )
-
-    with st.expander("📚 Academic Resources", expanded=False):
-        st.markdown("**Official university resources**")
-        st.markdown("[Vidyashilp University website](https://vidyashilp.edu.in/)")
-        st.markdown("[Admissions information](https://vidyashilp.edu.in/admission-enquiryform/)")
-        st.markdown("[Contact the university](https://vidyashilp.edu.in/contact/)")
-        st.caption("Course and policy answers in chat include supporting source references when available.")
-
-    st.markdown("---")
+    program = st.selectbox(
+        "Program",
+        ["Not specified", "B.Tech", "BMS", "BA LLB", "BMS LLB", "B.A. Economics", "B.A. Psychology", "B.Des"],
+        index=0
+    )
+    semester = st.selectbox(
+        "Current Semester",
+        ["Not specified", "1st Semester", "2nd Semester", "3rd Semester",
+         "4th Semester", "5th Semester", "6th Semester", "7th Semester",
+         "8th Semester", "9th Semester", "10th Semester"],
+        index=0
+    )
+    completed_credits = st.number_input(
+        "Completed Credits", min_value=0, max_value=400,
+        value=None, placeholder="Optional"
+    )
+    cgpa = st.number_input(
+        "CGPA", min_value=0.0, max_value=10.0,
+        value=None, step=0.1, placeholder="Optional"
+    )
     if st.button("Clear Chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
@@ -1516,10 +1505,7 @@ def display_sources(academic_results, website_results):
 SUGGESTIONS = [
     "What programmes does VU offer?",
     "How do I apply to VU?",
-    "What is the minimum CGPA to progress?",
-    "What are the attendance requirements?",
-    "Which minors are available for my programme?",
-    "What courses are offered next semester?"
+    "What are the attendance requirements?"
 ]
 
 
@@ -1543,7 +1529,7 @@ def show_user_bubble(text):
         unsafe_allow_html=True
     )
 
-def show_bot_bubble(text):
+def show_bot_bubble(text, live=True):
     rendered = render_bubble_text(text)
     bot_avatar_path = os.path.join(APP_DIR, "images.jpg")
     if not os.path.isfile(bot_avatar_path):
@@ -1555,7 +1541,8 @@ def show_bot_bubble(text):
             avatar_b64 = base64.b64encode(avatar_file.read()).decode("ascii")
         if bot_avatar_path.lower().endswith(".png"):
             avatar_mime = "image/png"
-    avatar_html = f'<img class="vu-bot-avatar" src="data:{avatar_mime};base64,{avatar_b64}" alt="VU AI Advisor">'
+    avatar_html = (f'<span class="vu-bot-av{" live" if live else ""}">'
+                   f'<img class="vu-bot-avatar" src="data:{avatar_mime};base64,{avatar_b64}" alt="VU AI Advisor"></span>')
     st.markdown(
         f'<div class="bubble-bot">{avatar_html}<div class="bubble-bot-inner">{rendered}</div></div>',
         unsafe_allow_html=True
@@ -1567,15 +1554,6 @@ def show_bot_bubble(text):
 # ============================================================
 
 if not st.session_state.messages:
-    st.markdown("""
-    <div class="info-box">
-    <h3>Ask your academic question</h3>
-    <p>I can help with VU courses, programmes, prerequisites, eligibility,
-    credits, semesters, admissions and related university information.</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("### 💡 Try asking")
     cols = st.columns(3)
     for i, suggestion in enumerate(SUGGESTIONS):
         with cols[i % 3]:
@@ -1588,13 +1566,14 @@ if not st.session_state.messages:
 # DISPLAY CHAT HISTORY
 # ============================================================
 
-for msg in st.session_state.messages:
+_last_idx = len(st.session_state.messages) - 1
+for _i, msg in enumerate(st.session_state.messages):
     role = msg.get("role")
     content = msg.get("content", "")
     if role == "user":
         show_user_bubble(content)
     else:
-        show_bot_bubble(content)
+        show_bot_bubble(content, live=(_i == _last_idx))
         ac = msg.get("academic_sources", [])
         wc = msg.get("website_sources", [])
         if ac or wc:
@@ -1621,7 +1600,7 @@ with st.container(key="whatsapp_composer"):
     )
 
     with composer_attach:
-        with st.popover("＋", help="Attach files"):
+        with st.popover(":material/attach_file:", help="Attach files"):
             st.markdown("**Attach files**")
             uploaded_files = st.file_uploader(
                 "Choose documents, spreadsheets, presentations, images or audio",
@@ -1661,7 +1640,7 @@ if uploaded_files:
     st.caption("Attached: " + ", ".join(file.name for file in uploaded_files))
 
 st.markdown(
-    '<div class="composer-disclaimer">VU AI Academic Advisor can make mistakes. Verify important academic information with official university sources.</div>',
+    '<div class="composer-disclaimer">This is an AI and can make mistakes. Please verify important details with official university sources.</div>',
     unsafe_allow_html=True
 )
 
@@ -1703,6 +1682,7 @@ else:
 
 if user_question:
 
+    header_slot.markdown(header_html(active=True), unsafe_allow_html=True)
     st.session_state.messages.append({"role": "user", "content": user_question})
     show_user_bubble(user_question)
 
@@ -2147,10 +2127,8 @@ if user_question:
 
 
 # ============================================================
-# FOOTER
+# PRESENCE: green ring fades 5s after the reply is done
 # ============================================================
 
-st.markdown(
-    '<div class="footer-text">Vidyashilp University · AI Academic Advisor</div>',
-    unsafe_allow_html=True
-)
+if user_question:
+    header_slot.markdown(header_html(turn=len(st.session_state.messages) // 2), unsafe_allow_html=True)

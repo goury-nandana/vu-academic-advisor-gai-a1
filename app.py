@@ -324,15 +324,15 @@ div[data-testid="stButton"] > button:hover {
 
 #MainMenu, footer { visibility: hidden; }
 
-/* Campus-inspired redesign: forest, cream and sage */
+/* Selected concept 3: university-blue sidebar with campus-inspired light canvas */
 :root {
-    --vu-forest: #244b3d;
-    --vu-deep: #18392f;
-    --vu-sage: #dce8dc;
-    --vu-cream: #f7f5ed;
-    --vu-ink: #25352f;
-    --vu-muted: #69786f;
-    --vu-gold: #c49a54;
+    --vu-forest: #174f83;
+    --vu-deep: #0d3158;
+    --vu-sage: #e5eef8;
+    --vu-cream: #f5f7fb;
+    --vu-ink: #243447;
+    --vu-muted: #66788d;
+    --vu-gold: #d0a65a;
 }
 html, body, [class*="css"], button, input, textarea {
     font-family: 'Google Sans Flex', 'Google Sans', 'Product Sans', Arial, sans-serif !important;
@@ -345,49 +345,49 @@ html, body, [class*="css"], button, input, textarea {
 [data-testid="stSidebar"], [data-testid="stSidebar"] > div:first-child {
     background: var(--vu-deep) !important;
 }
-[data-testid="stSidebar"] * { color: #f5f4ec !important; }
+[data-testid="stSidebar"] * { color: #f4f7fc !important; }
 [data-testid="stSidebar"] hr { border-color: rgba(255,255,255,.18) !important; }
 [data-testid="stSidebar"] [data-baseweb="select"] > div,
 [data-testid="stSidebar"] [data-baseweb="input"] > div {
-    background: #f8f7f0 !important; border-color: #d5dfd3 !important;
+    background: #f8fbff !important; border-color: #d5e0ee !important;
 }
 [data-testid="stSidebar"] [data-baseweb="select"] span,
-[data-testid="stSidebar"] [data-baseweb="input"] input { color: #24382f !important; }
+[data-testid="stSidebar"] [data-baseweb="input"] input { color: #243447 !important; }
 [data-testid="stSidebar"] div[data-testid="stButton"] > button {
-    border: 1px solid rgba(240,244,232,.55) !important;
-    color: #f7f5ed !important; background: transparent !important;
+    border: 1px solid rgba(240,246,255,.55) !important;
+    color: #f7f9fc !important; background: transparent !important;
 }
 [data-testid="stMainBlockContainer"] h1,
 [data-testid="stMainBlockContainer"] h2,
-[data-testid="stMainBlockContainer"] h3 { color: var(--vu-forest) !important; }
+[data-testid="stMainBlockContainer"] h3 { color: var(--vu-deep) !important; }
 [data-testid="stMainBlockContainer"] p,
 [data-testid="stMainBlockContainer"] span { color: var(--vu-ink); }
 .info-box {
-    background: #fffdf7 !important; border: 1px solid #e5e1d5 !important;
+    background: #ffffff !important; border: 1px solid #e1e8f1 !important;
     border-left: 4px solid var(--vu-forest) !important; border-radius: 18px !important;
-    box-shadow: 0 8px 24px rgba(31,61,48,.06) !important;
+    box-shadow: 0 8px 24px rgba(24,55,88,.06) !important;
 }
 .bubble-user-inner, .bubble-user-inner * {
     background: var(--vu-forest) !important; color: #fff !important;
     border-radius: 20px 20px 6px 20px; padding: 12px 18px;
 }
 .bubble-bot-inner {
-    background: #fffdf7 !important; color: var(--vu-ink) !important;
-    border: 1px solid #e5e1d5 !important; border-radius: 20px 20px 20px 6px;
+    background: #ffffff !important; color: var(--vu-ink) !important;
+    border: 1px solid #e1e8f1 !important; border-radius: 20px 20px 20px 6px;
 }
 .st-key-whatsapp_composer {
-    background: rgba(255,253,247,.97) !important;
-    border: 1px solid #d9e1d6 !important; border-radius: 30px !important;
-    box-shadow: 0 12px 30px rgba(28,60,45,.12) !important;
+    background: rgba(255,255,255,.98) !important;
+    border: 1px solid #dce5f0 !important; border-radius: 30px !important;
+    box-shadow: 0 12px 30px rgba(24,55,88,.10) !important;
 }
 .st-key-whatsapp_composer [data-testid="stTextInput"] input {
-    background: #fff !important; border: 1px solid #e2e6dc !important;
+    background: #fff !important; border: 1px solid #dce5f0 !important;
     color: var(--vu-ink) !important; border-radius: 24px !important;
 }
 .st-key-whatsapp_composer [data-testid="stPopover"] > button,
 .st-key-whatsapp_composer [data-testid="stAudioInput"] button {
-    background: var(--vu-sage) !important; color: var(--vu-forest) !important;
-    border: 1px solid #cbd9ca !important; border-radius: 50% !important;
+    background: var(--vu-sage) !important; color: var(--vu-deep) !important;
+    border: 1px solid #d4e0ee !important; border-radius: 50% !important;
 }
 .st-key-whatsapp_composer [data-testid="stButton"] > button[kind="primary"] {
     background: var(--vu-forest) !important; border: 1px solid var(--vu-forest) !important;
@@ -397,18 +397,18 @@ html, body, [class*="css"], button, input, textarea {
     min-height: 190px; border-radius: 22px; overflow: hidden;
     background-size: cover; background-position: center 48%;
     display: flex; align-items: flex-end; padding: 24px 30px;
-    margin: 6px 0 24px; box-shadow: 0 10px 28px rgba(26,54,42,.13);
+    margin: 6px 0 24px; box-shadow: 0 10px 28px rgba(24,55,88,.13);
     position: relative;
 }
 .campus-hero:before {
     content: ""; position: absolute; inset: 0;
-    background: linear-gradient(90deg, rgba(16,42,32,.78), rgba(16,42,32,.12));
+    background: linear-gradient(90deg, rgba(10,39,72,.78), rgba(10,39,72,.12));
 }
 .campus-hero-copy { position: relative; z-index: 1; color: #fff; }
 .campus-hero-copy h1 { color: #fff !important; margin: 0; font-size: 30px; }
-.campus-hero-copy p { color: #f2f3e9 !important; margin: 6px 0 0; }
+.campus-hero-copy p { color: #f2f6fc !important; margin: 6px 0 0; }
 .footer-text, .composer-disclaimer { color: var(--vu-muted) !important; }
-[data-testid="stExpander"] { border-color: #d9e1d6 !important; border-radius: 14px !important; }
+[data-testid="stExpander"] { border-color: #dce5f0 !important; border-radius: 14px !important; }
 @media (max-width: 760px) {
     .campus-hero { min-height: 145px; padding: 18px; }
     .campus-hero-copy h1 { font-size: 23px; }
@@ -420,7 +420,7 @@ html, body, [class*="css"], button, input, textarea {
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
-APP_VERSION = "2026-11-02-campus-inspired-google-sans-v1"
+APP_VERSION = "2026-11-02-concept3-blue-sidebar-google-sans-v2"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Self-contained academic knowledge base: allows deployment when GitHub permits

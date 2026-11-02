@@ -69,8 +69,8 @@ SYS="""You are the AI Academic Advisor for Vidyashilp University, Bengaluru. Res
 SOCIAL_RE = re.compile(
     r"^(?:h(?:i|e?y|ello|i{2,}|e{2,}y)|yo|sup|"
     r"good\s+(?:morning|afternoon|evening|night)|"
-    r"how\s+(?:are\\s+you|r\\s+you|is\s+it\s+going|do\s+you\s+do)|"
-    r"what'?s\s+up|thanks?|thank\\s+you(?:\\s+so\\s+much)?)[!.?, ]*$",
+    r"how\s+(?:are\s+you|r\s+you|is\s+it\s+going|do\s+you\s+do)|"
+    r"what'?s\s+up|thanks?|thank\s+you(?:\s+so\s+much)?)[!.?, ]*$",
     re.I,
 )
 

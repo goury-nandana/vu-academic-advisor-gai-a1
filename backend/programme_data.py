@@ -382,21 +382,25 @@ def load_minor_and_programme_records(minor_archive=MINOR_ARCHIVE, programme_arch
     return load_minor_records(minor_archive) + load_programme_structure_records(programme_archive)
 
 
+
 def extract_archive_records(raw, kind):
     """API-service adapter: parse ZIP bytes with the canonical workbook builders."""
     if kind not in {"minor", "programme"}:
         raise ValueError("kind must be 'minor' or 'programme'")
     records = []
-    with ZipFile(BytesIO(raw)) as archive:
-        for filename in archive.namelist():
-            if not filename.lower().endswith(".xlsx"):
-                continue
-            if kind == "minor" and "minor" not in filename.lower():
-                continue
-            workbook = load_workbook(BytesIO(archive.read(filename)), read_only=False, data_only=True)
-            try:
-                for ws in workbook.worksheets:
-                    records.extend(_records_from_sheet(ws, filename, kind))
-            finally:
-                workbook.close()
+    try:
+        with ZipFile(BytesIO(raw)) as archive:
+            for filename in archive.namelist():
+                if not filename.lower().endswith(".xlsx"):
+                    continue
+                if kind == "minor" and "minor" not in filename.lower():
+                    continue
+                workbook = load_workbook(BytesIO(archive.read(filename)), read_only=False, data_only=True)
+                try:
+                    for ws in workbook.worksheets:
+                        records.extend(_records_from_sheet(ws, filename, kind))
+                finally:
+                    workbook.close()
+    except Exception as exc:
+        raise ValueError("Input is not a readable workbook ZIP archive") from exc
     return _dedupe(records)

@@ -241,7 +241,7 @@ def _records_from_sheet(ws, filename, kind):
                     "semester": semester,
                     "prerequisite": values.get("prerequisite"),
                     "programme": values.get("programme") or metadata["programme"],
-                    "minor_name": values.get("minor_name") or (ws.title if kind == "minor" else None),
+                    "minor_name": values.get("minor_name") or ((ws.title if ws.title.casefold() not in {"sheet", "sheet1"} else Path(filename).stem.split("_Minor_")[-1].replace("_", " ")) if kind == "minor" else None),
                     "batch": row_batch,
                     "course_type": values.get("course_type"),
                     "ltp": values.get("ltp"),
@@ -362,7 +362,7 @@ def load_programme_structure_records(archive_path=PROGRAMME_ARCHIVE):
     """Load programme-structure course rows and raw elective slots by explicit headers."""
     return _load_archive(
         archive_path,
-        lambda name: any(token in name.lower() for token in ("programme_structure", "semester_spread_structures", "semester_data_split")),
+        lambda name: True,
         "programme",
     )
 
@@ -372,7 +372,7 @@ def load_minor_and_programme_records(minor_archive=MINOR_ARCHIVE, programme_arch
 
 
 def extract_archive_records(raw, kind):
-    """API-service adapter: parse uploaded ZIP bytes with the canonical workbook builders."""
+    """API-service adapter: parse ZIP bytes with the canonical workbook builders."""
     if kind not in {"minor", "programme"}:
         raise ValueError("kind must be 'minor' or 'programme'")
     records = []

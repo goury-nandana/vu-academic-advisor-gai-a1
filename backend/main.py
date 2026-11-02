@@ -323,7 +323,14 @@ async def chat(req:Request):
             break
     if semester_number is None:
         for word,value in semester_words.items():
-            if re.search(rf"\b(?:semester|sem)\s*(?:no\.?\s*)?{word}\b",question,re.I):
+            if (re.search(rf"\b(?:semester|sem)\s*(?:no\.?\s*)?{word}\b",question,re.I)
+                    or re.search(rf"\b{word}\s+(?:semester|sem)\b",question,re.I)):
+                semester_number=value
+                break
+    if semester_number is None:
+        for value in range(1,9):
+            suffix="st" if value==1 else "nd" if value==2 else "rd" if value==3 else "th"
+            if re.search(rf"\b{value}{suffix}\s+(?:semester|sem)\b",question,re.I):
                 semester_number=value
                 break
     program_is_btech=("btech" in tok(question) or "btech" in str(profile.get("program","")).lower().replace(".","").replace(" ",""))

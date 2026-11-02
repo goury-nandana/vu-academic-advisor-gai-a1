@@ -1,12 +1,12 @@
 # VU Academic Advisor — DATA308 Generative AI Assignment 2
 
-Streamlit-based academic advising chatbot for Vidyashilp University (VU). It uses Groq for answer generation, structured retrieval from the original B.Tech semester-spread workbooks, and a separate official-website knowledge source.
+Academic advising chatbot for Vidyashilp University (VU), with a Next.js frontend and FastAPI/Groq backend designed for a unified Vercel Services deployment. The original Streamlit implementation remains available as a reference and fallback.
 
 **Live app:** https://vu-academic-advisor-gai-a1-hzdbiixzivwbjb3dvbfvka.streamlit.app/
 
 ## Next.js frontend (Vercel migration)
 
-A new responsive Next.js UI is being developed in `frontend/`. The frontend is currently a preview scaffold and is **not yet connected** to the academic retrieval/Groq service. The Streamlit deployment remains the functional app during this migration.
+The Next.js frontend in `frontend/` is connected to the FastAPI service in `backend/` through same-origin `/api/chat`. The service retrieves from the Student Handbook, SOP, Course Plans, and B.Tech semester-spread data, then generates grounded answers with Groq. The `vercel.json` file configures Vercel Services for both components.
 
 To preview the UI locally:
 
@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-For a Vercel preview, import this repository and set the project **Root Directory** to `frontend`. Do not configure the Groq key as a `NEXT_PUBLIC_*` variable. Backend/API integration and academic feature parity are the next migration stage.
+For unified Vercel deployment, import this repository with the **Root Directory set to the repository root** (not `frontend`), so Vercel reads `vercel.json` and builds the frontend and backend services. Configure `GROQ_API_KEY` as a server-side environment variable for the backend service only. Never use a `NEXT_PUBLIC_*` prefix for the secret. After merging, confirm Vercel Services is enabled for the project and redeploy.
 
 ## Current scope
 

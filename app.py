@@ -47,49 +47,13 @@ st.set_page_config(
 
 
 # ============================================================
-# CSS
+# THEME (visual-only module)
 # ============================================================
 
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400;500;600;700&display=swap');
-:root{--navy:#183b5b;--deep:#102c47;--blue:#2f6f9f;--pale:#eaf2f8;--paper:#f7f6f2;--ink:#243343;--muted:#718091;--line:#e4e8eb;}
-html,body,[class*="css"],button,input,textarea,select{font-family:'Google Sans Flex','Google Sans','Product Sans',Arial,sans-serif!important}
-.stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"],[data-testid="stMainBlockContainer"]{background:var(--paper)!important;color:var(--ink)!important}
-[data-testid="stHeader"]{background:transparent!important}
-[data-testid="stSidebar"],[data-testid="stSidebar"]>div:first-child{background:linear-gradient(165deg,var(--navy),var(--deep))!important}
-[data-testid="stSidebar"] *{color:#f6f8fb!important}
-[data-testid="stSidebar"] hr{border-color:rgba(255,255,255,.16)!important}
-[data-testid="stSidebar"] label{color:#e7eef5!important;font-weight:500!important}
-[data-testid="stSidebar"] [data-baseweb="select"]>div,[data-testid="stSidebar"] [data-baseweb="input"]>div{background:#fff!important;border:1px solid #d9e2e9!important;border-radius:10px!important}
-[data-testid="stSidebar"] [data-baseweb="select"] span,[data-testid="stSidebar"] [data-baseweb="input"] input{color:#243343!important}
-[data-testid="stSidebar"] [data-testid="stExpander"]{background:rgba(255,255,255,.055)!important;border:1px solid rgba(255,255,255,.17)!important;border-radius:13px!important}
-[data-testid="stSidebar"] [data-testid="stExpander"] summary{color:#fff!important}
-[data-testid="stSidebar"] [data-testid="stButton"]>button{background:transparent!important;color:#fff!important;border:1px solid rgba(255,255,255,.4)!important;border-radius:22px!important}
-[data-testid="stMainBlockContainer"]{max-width:1180px!important;padding-top:2rem!important}
-[data-testid="stMainBlockContainer"] h1,[data-testid="stMainBlockContainer"] h2,[data-testid="stMainBlockContainer"] h3{color:var(--navy)!important;letter-spacing:-.025em}
-[data-testid="stMainBlockContainer"] p{color:var(--ink)}
-.campus-hero{min-height:210px;border-radius:20px;overflow:hidden;background-size:cover;background-position:center 48%;display:flex;align-items:flex-end;padding:30px 34px;margin:8px 0 24px;position:relative;box-shadow:0 12px 32px rgba(20,45,67,.13)}
-.campus-hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(13,37,59,.82),rgba(13,37,59,.42) 58%,rgba(13,37,59,.08))}
-.campus-hero-copy{position:relative;z-index:1;max-width:620px;color:#fff!important}
-.campus-hero-copy h1{color:#fff!important;font-size:30px;font-weight:700;margin:0 0 8px;line-height:1.2}
-.campus-hero-copy p{color:#f4f7fa!important;font-size:15px;margin:0;line-height:1.55}
-.info-box{background:#fff!important;border:1px solid var(--line)!important;border-left:4px solid var(--blue)!important;border-radius:16px!important;padding:22px 25px!important;margin:12px 0 24px!important;box-shadow:0 5px 18px rgba(28,52,72,.045)!important}
-.info-box h3{font-size:23px;margin:0 0 8px;color:var(--navy)!important}.info-box p{margin:0;color:#526274!important;line-height:1.6}
-.bubble-user{display:flex;justify-content:flex-end;margin:16px 0}.bubble-user-inner{max-width:78%;background:var(--navy)!important;color:#fff!important;padding:12px 17px;border-radius:18px 18px 5px 18px;line-height:1.55}.bubble-user-inner *{color:#fff!important}
-.bubble-bot{display:flex;justify-content:flex-start;margin:16px 0}.bubble-bot-inner{max-width:88%;background:#fff!important;color:var(--ink)!important;border:1px solid var(--line)!important;padding:16px 19px;border-radius:18px 18px 18px 5px;line-height:1.65;box-shadow:0 3px 12px rgba(28,52,72,.045)}
-.st-key-whatsapp_composer{position:sticky;bottom:8px;z-index:30;background:#fff!important;border:1px solid #dfe5e9!important;border-radius:25px!important;padding:10px 12px!important;margin:25px auto 7px!important;max-width:1020px;box-shadow:0 9px 28px rgba(24,48,70,.11)!important}
-.st-key-whatsapp_composer [data-testid="stTextInput"]{margin:0!important}
-.st-key-whatsapp_composer [data-testid="stTextInput"] input{min-height:48px!important;border-radius:25px!important;border:1px solid #e1e6eb!important;background:#fbfcfd!important;color:var(--ink)!important;padding:0 17px!important;box-shadow:none!important}
-.st-key-whatsapp_composer [data-testid="stTextInput"] input::placeholder{color:#8794a1!important}
-.st-key-whatsapp_composer [data-testid="stPopover"]>button,.st-key-whatsapp_composer [data-testid="stAudioInput"] button{min-height:46px!important;width:46px!important;border-radius:50%!important;background:var(--pale)!important;color:var(--navy)!important;border:1px solid #d8e4ed!important}
-.st-key-whatsapp_composer [data-testid="stButton"]>button[kind="primary"]{min-height:48px!important;width:48px!important;border-radius:50%!important;padding:0!important;background:var(--blue)!important;border:1px solid var(--blue)!important;color:#fff!important;font-size:21px!important;box-shadow:0 3px 10px rgba(47,111,159,.2)!important}
-.composer-disclaimer{max-width:1020px;margin:7px auto 15px;text-align:center;color:#82909d!important;font-size:11px}
-[data-testid="stButton"]>button{border-radius:22px;border-color:#dce3e9;color:var(--navy)}
-[data-testid="stExpander"]{border-color:#e0e6eb!important;border-radius:13px!important}
-@media(max-width:760px){[data-testid="stMainBlockContainer"]{padding:1rem .8rem 1.2rem!important}.campus-hero{min-height:155px;padding:20px}.campus-hero-copy h1{font-size:23px}.bubble-user-inner,.bubble-bot-inner{max-width:94%}.st-key-whatsapp_composer{border-radius:19px!important;padding:8px!important}}
-</style>
-""", unsafe_allow_html=True)
+from vu_theme import apply_theme, sidebar_logo, header_html
+apply_theme()
+
+
 # ============================================================
 # CONSTANTS
 # ============================================================
@@ -383,71 +347,18 @@ if "pending_question" not in st.session_state:
 
 
 # ============================================================
-# HEADER & LOGO
+# BRAND HEADER
 # ============================================================
 
-def find_logo():
-    for filename in os.listdir(APP_DIR):
-        if filename.startswith("."):
-            continue
-        lower = filename.lower()
-        if lower.endswith((".png", ".jpg", ".jpeg")) and "logo" in lower:
-            return os.path.join(APP_DIR, filename)
-    for filename in os.listdir(APP_DIR):
-        lower = filename.lower()
-        if lower.endswith((".png", ".jpg", ".jpeg")):
-            return os.path.join(APP_DIR, filename)
-    return None
+sidebar_logo()
+st.markdown(header_html(), unsafe_allow_html=True)
 
-logo_path = os.path.join(APP_DIR, "Logo.png")
-campus_path = os.path.join(APP_DIR, "campus.jpg")
-
-campus_b64 = ""
-if os.path.isfile(campus_path):
-    with open(campus_path,"rb") as f: campus_b64=base64.b64encode(f.read()).decode("ascii")
-logo_b64 = ""
-if os.path.isfile(logo_path):
-    with open(logo_path,"rb") as f: logo_b64=base64.b64encode(f.read()).decode("ascii")
-st.markdown(f"""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400;500;600;700&display=swap');
-:root{{--vu-blue:#21499b;--vu-red:#c71932;--vu-ink:#202b40;}}
-html,body,[class*="css"],button,input,textarea,select{{font-family:'Google Sans Flex','Google Sans','Product Sans',Arial,sans-serif!important}}
-[data-testid="stAppViewContainer"]{{background:linear-gradient(rgba(231,241,255,.42),rgba(255,250,250,.42)),url("data:image/jpeg;base64,{campus_b64}") center center/cover fixed!important;}}
-[data-testid="stMain"],[data-testid="stMainBlockContainer"]{{background:transparent!important;}}
-[data-testid="stMainBlockContainer"]{{max-width:1160px!important;padding:1rem 2rem 1.4rem!important;}}
-[data-testid="stSidebar"],[data-testid="stSidebar"]>div:first-child{{background:rgba(232,242,255,.84)!important;backdrop-filter:blur(18px)!important;border-right:1px solid #ffffffaa!important;}}
-[data-testid="stSidebar"] *{{color:var(--vu-ink)!important;}}[data-testid="stSidebar"] label{{font-weight:600!important;color:#35435d!important;}}
-[data-testid="stSidebar"] hr{{border-color:#21499b20!important;}}
-[data-testid="stSidebar"] [data-baseweb="select"]>div,[data-testid="stSidebar"] [data-baseweb="input"]>div{{background:#ffffffd9!important;border:1px solid #dfe7f2!important;border-radius:12px!important;}}
-[data-testid="stSidebar"] [data-baseweb="select"] span,[data-testid="stSidebar"] [data-baseweb="input"] input{{color:var(--vu-ink)!important;}}
-[data-testid="stSidebar"] [data-testid="stExpander"]{{background:#ffffff80!important;border:1px solid #ffffffb8!important;border-radius:16px!important;}}
-[data-testid="stSidebar"] [data-testid="stButton"]>button{{background:var(--vu-red)!important;color:#fff!important;border:0!important;border-radius:30px!important;font-weight:600!important;}}
-.vu-pill-header{{width:max-content;max-width:95%;margin:5px auto 22px;padding:12px 27px;border-radius:50px;display:flex;align-items:center;gap:14px;background:#fffffff0;border:1px solid #ffffffdf;box-shadow:0 8px 25px #1b30511f;color:var(--vu-blue);font-weight:700;letter-spacing:.08em;font-size:16px;}}
-.vu-pill-mark{{width:38px;height:38px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;overflow:hidden;}}.vu-pill-mark img{{width:28px;height:28px;object-fit:contain;}}
-.info-box{{background:#ffffffe0!important;border:1px solid #ffffffd9!important;border-left:4px solid var(--vu-red)!important;border-radius:20px!important;padding:22px 25px!important;margin:12px 0 20px!important;box-shadow:0 8px 25px #1b305117!important;backdrop-filter:blur(13px)!important;}}
-.info-box h3{{color:var(--vu-blue)!important;font-size:23px;margin:0 0 8px;}}.info-box p{{color:#53627a!important;line-height:1.6;margin:0;}}
-.bubble-user{{display:flex;justify-content:flex-end;margin:16px 0;}}.bubble-user-inner{{max-width:78%;background:var(--vu-blue)!important;color:white!important;padding:12px 18px;border-radius:22px 22px 6px 22px;line-height:1.55;box-shadow:0 5px 14px #21499b2b;}}.bubble-user-inner *{{color:white!important;}}
-.bubble-bot{{display:flex;align-items:flex-end;gap:10px;justify-content:flex-start;margin:16px 0;}}.bubble-bot-inner{{max-width:84%;background:#ffffffe8!important;color:var(--vu-ink)!important;border:1px solid #ffffffdc!important;padding:15px 19px;border-radius:20px 20px 20px 6px;line-height:1.65;box-shadow:0 5px 17px #1b305114;backdrop-filter:blur(12px);}}
-.vu-bot-avatar{{width:34px;height:34px;flex:0 0 34px;border-radius:50%;object-fit:cover;background:white;border:2px solid white;box-shadow:0 2px 8px #1b30511f;}}
-.st-key-whatsapp_composer{{position:sticky;bottom:8px;z-index:30;background:#fffffff0!important;border:1px solid #ffffffeb!important;border-radius:38px!important;padding:9px 11px!important;margin:20px auto 6px!important;max-width:940px!important;box-shadow:0 10px 30px #1b305126!important;backdrop-filter:blur(16px)!important;}}
-.st-key-whatsapp_composer [data-testid="stTextInput"] input{{min-height:48px!important;border-radius:30px!important;border:1px solid #e3e8f1!important;background:#fffffff5!important;color:var(--vu-ink)!important;padding:0 17px!important;box-shadow:none!important;}}.st-key-whatsapp_composer [data-testid="stTextInput"] input::placeholder{{color:#8a91a0!important;}}
-.st-key-whatsapp_composer [data-testid="stPopover"]>button,.st-key-whatsapp_composer [data-testid="stAudioInput"] button{{min-height:44px!important;width:44px!important;border-radius:50%!important;background:white!important;color:var(--vu-red)!important;border:1px solid #f2dce1!important;}}
-.st-key-whatsapp_composer [data-testid="stButton"]>button[kind="primary"]{{min-height:46px!important;width:46px!important;border-radius:50%!important;padding:0!important;background:var(--vu-red)!important;border:0!important;color:white!important;font-size:22px!important;box-shadow:0 4px 12px #c719322b!important;}}
-.composer-disclaimer{{max-width:940px;margin:7px auto 15px;text-align:center;color:#59657a!important;font-size:11px;background:#ffffffad;border-radius:14px;padding:7px;}}
-[data-testid="stMainBlockContainer"] button[kind="secondary"]{{background:#ffe9ec!important;color:var(--vu-red)!important;border:1px solid #f6d2da!important;font-weight:600!important;border-radius:28px!important;}}
-@media(max-width:760px){{[data-testid="stMainBlockContainer"]{{padding:1rem .65rem!important;}}.bubble-user-inner,.bubble-bot-inner{{max-width:94%;}}.st-key-whatsapp_composer{{border-radius:23px!important;padding:7px!important;}}.vu-pill-header{{font-size:13px;padding:9px 17px;}}}}
-</style>
-""",unsafe_allow_html=True)
-st.markdown(f'<div class="vu-pill-header"><span class="vu-pill-mark"><img src="data:image/png;base64,{logo_b64}"></span><span>VU ACADEMIC ADVISOR</span></div>',unsafe_allow_html=True)
 
 # ============================================================
 # SIDEBAR (OPTIONAL DEFAULTS)
 # ============================================================
 
 with st.sidebar:
-    if os.path.isfile(logo_path):
-        st.image(logo_path, width=220)
     st.markdown("### Student profile")
     st.caption("Optional details for personalized guidance.")
     st.markdown("---")

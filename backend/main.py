@@ -315,7 +315,7 @@ async def health_details():
         sources[name]=sources.get(name,0)+1
     course_rows=sum(1 for record in docs if record.get("is_course_record"))
     minor_rows=sum(1 for record in docs if record.get("document_type") in {"minor_course","raw_elective_slot"})
-    programme_rows=sum(1 for record in docs if record.get("document_type") in {"programme_structure","programme_course","raw_programme_slot"})
+    programme_rows=sum(1 for record in docs if record.get("document_type") in {"programme_structure_course","programme_credit_structure","programme_structure_note"})
     return {
         "status":"ok" if docs else "degraded",
         "service":"VU Academic Advisor API",

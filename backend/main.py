@@ -312,6 +312,72 @@ async def chat(req:Request):
     if asked_codes:
         exact_course_rows=[d for d in corpus if d.get("is_course_record") and d.get("course_code") in asked_codes and (not asked_batch or str(d.get("batch"))==asked_batch)]
         if exact_course_rows:retrieved=exact_course_rows
+    # Route broad B.Tech minor-list questions to the minor archive records rather than
+    # relying on generic relevance ranking (which may bury those rows among handbook chunks).
+    minor_list_intent = bool(re.search(r"\\b(minors?|minor\\s+(?:options?|speciali[sz]ations?))\\b", question, re.I)
+                             and re.search(r"\\b(list|which|what|available|options?|of)\\b", question, re.I))
+    if minor_list_intent and re.search(r"\\bb\\s*\\.?\\s*tech\\b", question, re.I):
+        minor_records = [d for d in corpus
+                         if d.get("minor_name") and d.get("document_type") in {"minor_course", "raw_elective_slot"}]
+        minor_names = sorted({str(d["minor_name"]).strip() for d in minor_records if str(d["minor_name"]).strip()},
+                             key=str.casefold)
+        if minor_names:
+            names_text = ", ".join(minor_names)
+            rows = []
+            for name in minor_names:
+                source = next((d for d in minor_records if str(d.get("minor_name", "")).strip() == name), None)
+                if source:
+                    rows.append(source)
+            ctx = "The minor archive contains these explicitly named minor areas: " + names_text + "."
+            rows = rows[:7]
+            answer = "The B.Tech minor areas explicitly represented in the uploaded university minor archive are: **" + names_text + "**. This list is derived from the minor workbook filenames/sheet metadata; course details may vary by batch."
+            sources = []
+            for r in rows:
+                label = r["source"]
+                if label not in {s["title"] for s in sources}:
+                    sources.append({"title": label, "url": r.get("url")})
+            return {"answer": answer, "sources": sources}
+
+    # Resolve course-code/title questions against exact structured course titles across
+    # all batches. Programme-structure rows may omit codes while semester spreads supply them.
+    asks_course_code = bool(re.search(r"\\b(course\\s+)?code\\b", question, re.I))
+    if asks_course_code:
+        qnorm = re.sub(r"[^a-z0-9]+", " ", question.lower()).strip()
+        matched_titles = []
+        for d in corpus:
+            if not d.get("is_course_record") or not d.get("course_title"):
+                continue
+            title_norm = re.sub(r"[^a-z0-9]+", " ", str(d["course_title"]).lower()).strip()
+            if title_norm and re.search(rf"\\b{re.escape(title_norm)}\\b", qnorm):
+                matched_titles.append(d)
+        if matched_titles:
+            # Prefer course-code rows, merge equivalent batch/semester entries, and
+            # report differing codes as separate sourced entries rather than declaring absent.
+            matched_titles.sort(key=lambda d: (not bool(d.get("course_code")), str(d.get("batch") or "")))
+            details = []
+            seen_details = set()
+            source_rows = []
+            for d in matched_titles:
+                code = d.get("course_code") or "Code not present in this workbook row"
+                batch = d.get("batch") or "batch unspecified"
+                sem = d.get("semester")
+                ltp = (f"{d.get('L')}-{d.get('T')}-{d.get('P')}" if all(d.get(k) is not None for k in ("L","T","P"))
+                       else d.get("ltp") or "not specified")
+                credits = d.get("credits") if d.get("credits") is not None else "not specified"
+                line = f"{d.get('course_title')} — **{code}** (batch {batch}; semester {sem if sem is not None else 'not specified'}; L-T-P {ltp}; credits {credits})"
+                if line not in seen_details:
+                    seen_details.add(line)
+                    details.append(line)
+                    source_rows.append(d)
+            if details:
+                answer = "Course-code matches across the available structured records:\\n- " + "\\n- ".join(details)
+                sources = []
+                for d in source_rows:
+                    label = d["source"]
+                    if label not in {s["title"] for s in sources}:
+                        sources.append({"title": label, "url": d.get("url")})
+                return {"answer": answer, "sources": sources}
+
     # A semester-list request should return all matching structured entries,
     # rather than only the seven chunks selected by generic relevance ranking.
     semester_number=None

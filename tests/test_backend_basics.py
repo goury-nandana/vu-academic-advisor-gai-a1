@@ -3,8 +3,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
+_backend_path = str(Path(__file__).resolve().parents[1] / "backend")
+sys.path.insert(0, _backend_path)
 from main import GH, SOCIAL_RE, extract_upload
+sys.path.remove(_backend_path)
+sys.modules.pop("programme_data", None)
 
 
 class BackendBasicsTests(unittest.TestCase):

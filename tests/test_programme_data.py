@@ -65,6 +65,19 @@ class ProgrammeDataBuilderTests(unittest.TestCase):
         rows = _records_from_sheet(ws, "Minor_Law.xlsx", "minor")
         self.assertFalse(any(r["document_type"] == "minor_course" for r in rows))
 
+    def test_committed_minor_workbooks_produce_source_grounded_records(self):
+        rows = load_minor_records()
+        courses = [row for row in rows if row.get("document_type") == "minor_course"]
+        self.assertGreater(len(courses), 0)
+        self.assertTrue(all(row.get("source") and row.get("sheet") and row.get("cells") for row in courses))
+        self.assertTrue(all(row.get("course_code") and row.get("course_title") for row in courses))
+
+    def test_committed_programme_structures_are_loaded(self):
+        rows = load_programme_structure_records()
+        self.assertGreater(len(rows), 0)
+        self.assertTrue(all(row.get("source") and row.get("sheet") and row.get("cells") for row in rows))
+        self.assertTrue(all(row.get("document_type") in {"programme_structure_course", "raw_elective_slot", "raw_programme_slot"} for row in rows))
+
     def test_workbook_archives_load_only_matching_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             minor_path = Path(tmp) / "minor.zip"

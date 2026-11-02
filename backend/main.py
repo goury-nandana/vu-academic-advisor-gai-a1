@@ -15,7 +15,7 @@ def get(path):
 def pdf(path):
     try:
         reader=PdfReader(io.BytesIO(get(path)))
-        return [{"text":re.sub(r"\\s+"," ",p.extract_text() or "").strip(),"source":path,"page":i+1,"url":GH+urllib.parse.quote(path)} for i,p in enumerate(reader.pages) if (p.extract_text() or "").strip()]
+        return [{"text":re.sub(r"\s+"," ",p.extract_text() or "").strip(),"source":path,"page":i+1,"url":GH+urllib.parse.quote(path)} for i,p in enumerate(reader.pages) if (p.extract_text() or "").strip()]
     except Exception:return []
 @lru_cache(maxsize=1)
 def load_docs():

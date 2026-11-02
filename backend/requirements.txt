@@ -1,1 +1,7 @@
-fastapi\ngroq\npypdf\nopenpyxl\npython-multipart\npython-docx\npython-pptx\n
+fastapi
+groq
+pypdf
+openpyxl
+python-multipart
+python-docx
+python-pptx

@@ -314,9 +314,9 @@ async def chat(req:Request):
         if exact_course_rows:retrieved=exact_course_rows
     # Route broad B.Tech minor-list questions to the minor archive records rather than
     # relying on generic relevance ranking (which may bury those rows among handbook chunks).
-    minor_list_intent = bool(re.search(r"\\b(minors?|minor\\s+(?:options?|speciali[sz]ations?))\\b", question, re.I)
-                             and re.search(r"\\b(list|which|what|available|options?|of)\\b", question, re.I))
-    if minor_list_intent and re.search(r"\\bb\\s*\\.?\\s*tech\\b", question, re.I):
+    minor_list_intent = bool(re.search(r"\b(minors?|minor\s+(?:options?|speciali[sz]ations?))\b", question, re.I)
+                             and re.search(r"\b(list|which|what|available|options?|of)\b", question, re.I))
+    if minor_list_intent and re.search(r"\bb\s*\.?\s*tech\b", question, re.I):
         minor_records = [d for d in corpus
                          if d.get("minor_name") and d.get("document_type") in {"minor_course", "raw_elective_slot"}]
         minor_names = sorted({str(d["minor_name"]).strip() for d in minor_records if str(d["minor_name"]).strip()},
@@ -340,7 +340,7 @@ async def chat(req:Request):
 
     # Resolve course-code/title questions against exact structured course titles across
     # all batches. Programme-structure rows may omit codes while semester spreads supply them.
-    asks_course_code = bool(re.search(r"\\b(course\\s+)?code\\b", question, re.I))
+    asks_course_code = bool(re.search(r"\b(course\s+)?code\b", question, re.I))
     if asks_course_code:
         qnorm = re.sub(r"[^a-z0-9]+", " ", question.lower()).strip()
         matched_titles = []
@@ -348,7 +348,7 @@ async def chat(req:Request):
             if not d.get("is_course_record") or not d.get("course_title"):
                 continue
             title_norm = re.sub(r"[^a-z0-9]+", " ", str(d["course_title"]).lower()).strip()
-            if title_norm and re.search(rf"\\b{re.escape(title_norm)}\\b", qnorm):
+            if title_norm and re.search(rf"\b{re.escape(title_norm)}\b", qnorm):
                 matched_titles.append(d)
         if matched_titles:
             # Prefer course-code rows, merge equivalent batch/semester entries, and
@@ -370,7 +370,7 @@ async def chat(req:Request):
                     details.append(line)
                     source_rows.append(d)
             if details:
-                answer = "Course-code matches across the available structured records:\\n- " + "\\n- ".join(details)
+                answer = "Course-code matches across the available structured records:\n- " + "\n- ".join(details)
                 sources = []
                 for d in source_rows:
                     label = d["source"]

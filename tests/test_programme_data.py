@@ -106,10 +106,10 @@ class ProgrammeDataBuilderTests(unittest.TestCase):
         ws = wb.active
         ws.title = "Struct_2026_DS"
         ws.append([None, "#", "Program Core - Courses", "Cr", None, "#", "Electives", "Cr"])
-        ws.append([None, 1, "Data Structures", 4, None, "Probabilistic Graph Models", 4])
-        ws.append([None, 2, "Operating Systems", 4, None, "Option A / Option B", 4])
-        ws.append([None, None, None, None, "#", "Internship and Capstone Project - Courses", "Cr"])
-        ws.append([None, None, None, None, None, "Summer Training/Internship", 2])
+        ws.append([None, 1, "Data Structures", 4, None, 1, "Probabilistic Graph Models", 4])
+        ws.append([None, 2, "Operating Systems", 4, None, 2, "Option A / Option B", 4])
+        ws.append([None, None, None, None, None, "#", "Internship and Capstone Project - Courses", "Cr"])
+        ws.append([None, None, None, None, None, 1, "Summer Training/Internship", 2])
         rows = _records_from_sheet(ws, "Semester_Spread_Structures_Sept_2026.xlsx", "programme")
         titles = {r.get("course_title") for r in rows if r["document_type"] == "programme_structure_course"}
         self.assertIn("Data Structures", titles)

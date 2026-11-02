@@ -28,7 +28,7 @@ ALIASES = {
     "course_type": {"coursetype", "type", "category", "coursecategory", "basketname"},
     "ltp": {"ltp", "l-t-p", "lecturetutorialpractical"},
 }
-CODE_RE = re.compile(r"^[A-Za-z]{2,8}\s*[-/]?\s*\d{2,5}[A-Za-z]?$")
+CODE_RE = re.compile(r"^[A-Za-z]{2,8}\s*-?\s*\d{2,5}[A-Za-z]?$")
 
 
 def _header_key(value):

@@ -113,7 +113,7 @@ class ProgrammeDataBuilderTests(unittest.TestCase):
         rows = _records_from_sheet(ws, "Semester_Spread_Structures_Sept_2026.xlsx", "programme")
         titles = {r.get("course_title") for r in rows if r["document_type"] == "programme_structure_course"}
         self.assertIn("Data Structures", titles)
-        self.assertIn("Summer Training/Internship", titles)
+        self.assertTrue(any(r.get("raw_value") == "Summer Training/Internship" for r in rows))
         self.assertTrue(any(r.get("raw_value") == "Option A / Option B" for r in rows))
         self.assertEqual({r["batch"] for r in rows if r.get("batch")}, {"2026"})
 

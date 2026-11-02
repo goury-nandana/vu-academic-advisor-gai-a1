@@ -231,7 +231,8 @@ async def chat(req:Request):
     hist="\n".join(f"{m.get('role')}: {str(m.get('text',''))[:500]}" for m in history[-5:] if isinstance(m,dict))
     prof=json.dumps({k:v for k,v in profile.items() if v not in ("",None)})
     upload_instruction=("The student attached file(s). Read uploaded-file evidence first, including image descriptions and voice transcripts, and answer the question about the contents. If the prompt is generic (for example, look at my attachment), briefly summarize the contents and ask a focused follow-up. Never claim the attachment is inaccessible when extracted content is present. " if uploaded else "")
-    prompt=f"{upload_instruction}Explicit student details: {prof}\nPrevious chat: {hist}\nEvidence:\n{ctx or 'No matching evidence.'}\nQuestion: {question}\nAnswer grounded in the evidence."
+    upload_warning=("Note: I could not successfully read or transcribe these attachment(s): "+", ".join(upload_errors)+". Mention this limitation clearly if relevant. " if upload_errors else "")
+    prompt=f"{upload_instruction}{upload_warning}Explicit student details: {prof}\nPrevious chat: {hist}\nEvidence:\n{ctx or 'No matching evidence.'}\nQuestion: {question}\nAnswer grounded in the evidence."
     answer=""
     for model in [os.getenv("GROQ_MODEL","llama-3.3-70b-versatile"),"openai/gpt-oss-20b","openai/gpt-oss-120b"]:
         try:

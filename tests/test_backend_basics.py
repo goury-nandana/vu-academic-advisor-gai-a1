@@ -1,11 +1,14 @@
+import io
 import sys
 import unittest
+import zipfile
+from openpyxl import Workbook
 from pathlib import Path
 from unittest.mock import Mock
 
 _backend_path = str(Path(__file__).resolve().parents[1] / "backend")
 sys.path.insert(0, _backend_path)
-from main import GH, SOCIAL_RE, extract_upload, search
+from main import GH, SOCIAL_RE, extract_course_records, extract_upload, search
 sys.path.remove(_backend_path)
 sys.modules.pop("programme_data", None)
 
@@ -33,6 +36,26 @@ class BackendBasicsTests(unittest.TestCase):
         result = search("min attendance?", docs)
         self.assertTrue(result)
         self.assertEqual(result[0]["source"], "handbook")
+
+    def test_structured_course_record_supports_space_hyphen_code_lookup(self):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet["D1"] = "S1"
+        values = ["BASKET1", "Core", "CS 101", "Intro Programming", "None", 3, 0, 0, 4]
+        for column, value in enumerate(values, start=1):
+            sheet.cell(row=3, column=column, value=value)
+        workbook_bytes = io.BytesIO()
+        workbook.save(workbook_bytes)
+        archive_bytes = io.BytesIO()
+        with zipfile.ZipFile(archive_bytes, "w") as archive:
+            archive.writestr("01_Semester_Spread_BTech_2022.xlsx", workbook_bytes.getvalue())
+
+        records = extract_course_records(archive_bytes.getvalue())
+        matching = search("CS-101 prerequisite credits", records)
+        self.assertTrue(matching)
+        self.assertEqual(matching[0]["course_code"], "CS101")
+        self.assertEqual(matching[0]["semester"], 1)
+        self.assertEqual(matching[0]["credits"], 4)
 
     def test_png_image_upload_uses_vision_model(self):
         client = Mock()

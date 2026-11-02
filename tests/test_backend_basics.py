@@ -36,7 +36,7 @@ class BackendBasicsTests(unittest.TestCase):
 
     def test_png_image_upload_uses_vision_model(self):
         client = Mock()
-        client.chat.completions.create.return_value.choices[0].message.content = "The image shows an attendance table."
+        client.chat.completions.create.return_value.choices = [Mock(message=Mock(content="The image shows an attendance table."))]
         text = extract_upload("schedule.png", b"fake-image-bytes", client)
         self.assertIn("attendance table", text)
         args = client.chat.completions.create.call_args.kwargs

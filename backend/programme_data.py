@@ -30,7 +30,145 @@ def field(value):
     m = re.fullmatch(r"(?:s|semester)([1-8])", k)
     return "semester_" + m.group(1) if m else None
 
+
+def _norm(value):
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).strip()
+
+
+def _text(value):
+    return re.sub(r"\\s+", " ", str(value)).strip() if value is not None else ""
+
+
+def _header_map(row):
+    return {_norm(v): i for i, v in enumerate(row) if v is not None and _norm(v)}
+
+
+def _col(mapping, *names):
+    return next((mapping[n] for n in names if n in mapping), None)
+
+
+def _batch(ws, row):
+    for r in range(row, 0, -1):
+        for c in range(1, min(ws.max_column, 4) + 1):
+            match = re.search(r"\\b(20\\d{2})\\s*batch\\b", _text(ws.cell(r, c).value), re.I)
+            if match:
+                return match.group(1)
+    return None
+
+
+def _minor_records(ws, filename):
+    header_row, mapping = None, {}
+    for r in range(1, min(ws.max_row, 15) + 1):
+        candidate = _header_map([ws.cell(r, c).value for c in range(1, ws.max_column + 1)])
+        if _col(candidate, "course code", "code") is not None and _col(candidate, "course title", "course", "course name") is not None:
+            header_row, mapping = r, candidate
+            break
+    if header_row is None:
+        return []
+    cols = {
+        "course_code": _col(mapping, "course code", "code"),
+        "course_title": _col(mapping, "course title", "course", "course name"),
+        "L": _col(mapping, "l"), "T": _col(mapping, "t"), "P": _col(mapping, "p"),
+        "credits": _col(mapping, "credit", "credits", "cr"),
+        "semester": _col(mapping, "semester", "sem"),
+        "prerequisite": _col(mapping, "pre rq", "prerequisite", "pre requisite"),
+    }
+    out = []
+    for r in range(header_row + 1, ws.max_row + 1):
+        code = ws.cell(r, cols["course_code"] + 1).value
+        title = _text(ws.cell(r, cols["course_title"] + 1).value)
+        if not title or key(title) in {"tbd", "to be decided"}:
+            continue
+        batch = _batch(ws, r)
+        get = lambda name: ws.cell(r, cols[name] + 1).value if cols[name] is not None else None
+        prereq = _text(get("prerequisite")) or None
+        record = {
+            "document_type": "minor_course",
+            "programme": "B.Tech" if "btech" in filename.casefold() else None,
+            "minor": ws.title.strip(), "batch": batch,
+            "course_code": _text(code) or None, "course_title": title,
+            "L": get("L"), "T": get("T"), "P": get("P"),
+            "credits": get("credits"), "semester": get("semester"),
+            "prerequisite": prereq, "source": filename, "sheet": ws.title,
+            "cells": {name: ws.cell(r, idx + 1).coordinate for name, idx in cols.items() if idx is not None},
+        }
+        record["text"] = (
+            f"{record['minor']} minor; batch {batch or 'not specified'}; "
+            f"{record['course_code'] or 'course code not provided'} — {title}; "
+            f"semester {record['semester'] if record['semester'] is not None else 'not specified'}; "
+            f"credits {record['credits'] if record['credits'] is not None else 'not specified'}; "
+            f"prerequisite {prereq or 'not specified'}; L-T-P "
+            f"{record['L'] if record['L'] is not None else 'not specified'}-"
+            f"{record['T'] if record['T'] is not None else 'not specified'}-"
+            f"{record['P'] if record['P'] is not None else 'not specified'}."
+        )
+        out.append(record)
+    return out
+
+
+def _programme_records(ws, filename):
+    out, seen = [], set()
+    match = re.search(r"(?:^|[^0-9])(20\\d{2})(?:$|[^0-9])", ws.title)
+    batch = match.group(1) if match else None
+    for header_row in range(1, min(ws.max_row, 20) + 1):
+        headers = [
+            (i, _text(ws.cell(header_row, i + 1).value))
+            for i in range(ws.max_column)
+            if ws.cell(header_row, i + 1).value is not None
+            and re.search(r"\\bcourses?\\b|\\belectives?\\b", _text(ws.cell(header_row, i + 1).value), re.I)
+        ]
+        for title_idx, heading in headers:
+            credit_idx = title_idx + 1
+            if key(ws.cell(header_row, credit_idx + 1).value) not in {"cr", "credit", "credits"}:
+                continue
+            group = re.sub(r"\\s*[-–—]\\s*Courses?\\s*$", "", heading, flags=re.I).strip() or "Electives"
+            for r in range(header_row + 1, ws.max_row + 1):
+                title = _text(ws.cell(r, title_idx + 1).value)
+                credit = ws.cell(r, credit_idx + 1).value
+                if title and key(credit) in {"cr", "credit", "credits"} and re.search(r"\\bcourses?\\b|\\belectives?\\b", title, re.I):
+                    break
+                if not title or key(title) in {"total credits", "course", "courses", "electives"}:
+                    continue
+                identity = (header_row, title_idx, r, title)
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                summary = bool(re.match(r"^\\d+\\s+courses?\\s+of\\b", title, re.I))
+                record = {
+                    "document_type": "programme_structure_note" if summary else "programme_structure_course",
+                    "programme": None, "track": None, "batch": batch,
+                    "structure_group": group, "course_title": title, "credits": credit,
+                    "source": filename, "sheet": ws.title,
+                    "cells": {"course_title": ws.cell(r, title_idx + 1).coordinate,
+                              "credits": ws.cell(r, credit_idx + 1).coordinate},
+                }
+                record["text"] = f"{ws.title}; {group}; {title}; credits {credit if credit is not None else 'not specified'}."
+                out.append(record)
+
+    for header_row in range(1, min(ws.max_row, 8) + 1):
+        mapping = _header_map([ws.cell(header_row, c).value for c in range(1, ws.max_column + 1)])
+        basket_idx = _col(mapping, "baskets", "basket")
+        credit_idx = _col(mapping, "credits", "credit", "credit structure")
+        if basket_idx is None or credit_idx is None:
+            continue
+        for r in range(header_row + 1, ws.max_row + 1):
+            basket = _text(ws.cell(r, basket_idx + 1).value)
+            credit = ws.cell(r, credit_idx + 1).value
+            if basket and isinstance(credit, (int, float)):
+                out.append({
+                    "document_type": "programme_credit_structure", "batch": batch,
+                    "basket": basket, "credits": credit, "source": filename, "sheet": ws.title,
+                    "cells": {"basket": ws.cell(r, basket_idx + 1).coordinate,
+                              "credits": ws.cell(r, credit_idx + 1).coordinate},
+                    "text": f"{ws.title}; basket {basket}; required credits {credit}.",
+                })
+        break
+    return out
+
+
 def extract_archive_records(raw, kind):
+    if kind not in {"minor", "programme"}:
+        raise ValueError("kind must be 'minor' or 'programme'")
     records = []
     with ZipFile(BytesIO(raw)) as archive:
         for filename in archive.namelist():
@@ -38,10 +176,14 @@ def extract_archive_records(raw, kind):
                 continue
             if kind == "minor" and "minor" not in filename.lower():
                 continue
-            if kind == "programme" and "programme_structure" not in filename.lower():
-                continue
             wb = load_workbook(BytesIO(archive.read(filename)), read_only=False, data_only=True)
             for ws in wb.worksheets:
+                if kind == "minor":
+                    records.extend(_minor_records(ws, filename))
+                    continue
+                if kind == "programme" and re.search(r"\\bstruct", ws.title, re.I):
+                    records.extend(_programme_records(ws, filename))
+                    continue
                 header_row, mapped = None, []
                 for r in range(1, min(ws.max_row, 20) + 1):
                     candidate = [field(ws.cell(r, col).value) for col in range(1, ws.max_column + 1)]

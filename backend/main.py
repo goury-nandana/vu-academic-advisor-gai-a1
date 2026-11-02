@@ -23,6 +23,12 @@ def load_docs():
     docs=pdf("4. Student Handbook Aug 2026.pdf")+pdf("SOP STUDENT 17082026 - Final.pdf")
     try:docs.append({"text":get("Course_Plans.txt").decode("utf-8",errors="ignore"),"source":"Course_Plans.txt","url":GH+"Course_Plans.txt"})
     except Exception:pass
+    # Include the programme overview file and the committed official-site reference index.
+    for filename in ("Programme_Structure.txt","website_sources.json"):
+        try:
+            docs.append({"text":get(filename).decode("utf-8",errors="ignore"),"source":filename,"url":GH+urllib.parse.quote(filename)})
+        except Exception:
+            pass
     try:
         from openpyxl import load_workbook
         z=zipfile.ZipFile(io.BytesIO(get("VU_Semester_Data_Split.zip")))

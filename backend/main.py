@@ -130,12 +130,20 @@ async def chat(req:Request):
     try:profile=json.loads(str(form.get("profile","{}")))
     except Exception:profile={}
     uploaded=[]
+    upload_errors=[]
     for item in form.getlist("files"):
         if not hasattr(item,"filename") or not item.filename:continue
         raw=await item.read()
         if len(raw)>15*1024*1024:continue
         extracted=extract_upload(item.filename,raw,client)[:12000]
-        if extracted.strip():uploaded.append({"text":extracted,"source":"Student upload: "+item.filename})
+        if extracted.startswith("Voice-note transcription failed:"):
+            upload_errors.append(item.filename)
+        elif extracted.strip():
+            uploaded.append({"text":extracted,"source":"Student upload: "+item.filename})
+        else:
+            upload_errors.append(item.filename)
+    if upload_errors and not uploaded:
+        return {"answer":"I couldn't read/transcribe "+", ".join(upload_errors)+". Please attach a readable PDF, DOCX, TXT, XLSX, PPTX, or a supported audio recording (WEBM, MP3, WAV, M4A, OGG, FLAC).", "sources":[]}
     rows=uploaded[:4] + search(question,load_docs())[:7]
     ctx="\n\n".join("Source: "+r["source"]+(f", page {r['page']}" if r.get("page") else "")+"\n"+r["text"] for r in rows)
     hist="\n".join(f"{m.get('role')}: {str(m.get('text',''))[:500]}" for m in history[-5:] if isinstance(m,dict))

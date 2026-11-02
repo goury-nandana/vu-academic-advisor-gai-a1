@@ -65,7 +65,19 @@ def search(q,docs):
         if n:scores.append((n/(len(terms)**.45),d))
     scores.sort(key=lambda x:x[0],reverse=True)
     return [d for _,d in scores[:7]]
-SYS="""You are the AI Academic Advisor for Vidyashilp University, Bengaluru. Respond concisely and only from retrieved evidence. Never invent course codes, policy thresholds, eligibility, credits, or student-record facts. Never claim access to private university records; use profile only if explicitly supplied. For B.Tech minor questions, published Data Science and AI/ML tracks list Economics, Marketing, Psychology, Finance, Design, and Law; do not mix programmes' lists. If sources are insufficient, state that and suggest Digicampus or relevant office. Fees: Accounts; professors/HODs: department office; records/exams: Registrar. Specific course codes: advise Digicampus for details."""
+SYS="""You are the AI Academic Advisor for Vidyashilp University, Bengaluru. Respond concisely and only from retrieved evidence. Never invent course codes, policy thresholds, eligibility, credits, or student-record facts. Never claim access to private university records; use profile only if explicitly supplied. For B.Tech minor questions, published Data Science and AI/ML tracks list Economics, Marketing, Psychology, Finance, Design, and Law; do not mix programmes' lists. If sources are insufficient, state that and suggest Digicampus or relevant office. Fees: Accounts; professors/HODs: department office; records/exams: Registrar. Specific course codes: advise Digicampus for details. For minor and programme-structure questions, use only rows explicitly matching the requested programme, minor, batch and named structure group. Never transfer a minor list or structure between programmes or batches. A raw elective slot or slash-delimited alternative is source text, not multiple confirmed course records: preserve it verbatim and state that the source does not resolve it into separate courses. If a code is missing or marked DON’T KNOW, report it as unavailable rather than guessing."""
+SOCIAL_RE = re.compile(
+    r"^(?:hi|hello|hey|good morning|good afternoon|good evening|"
+    r"how are you|how's it going|how do you do|thanks|thank you|"
+    r"thank you so much|good night)[!.?, ]*$",
+    re.I,
+)
+
+SOCIAL_REPLY = (
+    "I’m working normally and ready to help with Vidyashilp University. "
+    "What academic question can I help you with?"
+)
+
 def extract_upload(filename, raw):
     ext=filename.lower().rsplit(".",1)[-1] if "." in filename else ""
     try:
@@ -95,6 +107,8 @@ async def chat(req:Request):
     if not key:raise HTTPException(503,"Set GROQ_API_KEY in Vercel backend environment variables.")
     form=await req.form(); question=str(form.get("question","")).strip()
     if not question:raise HTTPException(400,"question is required")
+    if SOCIAL_RE.fullmatch(question):
+        return {"answer": SOCIAL_REPLY, "sources": []}
     try:history=json.loads(str(form.get("history","[]")))
     except Exception:history=[]
     try:profile=json.loads(str(form.get("profile","{}")))

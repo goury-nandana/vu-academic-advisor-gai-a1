@@ -200,6 +200,16 @@ def _records_from_basket_layout(ws, filename, metadata):
     return records
 
 
+def _explicit_batch_from_sheet(ws, row_idx):
+    """Return a batch label only when the workbook explicitly supplies one."""
+    for r in range(row_idx, 0, -1):
+        for col in range(1, min(ws.max_column, 4) + 1):
+            match = re.search(r"\b(20\d{2})\s*batch\b", str(ws.cell(r, col).value or ""), re.I)
+            if match:
+                return match.group(1)
+    return None
+
+
 def _records_from_sheet(ws, filename, kind):
     header_idx, mapped = _header_row(ws)
     metadata = _metadata_from_filename(filename, ws.title)

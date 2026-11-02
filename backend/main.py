@@ -77,39 +77,76 @@ SOCIAL_RE = re.compile(
 SOCIAL_REPLY = "Hi! How can I help you today?"
 
 def extract_upload(filename, raw, client=None):
+    """Extract text from common files, transcribe voice notes, and describe images."""
     ext=filename.lower().rsplit(".",1)[-1] if "." in filename else ""
     if ext in {"webm","mp3","wav","m4a","ogg","flac","mp4","mpeg","mpga"}:
-        if client is None:
-            return ""
+        if client is None:return ""
         try:
             transcription=client.audio.transcriptions.create(
                 file=(filename, raw),
                 model=os.getenv("GROQ_TRANSCRIPTION_MODEL","whisper-large-v3-turbo"),
                 response_format="text",
-                prompt="Vidyashilp University, academic courses, attendance, semester, credits, admissions.",
+                prompt="Vidyashilp University, academic courses, attendance, semester, credits, admissions, prerequisites.",
             )
-            text=str(transcription).strip()
-            return "Voice note transcript: " + text if text else ""
+            transcript=str(transcription).strip()
+            return "Voice note transcript: "+transcript if transcript else ""
         except Exception as exc:
             return f"Voice-note transcription failed: {exc}"
+    if ext in {"png","jpg","jpeg","webp","gif","bmp","tif","tiff"}:
+        if client is None:return ""
+        try:
+            mime=mimetypes.guess_type(filename)[0] or "image/jpeg"
+            encoded=base64.b64encode(raw).decode("ascii")
+            data_url=f"data:{mime};base64,{encoded}"
+            errors=[]
+            for model in ("meta-llama/llama-4-scout-17b-16e-instruct","llama-3.2-90b-vision-preview"):
+                try:
+                    result=client.chat.completions.create(
+                        model=model,
+                        messages=[{"role":"user","content":[
+                            {"type":"text","text":"Carefully inspect this uploaded image for the student's question. Transcribe visible text, read numbers and tables, and describe relevant content. Do not guess unreadable details."},
+                            {"type":"image_url","image_url":{"url":data_url}},
+                        ]}],
+                        temperature=0.1,max_tokens=1200,
+                    )
+                    description=(result.choices[0].message.content or "").strip()
+                    if description:return "Image contents: "+description
+                except Exception as exc:errors.append(str(exc))
+            return "Image analysis failed: "+"; ".join(errors)
+        except Exception as exc:
+            return f"Image analysis failed: {exc}"
     try:
         if ext=="pdf":
-            return "\\n".join(p.extract_text() or "" for p in PdfReader(io.BytesIO(raw)).pages)
-        if ext in {"txt","md","csv"}:return raw.decode("utf-8",errors="ignore")
+            reader=PdfReader(io.BytesIO(raw))
+            return "\n".join(f"[Page {i+1}]\n"+(p.extract_text() or "") for i,p in enumerate(reader.pages))
+        if ext in {"txt","md","csv"}:return raw.decode("utf-8-sig",errors="replace")
         if ext=="docx":
             from docx import Document
-            return "\\n".join(p.text for p in Document(io.BytesIO(raw)).paragraphs)
+            doc=Document(io.BytesIO(raw))
+            parts=[p.text for p in doc.paragraphs if p.text.strip()]
+            for table in doc.tables:
+                for row in table.rows:parts.append(" | ".join(cell.text for cell in row.cells))
+            return "\n".join(parts)
         if ext=="xlsx":
             from openpyxl import load_workbook
             wb=load_workbook(io.BytesIO(raw),read_only=True,data_only=True)
-            return "\\n".join(" | ".join(str(v) for v in row if v is not None) for ws in wb.worksheets for row in ws.iter_rows(values_only=True))
+            parts=[]
+            for ws in wb.worksheets:
+                parts.append(f"[Sheet: {ws.title}]")
+                parts.extend(" | ".join(str(v) for v in row if v is not None) for row in ws.iter_rows(values_only=True) if any(v is not None for v in row))
+            wb.close()
+            return "\n".join(parts)
         if ext=="pptx":
             from pptx import Presentation
             prs=Presentation(io.BytesIO(raw))
-            return "\\n".join(sh.text for slide in prs.slides for sh in slide.shapes if hasattr(sh,"text"))
-    except Exception:return ""
+            parts=[]
+            for i,slide in enumerate(prs.slides,1):
+                lines=[sh.text for sh in slide.shapes if hasattr(sh,"text") and sh.text.strip()]
+                if lines:parts.append(f"[Slide {i}]\n"+"\n".join(lines))
+            return "\n".join(parts)
+    except Exception as exc:
+        return f"Document extraction failed: {exc}"
     return ""
-
 @app.get("/api")
 @app.get("/api/")
 async def health():return {"status":"ok","service":"VU Academic Advisor API"}

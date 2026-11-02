@@ -73,22 +73,13 @@ class ProgrammeDataBuilderTests(unittest.TestCase):
         self.assertTrue(all(row.get("course_code") and row.get("course_title") for row in courses))
 
     def test_committed_programme_structures_are_loaded(self):
-        from programme_data import PROGRAMME_ARCHIVE
-        from openpyxl import load_workbook
-        from zipfile import ZipFile
-        with ZipFile(PROGRAMME_ARCHIVE) as archive:
-            for filename in archive.namelist():
-                if "programme_structure" not in filename.lower() or not filename.lower().endswith(".xlsx"):
-                    continue
-                with archive.open(filename) as stream:
-                    wb = load_workbook(stream, read_only=True, data_only=True)
-                    ws = wb.active
-                    print("PROGRAMME_HEADERS", filename, list(ws.iter_rows(min_row=1, max_row=min(ws.max_row, 8), values_only=True))[:8])
-                    wb.close()
         rows = load_programme_structure_records()
-        self.assertGreater(len(rows), 0)
+        course_rows = [row for row in rows if row.get("document_type") == "programme_structure_course"]
+        raw_slots = [row for row in rows if row.get("document_type") == "raw_elective_slot"]
+        self.assertGreater(len(course_rows), 0)
+        self.assertGreater(len(raw_slots), 0)
         self.assertTrue(all(row.get("source") and row.get("sheet") and row.get("cells") for row in rows))
-        self.assertTrue(all(row.get("document_type") in {"programme_structure_course", "raw_elective_slot", "raw_programme_slot"} for row in rows))
+        self.assertEqual({str(row["batch"]) for row in course_rows}, {"2022", "2023", "2024", "2025", "2026"})
 
     def test_workbook_archives_load_only_matching_files(self):
         with tempfile.TemporaryDirectory() as tmp:

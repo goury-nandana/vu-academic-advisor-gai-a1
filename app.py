@@ -402,97 +402,44 @@ def find_logo():
 logo_path = os.path.join(APP_DIR, "Logo.png")
 campus_path = os.path.join(APP_DIR, "campus.jpg")
 
-# Reference-inspired full-canvas campus background and centered advisor pill.
 campus_b64 = ""
 if os.path.isfile(campus_path):
-    with open(campus_path, "rb") as campus_file:
-        campus_b64 = base64.b64encode(campus_file.read()).decode("ascii")
-
-st.markdown(f"""
-<style>
-:root {{ --ref-red:#c71932; --ref-blue:#24499a; --ref-ink:#1c2640; }}
-[data-testid="stAppViewContainer"] {{
-  background-image: linear-gradient(rgba(238,246,255,.34),rgba(255,248,247,.42)),
-    url("data:image/jpeg;base64,{campus_b64}") !important;
-  background-size: cover !important; background-position: center center !important;
-  background-attachment: fixed !important;
-}}
-[data-testid="stMain"],[data-testid="stMainBlockContainer"] {{
-  background:transparent !important;
-}}
-[data-testid="stMainBlockContainer"] {{max-width:1120px !important; padding-top:1.1rem !important;}}
-[data-testid="stSidebar"],[data-testid="stSidebar"]>div:first-child {{
-  background:rgba(235,244,255,.84) !important; backdrop-filter:blur(18px) !important;
-  border-right:1px solid rgba(255,255,255,.65) !important;
-}}
-[data-testid="stSidebar"] * {{color:#202b45 !important;}}
-[data-testid="stSidebar"] [data-testid="stExpander"] {{
-  background:rgba(255,255,255,.54) !important; border:1px solid rgba(255,255,255,.7) !important;
-  border-radius:15px !important;
-}}
-[data-testid="stSidebar"] [data-testid="stButton"]>button {{
-  background:var(--ref-red) !important;color:#fff !important;border:0 !important;
-}}
-[data-testid="stSidebar"] [data-baseweb="select"]>div,
-[data-testid="stSidebar"] [data-baseweb="input"]>div {{background:#fff !important;border-radius:10px !important;}}
-[data-testid="stSidebar"] [data-baseweb="select"] span,
-[data-testid="stSidebar"] [data-baseweb="input"] input {{color:#202b45 !important;}}
-.vu-pill-header {{
-  width:max-content; max-width:94%; margin:4px auto 22px; padding:13px 28px;
-  border-radius:50px; display:flex; align-items:center; gap:15px;
-  background:rgba(255,255,255,.91); border:1px solid rgba(255,255,255,.8);
-  box-shadow:0 8px 25px rgba(32,56,91,.12); color:var(--ref-blue);
-  font-weight:700; letter-spacing:.08em; font-size:17px;
-}}
-.vu-pill-mark {{width:36px;height:36px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;}}
-.vu-pill-mark img {{width:27px;height:27px;object-fit:contain;}}
-.info-box {{
-  background:rgba(255,255,255,.9) !important; border:1px solid rgba(255,255,255,.8) !important;
-  border-left:4px solid var(--ref-red) !important; border-radius:17px !important;
-  box-shadow:0 7px 22px rgba(35,48,72,.1) !important; backdrop-filter:blur(12px) !important;
-}}
-.info-box h3 {{color:var(--ref-blue) !important;}}
-.bubble-user-inner {{background:var(--ref-blue) !important;color:white !important;border-radius:22px 22px 6px 22px !important;}}
-.bubble-bot-inner {{background:rgba(255,255,255,.94) !important;border-color:rgba(255,255,255,.8) !important;color:#24283b !important;backdrop-filter:blur(12px) !important;}}
-[data-testid="stButton"]>button {{border-radius:24px !important;}}
-[data-testid="stMainBlockContainer"] [key^="sug_"] button,
-[data-testid="stMainBlockContainer"] button[kind="secondary"] {{
-  background:#ffe9ec !important;color:var(--ref-red) !important;border:1px solid #f9d4db !important;
-  font-weight:600 !important;
-}}
-.st-key-whatsapp_composer {{
-  background:rgba(255,255,255,.94) !important;border:1px solid rgba(255,255,255,.85) !important;
-  border-radius:42px !important;box-shadow:0 10px 30px rgba(26,42,70,.15) !important;
-  backdrop-filter:blur(16px) !important;max-width:940px !important;
-}}
-.st-key-whatsapp_composer [data-testid="stTextInput"] input {{
-  border-radius:30px !important;background:rgba(255,255,255,.96) !important;
-  border:1px solid #e5e7ee !important;color:#252b40 !important;
-}}
-.st-key-whatsapp_composer [data-testid="stPopover"]>button {{
-  border-radius:50% !important;background:#f5f7fc !important;color:var(--ref-blue) !important;
-}}
-.st-key-whatsapp_composer [data-testid="stAudioInput"] button {{
-  border-radius:50% !important;background:#fff !important;color:var(--ref-red) !important;
-}}
-.st-key-whatsapp_composer [data-testid="stButton"]>button[kind="primary"] {{
-  background:var(--ref-red) !important;color:white !important;border:0 !important;border-radius:50% !important;
-  box-shadow:0 4px 12px rgba(199,25,50,.25) !important;
-}}
-.composer-disclaimer {{color:#30374b !important;background:rgba(255,255,255,.72);border-radius:12px;padding:7px 12px;}}
-@media(max-width:760px) {{.vu-pill-header{{font-size:13px;padding:10px 18px;}}}}
-</style>
-""", unsafe_allow_html=True)
-
+    with open(campus_path,"rb") as f: campus_b64=base64.b64encode(f.read()).decode("ascii")
 logo_b64 = ""
 if os.path.isfile(logo_path):
-    with open(logo_path, "rb") as logo_file:
-        logo_b64 = base64.b64encode(logo_file.read()).decode("ascii")
-st.markdown(
-    f'<div class="vu-pill-header"><span class="vu-pill-mark"><img src="data:image/png;base64,{logo_b64}"></span>'
-    '<span>VU ACADEMIC ADVISOR</span></div>',
-    unsafe_allow_html=True
-)
+    with open(logo_path,"rb") as f: logo_b64=base64.b64encode(f.read()).decode("ascii")
+st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400;500;600;700&display=swap');
+:root{{--vu-blue:#21499b;--vu-red:#c71932;--vu-ink:#202b40;}}
+html,body,[class*="css"],button,input,textarea,select{{font-family:'Google Sans Flex','Google Sans','Product Sans',Arial,sans-serif!important}}
+[data-testid="stAppViewContainer"]{{background:linear-gradient(rgba(231,241,255,.42),rgba(255,250,250,.42)),url("data:image/jpeg;base64,{campus_b64}") center center/cover fixed!important;}}
+[data-testid="stMain"],[data-testid="stMainBlockContainer"]{{background:transparent!important;}}
+[data-testid="stMainBlockContainer"]{{max-width:1160px!important;padding:1rem 2rem 1.4rem!important;}}
+[data-testid="stSidebar"],[data-testid="stSidebar"]>div:first-child{{background:rgba(232,242,255,.84)!important;backdrop-filter:blur(18px)!important;border-right:1px solid #ffffffaa!important;}}
+[data-testid="stSidebar"] *{{color:var(--vu-ink)!important;}}[data-testid="stSidebar"] label{{font-weight:600!important;color:#35435d!important;}}
+[data-testid="stSidebar"] hr{{border-color:#21499b20!important;}}
+[data-testid="stSidebar"] [data-baseweb="select"]>div,[data-testid="stSidebar"] [data-baseweb="input"]>div{{background:#ffffffd9!important;border:1px solid #dfe7f2!important;border-radius:12px!important;}}
+[data-testid="stSidebar"] [data-baseweb="select"] span,[data-testid="stSidebar"] [data-baseweb="input"] input{{color:var(--vu-ink)!important;}}
+[data-testid="stSidebar"] [data-testid="stExpander"]{{background:#ffffff80!important;border:1px solid #ffffffb8!important;border-radius:16px!important;}}
+[data-testid="stSidebar"] [data-testid="stButton"]>button{{background:var(--vu-red)!important;color:#fff!important;border:0!important;border-radius:30px!important;font-weight:600!important;}}
+.vu-pill-header{{width:max-content;max-width:95%;margin:5px auto 22px;padding:12px 27px;border-radius:50px;display:flex;align-items:center;gap:14px;background:#fffffff0;border:1px solid #ffffffdf;box-shadow:0 8px 25px #1b30511f;color:var(--vu-blue);font-weight:700;letter-spacing:.08em;font-size:16px;}}
+.vu-pill-mark{{width:38px;height:38px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;overflow:hidden;}}.vu-pill-mark img{{width:28px;height:28px;object-fit:contain;}}
+.info-box{{background:#ffffffe0!important;border:1px solid #ffffffd9!important;border-left:4px solid var(--vu-red)!important;border-radius:20px!important;padding:22px 25px!important;margin:12px 0 20px!important;box-shadow:0 8px 25px #1b305117!important;backdrop-filter:blur(13px)!important;}}
+.info-box h3{{color:var(--vu-blue)!important;font-size:23px;margin:0 0 8px;}}.info-box p{{color:#53627a!important;line-height:1.6;margin:0;}}
+.bubble-user{{display:flex;justify-content:flex-end;margin:16px 0;}}.bubble-user-inner{{max-width:78%;background:var(--vu-blue)!important;color:white!important;padding:12px 18px;border-radius:22px 22px 6px 22px;line-height:1.55;box-shadow:0 5px 14px #21499b2b;}}.bubble-user-inner *{{color:white!important;}}
+.bubble-bot{{display:flex;align-items:flex-end;gap:10px;justify-content:flex-start;margin:16px 0;}}.bubble-bot-inner{{max-width:84%;background:#ffffffe8!important;color:var(--vu-ink)!important;border:1px solid #ffffffdc!important;padding:15px 19px;border-radius:20px 20px 20px 6px;line-height:1.65;box-shadow:0 5px 17px #1b305114;backdrop-filter:blur(12px);}}
+.vu-bot-avatar{{width:34px;height:34px;flex:0 0 34px;border-radius:50%;object-fit:cover;background:white;border:2px solid white;box-shadow:0 2px 8px #1b30511f;}}
+.st-key-whatsapp_composer{{position:sticky;bottom:8px;z-index:30;background:#fffffff0!important;border:1px solid #ffffffeb!important;border-radius:38px!important;padding:9px 11px!important;margin:20px auto 6px!important;max-width:940px!important;box-shadow:0 10px 30px #1b305126!important;backdrop-filter:blur(16px)!important;}}
+.st-key-whatsapp_composer [data-testid="stTextInput"] input{{min-height:48px!important;border-radius:30px!important;border:1px solid #e3e8f1!important;background:#fffffff5!important;color:var(--vu-ink)!important;padding:0 17px!important;box-shadow:none!important;}}.st-key-whatsapp_composer [data-testid="stTextInput"] input::placeholder{{color:#8a91a0!important;}}
+.st-key-whatsapp_composer [data-testid="stPopover"]>button,.st-key-whatsapp_composer [data-testid="stAudioInput"] button{{min-height:44px!important;width:44px!important;border-radius:50%!important;background:white!important;color:var(--vu-red)!important;border:1px solid #f2dce1!important;}}
+.st-key-whatsapp_composer [data-testid="stButton"]>button[kind="primary"]{{min-height:46px!important;width:46px!important;border-radius:50%!important;padding:0!important;background:var(--vu-red)!important;border:0!important;color:white!important;font-size:22px!important;box-shadow:0 4px 12px #c719322b!important;}}
+.composer-disclaimer{{max-width:940px;margin:7px auto 15px;text-align:center;color:#59657a!important;font-size:11px;background:#ffffffad;border-radius:14px;padding:7px;}}
+[data-testid="stMainBlockContainer"] button[kind="secondary"]{{background:#ffe9ec!important;color:var(--vu-red)!important;border:1px solid #f6d2da!important;font-weight:600!important;border-radius:28px!important;}}
+@media(max-width:760px){{[data-testid="stMainBlockContainer"]{{padding:1rem .65rem!important;}}.bubble-user-inner,.bubble-bot-inner{{max-width:94%;}}.st-key-whatsapp_composer{{border-radius:23px!important;padding:7px!important;}}.vu-pill-header{{font-size:13px;padding:9px 17px;}}}}
+</style>
+""",unsafe_allow_html=True)
+st.markdown(f'<div class="vu-pill-header"><span class="vu-pill-mark"><img src="data:image/png;base64,{logo_b64}"></span><span>VU ACADEMIC ADVISOR</span></div>',unsafe_allow_html=True)
 
 # ============================================================
 # SIDEBAR (OPTIONAL DEFAULTS)
@@ -1687,9 +1634,19 @@ def show_user_bubble(text):
 
 def show_bot_bubble(text):
     rendered = render_bubble_text(text)
+    bot_avatar_path = os.path.join(APP_DIR, "images.jpg")
+    if not os.path.isfile(bot_avatar_path):
+        bot_avatar_path = logo_path
+    avatar_b64 = ""
+    avatar_mime = "image/jpeg"
+    if bot_avatar_path and os.path.isfile(bot_avatar_path):
+        with open(bot_avatar_path, "rb") as avatar_file:
+            avatar_b64 = base64.b64encode(avatar_file.read()).decode("ascii")
+        if bot_avatar_path.lower().endswith(".png"):
+            avatar_mime = "image/png"
+    avatar_html = f'<img class="vu-bot-avatar" src="data:{avatar_mime};base64,{avatar_b64}" alt="VU AI Advisor">'
     st.markdown(
-        f'<div class="bubble-bot">'
-        f'<div class="bubble-bot-inner">{rendered}</div></div>',
+        f'<div class="bubble-bot">{avatar_html}<div class="bubble-bot-inner">{rendered}</div></div>',
         unsafe_allow_html=True
     )
 

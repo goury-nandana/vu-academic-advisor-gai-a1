@@ -53,366 +53,41 @@ st.set_page_config(
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400;500;600;700&display=swap');
-
-html, body, [class*="css"] {
-    font-family: 'Google Sans Flex', 'Google Sans', 'Product Sans', Arial, sans-serif;
-}
-
-.stApp, [data-testid="stAppViewContainer"],
-[data-testid="stAppViewBlockContainer"],
-[data-testid="block-container"] {
-    background: #ffffff !important;
-}
-
-/* Force header column text, headers, and standard markdown in main area to dark blue/slate */
-[data-testid="stMainBlockContainer"] [data-testid="stColumn"] h1,
-[data-testid="stMainBlockContainer"] [data-testid="stColumn"] h2,
-[data-testid="stMainBlockContainer"] [data-testid="stColumn"] h3,
-[data-testid="stMainBlockContainer"] [data-testid="stColumn"] p,
-[data-testid="stMainBlockContainer"] [data-testid="stColumn"] strong,
-[data-testid="stMainBlockContainer"] [data-testid="stColumn"] span,
-[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] h1,
-[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] h2,
-[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] h3,
-[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] p,
-[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] strong,
-[data-testid="stMainBlockContainer"] [data-testid="stMarkdownContainer"] span {
-    color: #0b4f8a !important;
-}
-
-/* -------------------- Sidebar -------------------- */
-[data-testid="stSidebar"] {
-    background: #082f5b !important;
-    border-right: 1px solid #dbe4ee !important;
-}
-[data-testid="stSidebar"] > div:first-child {
-    background: #082f5b !important;
-}
-[data-testid="stSidebar"] * {
-    color: #ffffff !important;
-}
-[data-testid="stSidebar"] hr {
-    border-color: rgba(255,255,255,0.20) !important;
-}
-[data-testid="stSidebar"] label {
-    color: #ffffff !important;
-    font-weight: 500 !important;
-}
-[data-testid="stSidebar"] input {
-    color: #172033 !important;
-    background: #ffffff !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] > div,
-[data-testid="stSidebar"] [data-baseweb="input"] > div {
-    background: #ffffff !important;
-    border-color: #d9e2ec !important;
-    color: #172033 !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] span,
-[data-testid="stSidebar"] [data-baseweb="input"] input {
-    color: #172033 !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] svg {
-    fill: #34516d !important;
-}
-[data-testid="stSidebar"] div[data-testid="stButton"] > button {
-    background: transparent !important;
-    border: 1px solid rgba(255,255,255,0.70) !important;
-    color: #ffffff !important;
-    box-shadow: none !important;
-}
-[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
-    background: rgba(255,255,255,0.10) !important;
-    border-color: #ffffff !important;
-    color: #ffffff !important;
-}
-
-/* -------------------- Bottom chat input -------------------- */
-[data-testid="stBottom"], [data-testid="stBottom"] > div {
-    background: #ffffff !important;
-    border-top: 1px solid #e7ebf0 !important;
-    padding: 10px 16px !important;
-}
-[data-testid="stChatInputContainer"],
-[data-testid="stChatInputContainer"] > div {
-    background: #ffffff !important;
-    border: 1.5px solid #d9e1ea !important;
-    border-radius: 26px !important;
-    box-shadow: 0 2px 8px rgba(8,47,91,0.07) !important;
-}
-[data-testid="stChatInputContainer"] textarea {
-    color: #172033 !important;
-    caret-color: #0b4f8a !important;
-    background: transparent !important;
-    font-size: 15px !important;
-}
-[data-testid="stChatInputContainer"] textarea::placeholder {
-    color: #9aa7b5 !important;
-}
-
-/* -------------------- ChatGPT-inspired light composer -------------------- */
-.st-key-whatsapp_composer {
-    position: sticky;
-    bottom: 0;
-    z-index: 30;
-    background: rgba(247, 249, 252, 0.98);
-    border: 1px solid #dbe3ee;
-    border-radius: 28px;
-    padding: 10px 12px 8px;
-    margin: 22px auto 6px;
-    max-width: 980px;
-    box-shadow: 0 8px 28px rgba(20, 42, 75, 0.10);
-}
-.st-key-whatsapp_composer [data-testid="stTextInput"] { margin: 0 !important; }
-.st-key-whatsapp_composer [data-testid="stTextInput"] input {
-    min-height: 48px !important;
-    border-radius: 24px !important;
-    border: 1px solid #e0e6ef !important;
-    background: #ffffff !important;
-    color: #172033 !important;
-    padding: 0 18px !important;
-    box-shadow: none !important;
-}
-.st-key-whatsapp_composer [data-testid="stTextInput"] input:focus {
-    border-color: #6b9be8 !important;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.10) !important;
-}
-.st-key-whatsapp_composer [data-testid="stAudioInput"] {
-    min-width: 0 !important;
-    margin: 0 !important;
-}
-.st-key-whatsapp_composer [data-testid="stAudioInput"] button {
-    min-height: 46px !important;
-    width: 46px !important;
-    border-radius: 50% !important;
-    border: 1px solid #dce4ef !important;
-    background: #f0f4fa !important;
-    color: #25466f !important;
-}
-.st-key-whatsapp_composer [data-testid="stPopover"] > button {
-    min-height: 46px !important;
-    width: 46px !important;
-    border-radius: 50% !important;
-    border: 1px solid #dce4ef !important;
-    background: #f0f4fa !important;
-    color: #25466f !important;
-    font-size: 23px !important;
-}
-.st-key-whatsapp_composer [data-testid="stButton"] > button[kind="primary"] {
-    min-height: 48px !important;
-    width: 48px !important;
-    border-radius: 50% !important;
-    padding: 0 !important;
-    background: #2563eb !important;
-    border: 1px solid #2563eb !important;
-    color: #ffffff !important;
-    font-size: 20px !important;
-    box-shadow: 0 3px 9px rgba(37, 99, 235, 0.22) !important;
-}
-.st-key-whatsapp_composer [data-testid="stButton"] > button[kind="primary"]:hover {
-    background: #1d4ed8 !important;
-    border-color: #1d4ed8 !important;
-}
-.st-key-whatsapp_composer [data-testid="stFileUploader"] { min-width: 280px; }
-.composer-disclaimer {
-    max-width: 980px;
-    margin: 5px auto 12px;
-    text-align: center;
-    color: #748196;
-    font-size: 11px;
-    letter-spacing: 0.01em;
-}
-
-/* -------------------- General buttons -------------------- */
-div[data-testid="stButton"] > button {
-    background: #ffffff !important;
-    border: 1px solid #d9e2ec !important;
-    border-radius: 20px !important;
-    color: #0b4f8a !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    padding: 9px 14px !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
-    transition: all 0.15s !important;
-}
-div[data-testid="stButton"] > button:hover {
-    border-color: #0b4f8a !important;
-    color: #0b4f8a !important;
-    background: #f3f7fb !important;
-}
-
-/* -------------------- Welcome card -------------------- */
-.info-box {
-    background: #ffffff;
-    padding: 17px 20px;
-    border-radius: 14px;
-    border: 1px solid #e1e7ee;
-    border-left: 4px solid #0b4f8a;
-    margin-bottom: 18px;
-    box-shadow: 0 2px 8px rgba(8,47,91,0.05);
-}
-.info-box h3 {
-    color: #172033 !important;
-    margin-bottom: 8px !important;
-}
-.info-box p {
-    color: #334155 !important;
-    font-size: 15px !important;
-    line-height: 1.65 !important;
-}
-
-/* -------------------- Chat -------------------- */
-[data-testid="stChatMessage"] {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 4px 0 !important;
-}
-.stChatMessage .stMarkdown p,
-.stChatMessage .stMarkdown {
-    font-size: 15px !important;
-    line-height: 1.7 !important;
-}
-.bubble-user {
-    display: flex;
-    justify-content: flex-end;
-    margin: 11px 0 14px;
-}
-.bubble-user-inner, .bubble-user-inner * {
-    background: #0b4f8a;
-    color: #ffffff !important;
-    border-radius: 18px 18px 5px 18px;
-    padding: 11px 17px;
-    max-width: 68%;
-    font-size: 15px;
-    line-height: 1.65;
-    box-shadow: 0 2px 8px rgba(8,47,91,0.14);
-    word-wrap: break-word;
-}
-.bubble-bot {
-    display: flex;
-    justify-content: flex-start;
-    margin: 11px 0 14px;
-}
-.bubble-bot-inner {
-    background: #f7f9fc;
-    color: #172033;
-    border: 1px solid #dfe6ee;
-    border-radius: 18px 18px 18px 5px;
-    padding: 12px 17px;
-    max-width: 76%;
-    font-size: 15px;
-    line-height: 1.7;
-    box-shadow: 0 2px 7px rgba(8,47,91,0.05);
-    word-wrap: break-word;
-}
-
-/* -------------------- Sources -------------------- */
-.vu-title { color: #0b4f8a !important; }
-.source-panel, .source-panel * { color: #6b7280 !important; }
-.source-panel .source-label { color: #0b4f8a !important; font-weight: 600; }
-[data-testid="stExpander"] summary { color: #6b7280 !important; font-size: 13px !important; }
-[data-testid="stExpander"] a { color: #0b4f8a !important; }
-[data-testid="stExpander"] { border-color: #e1e6ec !important; }
-
-.footer-text {
-    text-align: center;
-    color: #a1aab5;
-    font-size: 11px;
-    padding-top: 20px;
-}
-
-#MainMenu, footer { visibility: hidden; }
-
-/* Selected concept 3: university-blue sidebar with campus-inspired light canvas */
-:root {
-    --vu-forest: #174f83;
-    --vu-deep: #0d3158;
-    --vu-sage: #e5eef8;
-    --vu-cream: #f5f7fb;
-    --vu-ink: #243447;
-    --vu-muted: #66788d;
-    --vu-gold: #d0a65a;
-}
-html, body, [class*="css"], button, input, textarea {
-    font-family: 'Google Sans Flex', 'Google Sans', 'Product Sans', Arial, sans-serif !important;
-}
-.stApp, [data-testid="stAppViewContainer"],
-[data-testid="stAppViewBlockContainer"], [data-testid="block-container"] {
-    background: var(--vu-cream) !important;
-}
-[data-testid="stHeader"] { background: transparent !important; }
-[data-testid="stSidebar"], [data-testid="stSidebar"] > div:first-child {
-    background: var(--vu-deep) !important;
-}
-[data-testid="stSidebar"] * { color: #f4f7fc !important; }
-[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,.18) !important; }
-[data-testid="stSidebar"] [data-baseweb="select"] > div,
-[data-testid="stSidebar"] [data-baseweb="input"] > div {
-    background: #f8fbff !important; border-color: #d5e0ee !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] span,
-[data-testid="stSidebar"] [data-baseweb="input"] input { color: #243447 !important; }
-[data-testid="stSidebar"] div[data-testid="stButton"] > button {
-    border: 1px solid rgba(240,246,255,.55) !important;
-    color: #f7f9fc !important; background: transparent !important;
-}
-[data-testid="stMainBlockContainer"] h1,
-[data-testid="stMainBlockContainer"] h2,
-[data-testid="stMainBlockContainer"] h3 { color: var(--vu-deep) !important; }
-[data-testid="stMainBlockContainer"] p,
-[data-testid="stMainBlockContainer"] span { color: var(--vu-ink); }
-.info-box {
-    background: #ffffff !important; border: 1px solid #e1e8f1 !important;
-    border-left: 4px solid var(--vu-forest) !important; border-radius: 18px !important;
-    box-shadow: 0 8px 24px rgba(24,55,88,.06) !important;
-}
-.bubble-user-inner, .bubble-user-inner * {
-    background: var(--vu-forest) !important; color: #fff !important;
-    border-radius: 20px 20px 6px 20px; padding: 12px 18px;
-}
-.bubble-bot-inner {
-    background: #ffffff !important; color: var(--vu-ink) !important;
-    border: 1px solid #e1e8f1 !important; border-radius: 20px 20px 20px 6px;
-}
-.st-key-whatsapp_composer {
-    background: rgba(255,255,255,.98) !important;
-    border: 1px solid #dce5f0 !important; border-radius: 30px !important;
-    box-shadow: 0 12px 30px rgba(24,55,88,.10) !important;
-}
-.st-key-whatsapp_composer [data-testid="stTextInput"] input {
-    background: #fff !important; border: 1px solid #dce5f0 !important;
-    color: var(--vu-ink) !important; border-radius: 24px !important;
-}
-.st-key-whatsapp_composer [data-testid="stPopover"] > button,
-.st-key-whatsapp_composer [data-testid="stAudioInput"] button {
-    background: var(--vu-sage) !important; color: var(--vu-deep) !important;
-    border: 1px solid #d4e0ee !important; border-radius: 50% !important;
-}
-.st-key-whatsapp_composer [data-testid="stButton"] > button[kind="primary"] {
-    background: var(--vu-forest) !important; border: 1px solid var(--vu-forest) !important;
-    color: #fff !important; border-radius: 50% !important;
-}
-.campus-hero {
-    min-height: 190px; border-radius: 22px; overflow: hidden;
-    background-size: cover; background-position: center 48%;
-    display: flex; align-items: flex-end; padding: 24px 30px;
-    margin: 6px 0 24px; box-shadow: 0 10px 28px rgba(24,55,88,.13);
-    position: relative;
-}
-.campus-hero:before {
-    content: ""; position: absolute; inset: 0;
-    background: linear-gradient(90deg, rgba(10,39,72,.78), rgba(10,39,72,.12));
-}
-.campus-hero-copy { position: relative; z-index: 1; color: #fff; }
-.campus-hero-copy h1 { color: #fff !important; margin: 0; font-size: 30px; }
-.campus-hero-copy p { color: #f2f6fc !important; margin: 6px 0 0; }
-.footer-text, .composer-disclaimer { color: var(--vu-muted) !important; }
-[data-testid="stExpander"] { border-color: #dce5f0 !important; border-radius: 14px !important; }
-@media (max-width: 760px) {
-    .campus-hero { min-height: 145px; padding: 18px; }
-    .campus-hero-copy h1 { font-size: 23px; }
-}
+:root{--navy:#183b5b;--deep:#102c47;--blue:#2f6f9f;--pale:#eaf2f8;--paper:#f7f6f2;--ink:#243343;--muted:#718091;--line:#e4e8eb;}
+html,body,[class*="css"],button,input,textarea,select{font-family:'Google Sans Flex','Google Sans','Product Sans',Arial,sans-serif!important}
+.stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"],[data-testid="stMainBlockContainer"]{background:var(--paper)!important;color:var(--ink)!important}
+[data-testid="stHeader"]{background:transparent!important}
+[data-testid="stSidebar"],[data-testid="stSidebar"]>div:first-child{background:linear-gradient(165deg,var(--navy),var(--deep))!important}
+[data-testid="stSidebar"] *{color:#f6f8fb!important}
+[data-testid="stSidebar"] hr{border-color:rgba(255,255,255,.16)!important}
+[data-testid="stSidebar"] label{color:#e7eef5!important;font-weight:500!important}
+[data-testid="stSidebar"] [data-baseweb="select"]>div,[data-testid="stSidebar"] [data-baseweb="input"]>div{background:#fff!important;border:1px solid #d9e2e9!important;border-radius:10px!important}
+[data-testid="stSidebar"] [data-baseweb="select"] span,[data-testid="stSidebar"] [data-baseweb="input"] input{color:#243343!important}
+[data-testid="stSidebar"] [data-testid="stExpander"]{background:rgba(255,255,255,.055)!important;border:1px solid rgba(255,255,255,.17)!important;border-radius:13px!important}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary{color:#fff!important}
+[data-testid="stSidebar"] [data-testid="stButton"]>button{background:transparent!important;color:#fff!important;border:1px solid rgba(255,255,255,.4)!important;border-radius:22px!important}
+[data-testid="stMainBlockContainer"]{max-width:1180px!important;padding-top:2rem!important}
+[data-testid="stMainBlockContainer"] h1,[data-testid="stMainBlockContainer"] h2,[data-testid="stMainBlockContainer"] h3{color:var(--navy)!important;letter-spacing:-.025em}
+[data-testid="stMainBlockContainer"] p{color:var(--ink)}
+.campus-hero{min-height:210px;border-radius:20px;overflow:hidden;background-size:cover;background-position:center 48%;display:flex;align-items:flex-end;padding:30px 34px;margin:8px 0 24px;position:relative;box-shadow:0 12px 32px rgba(20,45,67,.13)}
+.campus-hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(13,37,59,.82),rgba(13,37,59,.42) 58%,rgba(13,37,59,.08))}
+.campus-hero-copy{position:relative;z-index:1;max-width:620px;color:#fff!important}
+.campus-hero-copy h1{color:#fff!important;font-size:30px;font-weight:700;margin:0 0 8px;line-height:1.2}
+.campus-hero-copy p{color:#f4f7fa!important;font-size:15px;margin:0;line-height:1.55}
+.info-box{background:#fff!important;border:1px solid var(--line)!important;border-left:4px solid var(--blue)!important;border-radius:16px!important;padding:22px 25px!important;margin:12px 0 24px!important;box-shadow:0 5px 18px rgba(28,52,72,.045)!important}
+.info-box h3{font-size:23px;margin:0 0 8px;color:var(--navy)!important}.info-box p{margin:0;color:#526274!important;line-height:1.6}
+.bubble-user{display:flex;justify-content:flex-end;margin:16px 0}.bubble-user-inner{max-width:78%;background:var(--navy)!important;color:#fff!important;padding:12px 17px;border-radius:18px 18px 5px 18px;line-height:1.55}.bubble-user-inner *{color:#fff!important}
+.bubble-bot{display:flex;justify-content:flex-start;margin:16px 0}.bubble-bot-inner{max-width:88%;background:#fff!important;color:var(--ink)!important;border:1px solid var(--line)!important;padding:16px 19px;border-radius:18px 18px 18px 5px;line-height:1.65;box-shadow:0 3px 12px rgba(28,52,72,.045)}
+.st-key-whatsapp_composer{position:sticky;bottom:8px;z-index:30;background:#fff!important;border:1px solid #dfe5e9!important;border-radius:25px!important;padding:10px 12px!important;margin:25px auto 7px!important;max-width:1020px;box-shadow:0 9px 28px rgba(24,48,70,.11)!important}
+.st-key-whatsapp_composer [data-testid="stTextInput"]{margin:0!important}
+.st-key-whatsapp_composer [data-testid="stTextInput"] input{min-height:48px!important;border-radius:25px!important;border:1px solid #e1e6eb!important;background:#fbfcfd!important;color:var(--ink)!important;padding:0 17px!important;box-shadow:none!important}
+.st-key-whatsapp_composer [data-testid="stTextInput"] input::placeholder{color:#8794a1!important}
+.st-key-whatsapp_composer [data-testid="stPopover"]>button,.st-key-whatsapp_composer [data-testid="stAudioInput"] button{min-height:46px!important;width:46px!important;border-radius:50%!important;background:var(--pale)!important;color:var(--navy)!important;border:1px solid #d8e4ed!important}
+.st-key-whatsapp_composer [data-testid="stButton"]>button[kind="primary"]{min-height:48px!important;width:48px!important;border-radius:50%!important;padding:0!important;background:var(--blue)!important;border:1px solid var(--blue)!important;color:#fff!important;font-size:21px!important;box-shadow:0 3px 10px rgba(47,111,159,.2)!important}
+.composer-disclaimer{max-width:1020px;margin:7px auto 15px;text-align:center;color:#82909d!important;font-size:11px}
+[data-testid="stButton"]>button{border-radius:22px;border-color:#dce3e9;color:var(--navy)}
+[data-testid="stExpander"]{border-color:#e0e6eb!important;border-radius:13px!important}
+@media(max-width:760px){[data-testid="stMainBlockContainer"]{padding:1rem .8rem 1.2rem!important}.campus-hero{min-height:155px;padding:20px}.campus-hero-copy h1{font-size:23px}.bubble-user-inner,.bubble-bot-inner{max-width:94%}.st-key-whatsapp_composer{border-radius:19px!important;padding:8px!important}}
 </style>
 """, unsafe_allow_html=True)
 # ============================================================
@@ -420,7 +95,7 @@ html, body, [class*="css"], button, input, textarea {
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
-APP_VERSION = "2026-11-02-concept3-blue-sidebar-google-sans-v2"
+APP_VERSION = "2026-11-02-complete-ui-redesign-v1"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Self-contained academic knowledge base: allows deployment when GitHub permits
@@ -734,8 +409,8 @@ with header_col1:
 with header_col2:
     st.markdown("""
         <div style="padding: 8px 0 10px;">
-            <div style="font-size: 27px;font-weight:700;color:#244b3d;line-height:1.2;">Vidyashilp University</div>
-            <div style="font-size:14px;font-weight:500;color:#69786f;margin-top:5px;">AI Academic Advisor <span style="color:#477b58;">● Online</span></div>
+            <div style="font-size: 27px;font-weight:700;color:#183b5b;line-height:1.2;">Vidyashilp University</div>
+            <div style="font-size:14px;font-weight:500;color:#718091;margin-top:5px;">AI Academic Advisor <span style="color:#2f6f9f;">● Online</span></div>
         </div>
     """, unsafe_allow_html=True)
 

@@ -23,7 +23,7 @@ function fmt(s: number) {
 }
 
 function renderInline(text: string) {
-  const tokens = text.split(/(\\*\\*[^*]+\\*\\*|\\*[^*]+\\*)/g);
+  const tokens = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return tokens.map((token, index) => {
     if (token.startsWith("**") && token.endsWith("**")) return <strong key={index}>{token.slice(2, -2)}</strong>;
     if (token.startsWith("*") && token.endsWith("*")) return <em key={index}>{token.slice(1, -1)}</em>;
@@ -32,12 +32,12 @@ function renderInline(text: string) {
 }
 
 function AnswerText({ text }: { text: string }) {
-  const lines = text.replace(/\\([*_])/g, "$1").split("\\n");
+  const lines = text.replace(/\\([*_])/g, "$1").split("\n");
   return (
     <div className="answer-md">
       {lines.map((line, index) => {
-        const heading = line.match(/^#{1,3}\\s+(.+)$/);
-        const bullet = line.match(/^\\s*[-*]\\s+(.+)$/);
+        const heading = line.match(/^#{1,3}\s+(.+)$/);
+        const bullet = line.match(/^\s*[-*]\s+(.+)$/);
         if (!line.trim()) return <div className="md-gap" key={index} />;
         if (heading) return <div className="md-heading" key={index}>{renderInline(heading[1])}</div>;
         if (bullet) return <div className="md-list" key={index}><span aria-hidden="true">•</span><div>{renderInline(bullet[1])}</div></div>;

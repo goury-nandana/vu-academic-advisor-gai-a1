@@ -95,7 +95,7 @@ html,body,[class*="css"],button,input,textarea,select{font-family:'Google Sans F
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
-APP_VERSION = "2026-11-02-complete-ui-redesign-v1"
+APP_VERSION = "2026-11-02-reference-recreation-v1"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Self-contained academic knowledge base: allows deployment when GitHub permits
@@ -402,35 +402,107 @@ def find_logo():
 logo_path = os.path.join(APP_DIR, "Logo.png")
 campus_path = os.path.join(APP_DIR, "campus.jpg")
 
-header_col1, header_col2 = st.columns([0.8, 7.2], vertical_alignment="center")
-with header_col1:
-    if os.path.isfile(logo_path):
-        st.image(logo_path, width=104)
-with header_col2:
-    st.markdown("""
-        <div style="padding: 8px 0 10px;">
-            <div style="font-size: 27px;font-weight:700;color:#183b5b;line-height:1.2;">Vidyashilp University</div>
-            <div style="font-size:14px;font-weight:500;color:#718091;margin-top:5px;">AI Academic Advisor <span style="color:#2f6f9f;">● Online</span></div>
-        </div>
-    """, unsafe_allow_html=True)
-
+# Reference-inspired full-canvas campus background and centered advisor pill.
+campus_b64 = ""
 if os.path.isfile(campus_path):
     with open(campus_path, "rb") as campus_file:
         campus_b64 = base64.b64encode(campus_file.read()).decode("ascii")
-    st.markdown(
-        f'<div class="campus-hero" style="background-image:url(data:image/jpeg;base64,{campus_b64});">'
-        '<div class="campus-hero-copy"><h1>Your campus. Your next step.</h1>'
-        '<p>Academic guidance, grounded in Vidyashilp University resources.</p></div></div>',
-        unsafe_allow_html=True
-    )
+
+st.markdown(f"""
+<style>
+:root {{ --ref-red:#c71932; --ref-blue:#24499a; --ref-ink:#1c2640; }}
+[data-testid="stAppViewContainer"] {{
+  background-image: linear-gradient(rgba(238,246,255,.34),rgba(255,248,247,.42)),
+    url("data:image/jpeg;base64,{campus_b64}") !important;
+  background-size: cover !important; background-position: center center !important;
+  background-attachment: fixed !important;
+}}
+[data-testid="stMain"],[data-testid="stMainBlockContainer"] {{
+  background:transparent !important;
+}}
+[data-testid="stMainBlockContainer"] {{max-width:1120px !important; padding-top:1.1rem !important;}}
+[data-testid="stSidebar"],[data-testid="stSidebar"]>div:first-child {{
+  background:rgba(235,244,255,.84) !important; backdrop-filter:blur(18px) !important;
+  border-right:1px solid rgba(255,255,255,.65) !important;
+}}
+[data-testid="stSidebar"] * {{color:#202b45 !important;}}
+[data-testid="stSidebar"] [data-testid="stExpander"] {{
+  background:rgba(255,255,255,.54) !important; border:1px solid rgba(255,255,255,.7) !important;
+  border-radius:15px !important;
+}}
+[data-testid="stSidebar"] [data-testid="stButton"]>button {{
+  background:var(--ref-red) !important;color:#fff !important;border:0 !important;
+}}
+[data-testid="stSidebar"] [data-baseweb="select"]>div,
+[data-testid="stSidebar"] [data-baseweb="input"]>div {{background:#fff !important;border-radius:10px !important;}}
+[data-testid="stSidebar"] [data-baseweb="select"] span,
+[data-testid="stSidebar"] [data-baseweb="input"] input {{color:#202b45 !important;}}
+.vu-pill-header {{
+  width:max-content; max-width:94%; margin:4px auto 22px; padding:13px 28px;
+  border-radius:50px; display:flex; align-items:center; gap:15px;
+  background:rgba(255,255,255,.91); border:1px solid rgba(255,255,255,.8);
+  box-shadow:0 8px 25px rgba(32,56,91,.12); color:var(--ref-blue);
+  font-weight:700; letter-spacing:.08em; font-size:17px;
+}}
+.vu-pill-mark {{width:36px;height:36px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;}}
+.vu-pill-mark img {{width:27px;height:27px;object-fit:contain;}}
+.info-box {{
+  background:rgba(255,255,255,.9) !important; border:1px solid rgba(255,255,255,.8) !important;
+  border-left:4px solid var(--ref-red) !important; border-radius:17px !important;
+  box-shadow:0 7px 22px rgba(35,48,72,.1) !important; backdrop-filter:blur(12px) !important;
+}}
+.info-box h3 {{color:var(--ref-blue) !important;}}
+.bubble-user-inner {{background:var(--ref-blue) !important;color:white !important;border-radius:22px 22px 6px 22px !important;}}
+.bubble-bot-inner {{background:rgba(255,255,255,.94) !important;border-color:rgba(255,255,255,.8) !important;color:#24283b !important;backdrop-filter:blur(12px) !important;}}
+[data-testid="stButton"]>button {{border-radius:24px !important;}}
+[data-testid="stMainBlockContainer"] [key^="sug_"] button,
+[data-testid="stMainBlockContainer"] button[kind="secondary"] {{
+  background:#ffe9ec !important;color:var(--ref-red) !important;border:1px solid #f9d4db !important;
+  font-weight:600 !important;
+}}
+.st-key-whatsapp_composer {{
+  background:rgba(255,255,255,.94) !important;border:1px solid rgba(255,255,255,.85) !important;
+  border-radius:42px !important;box-shadow:0 10px 30px rgba(26,42,70,.15) !important;
+  backdrop-filter:blur(16px) !important;max-width:940px !important;
+}}
+.st-key-whatsapp_composer [data-testid="stTextInput"] input {{
+  border-radius:30px !important;background:rgba(255,255,255,.96) !important;
+  border:1px solid #e5e7ee !important;color:#252b40 !important;
+}}
+.st-key-whatsapp_composer [data-testid="stPopover"]>button {{
+  border-radius:50% !important;background:#f5f7fc !important;color:var(--ref-blue) !important;
+}}
+.st-key-whatsapp_composer [data-testid="stAudioInput"] button {{
+  border-radius:50% !important;background:#fff !important;color:var(--ref-red) !important;
+}}
+.st-key-whatsapp_composer [data-testid="stButton"]>button[kind="primary"] {{
+  background:var(--ref-red) !important;color:white !important;border:0 !important;border-radius:50% !important;
+  box-shadow:0 4px 12px rgba(199,25,50,.25) !important;
+}}
+.composer-disclaimer {{color:#30374b !important;background:rgba(255,255,255,.72);border-radius:12px;padding:7px 12px;}}
+@media(max-width:760px) {{.vu-pill-header{{font-size:13px;padding:10px 18px;}}}}
+</style>
+""", unsafe_allow_html=True)
+
+logo_b64 = ""
+if os.path.isfile(logo_path):
+    with open(logo_path, "rb") as logo_file:
+        logo_b64 = base64.b64encode(logo_file.read()).decode("ascii")
+st.markdown(
+    f'<div class="vu-pill-header"><span class="vu-pill-mark"><img src="data:image/png;base64,{logo_b64}"></span>'
+    '<span>VU ACADEMIC ADVISOR</span></div>',
+    unsafe_allow_html=True
+)
 
 # ============================================================
 # SIDEBAR (OPTIONAL DEFAULTS)
 # ============================================================
 
 with st.sidebar:
-    st.markdown("## Vidyashilp")
-    st.caption("AI Academic Advisor")
+    if os.path.isfile(logo_path):
+        st.image(logo_path, width=220)
+    st.markdown("### Student profile")
+    st.caption("Optional details for personalized guidance.")
     st.markdown("---")
 
     with st.expander("🎓 Student Profile", expanded=True):

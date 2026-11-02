@@ -128,6 +128,7 @@ def extract_upload(filename, raw, client=None):
                 model=os.getenv("GROQ_TRANSCRIPTION_MODEL","whisper-large-v3-turbo"),
                 response_format="text",
                 prompt="Vidyashilp University, academic courses, attendance, semester, credits, admissions, prerequisites.",
+                language="en",
             )
             transcript=str(transcription).strip()
             return "Voice note transcript: "+transcript if transcript else ""
@@ -140,7 +141,7 @@ def extract_upload(filename, raw, client=None):
             encoded=base64.b64encode(raw).decode("ascii")
             data_url=f"data:{mime};base64,{encoded}"
             errors=[]
-            for model in ("meta-llama/llama-4-scout-17b-16e-instruct","llama-3.2-90b-vision-preview"):
+            for model in ("qwen/qwen3.8-27b","meta-llama/llama-4-scout-17b-16e-instruct"):
                 try:
                     result=client.chat.completions.create(
                         model=model,
@@ -229,7 +230,7 @@ async def chat(req:Request):
     ctx="\n\n".join("Source: "+r["source"]+(f", page {r['page']}" if r.get("page") else "")+"\n"+r["text"] for r in rows)
     hist="\n".join(f"{m.get('role')}: {str(m.get('text',''))[:500]}" for m in history[-5:] if isinstance(m,dict))
     prof=json.dumps({k:v for k,v in profile.items() if v not in ("",None)})
-    upload_instruction=("The student attached file(s). Read the uploaded-file evidence first and answer the request about its contents. If the prompt is generic (for example, 'look at my attachment'), briefly describe what the attachment contains and ask what they want to know. Do not say you cannot view attachments when extracted content is provided. " if uploaded else "")
+    upload_instruction=("The student attached file(s). Read uploaded-file evidence first, including image descriptions and voice transcripts, and answer the question about the contents. If the prompt is generic (for example, look at my attachment), briefly summarize the contents and ask a focused follow-up. Never claim the attachment is inaccessible when extracted content is present. " if uploaded else "")
     prompt=f"{upload_instruction}Explicit student details: {prof}\nPrevious chat: {hist}\nEvidence:\n{ctx or 'No matching evidence.'}\nQuestion: {question}\nAnswer grounded in the evidence."
     answer=""
     for model in [os.getenv("GROQ_MODEL","llama-3.3-70b-versatile"),"openai/gpt-oss-20b","openai/gpt-oss-120b"]:

@@ -52,10 +52,10 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400;500;600;700&display=swap');
 
 html, body, [class*="css"] {
-    font-family: 'Google Sans', 'Google Sans Text', 'Product Sans', 'Inter', Arial, sans-serif;
+    font-family: 'Google Sans Flex', 'Google Sans', 'Product Sans', Arial, sans-serif;
 }
 
 .stApp, [data-testid="stAppViewContainer"],
@@ -323,6 +323,96 @@ div[data-testid="stButton"] > button:hover {
 }
 
 #MainMenu, footer { visibility: hidden; }
+
+/* Campus-inspired redesign: forest, cream and sage */
+:root {
+    --vu-forest: #244b3d;
+    --vu-deep: #18392f;
+    --vu-sage: #dce8dc;
+    --vu-cream: #f7f5ed;
+    --vu-ink: #25352f;
+    --vu-muted: #69786f;
+    --vu-gold: #c49a54;
+}
+html, body, [class*="css"], button, input, textarea {
+    font-family: 'Google Sans Flex', 'Google Sans', 'Product Sans', Arial, sans-serif !important;
+}
+.stApp, [data-testid="stAppViewContainer"],
+[data-testid="stAppViewBlockContainer"], [data-testid="block-container"] {
+    background: var(--vu-cream) !important;
+}
+[data-testid="stHeader"] { background: transparent !important; }
+[data-testid="stSidebar"], [data-testid="stSidebar"] > div:first-child {
+    background: var(--vu-deep) !important;
+}
+[data-testid="stSidebar"] * { color: #f5f4ec !important; }
+[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,.18) !important; }
+[data-testid="stSidebar"] [data-baseweb="select"] > div,
+[data-testid="stSidebar"] [data-baseweb="input"] > div {
+    background: #f8f7f0 !important; border-color: #d5dfd3 !important;
+}
+[data-testid="stSidebar"] [data-baseweb="select"] span,
+[data-testid="stSidebar"] [data-baseweb="input"] input { color: #24382f !important; }
+[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+    border: 1px solid rgba(240,244,232,.55) !important;
+    color: #f7f5ed !important; background: transparent !important;
+}
+[data-testid="stMainBlockContainer"] h1,
+[data-testid="stMainBlockContainer"] h2,
+[data-testid="stMainBlockContainer"] h3 { color: var(--vu-forest) !important; }
+[data-testid="stMainBlockContainer"] p,
+[data-testid="stMainBlockContainer"] span { color: var(--vu-ink); }
+.info-box {
+    background: #fffdf7 !important; border: 1px solid #e5e1d5 !important;
+    border-left: 4px solid var(--vu-forest) !important; border-radius: 18px !important;
+    box-shadow: 0 8px 24px rgba(31,61,48,.06) !important;
+}
+.bubble-user-inner, .bubble-user-inner * {
+    background: var(--vu-forest) !important; color: #fff !important;
+    border-radius: 20px 20px 6px 20px; padding: 12px 18px;
+}
+.bubble-bot-inner {
+    background: #fffdf7 !important; color: var(--vu-ink) !important;
+    border: 1px solid #e5e1d5 !important; border-radius: 20px 20px 20px 6px;
+}
+.st-key-whatsapp_composer {
+    background: rgba(255,253,247,.97) !important;
+    border: 1px solid #d9e1d6 !important; border-radius: 30px !important;
+    box-shadow: 0 12px 30px rgba(28,60,45,.12) !important;
+}
+.st-key-whatsapp_composer [data-testid="stTextInput"] input {
+    background: #fff !important; border: 1px solid #e2e6dc !important;
+    color: var(--vu-ink) !important; border-radius: 24px !important;
+}
+.st-key-whatsapp_composer [data-testid="stPopover"] > button,
+.st-key-whatsapp_composer [data-testid="stAudioInput"] button {
+    background: var(--vu-sage) !important; color: var(--vu-forest) !important;
+    border: 1px solid #cbd9ca !important; border-radius: 50% !important;
+}
+.st-key-whatsapp_composer [data-testid="stButton"] > button[kind="primary"] {
+    background: var(--vu-forest) !important; border: 1px solid var(--vu-forest) !important;
+    color: #fff !important; border-radius: 50% !important;
+}
+.campus-hero {
+    min-height: 190px; border-radius: 22px; overflow: hidden;
+    background-size: cover; background-position: center 48%;
+    display: flex; align-items: flex-end; padding: 24px 30px;
+    margin: 6px 0 24px; box-shadow: 0 10px 28px rgba(26,54,42,.13);
+    position: relative;
+}
+.campus-hero:before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(16,42,32,.78), rgba(16,42,32,.12));
+}
+.campus-hero-copy { position: relative; z-index: 1; color: #fff; }
+.campus-hero-copy h1 { color: #fff !important; margin: 0; font-size: 30px; }
+.campus-hero-copy p { color: #f2f3e9 !important; margin: 6px 0 0; }
+.footer-text, .composer-disclaimer { color: var(--vu-muted) !important; }
+[data-testid="stExpander"] { border-color: #d9e1d6 !important; border-radius: 14px !important; }
+@media (max-width: 760px) {
+    .campus-hero { min-height: 145px; padding: 18px; }
+    .campus-hero-copy h1 { font-size: 23px; }
+}
 </style>
 """, unsafe_allow_html=True)
 # ============================================================
@@ -330,7 +420,7 @@ div[data-testid="stButton"] > button:hover {
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
-APP_VERSION = "2026-11-02-chatgpt-inspired-light-composer-v1"
+APP_VERSION = "2026-11-02-campus-inspired-google-sans-v1"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Self-contained academic knowledge base: allows deployment when GitHub permits
@@ -634,64 +724,72 @@ def find_logo():
             return os.path.join(APP_DIR, filename)
     return None
 
-logo_path = find_logo()
+logo_path = os.path.join(APP_DIR, "Logo.png")
+campus_path = os.path.join(APP_DIR, "campus.jpg")
 
-header_col1, header_col2 = st.columns([1, 7], vertical_alignment="center")
-
+header_col1, header_col2 = st.columns([0.8, 7.2], vertical_alignment="center")
 with header_col1:
-    if logo_path:
-        st.image(logo_path, width=90)
-
+    if os.path.isfile(logo_path):
+        st.image(logo_path, width=104)
 with header_col2:
     st.markdown("""
-        <div style="padding: 5px 0;">
-            <span style="font-size: 28px; font-weight: 700; color: #0b4f8a !important; display: block; line-height: 1.2;">Vidyashilp University</span>
-            <span style="font-size: 15px; font-weight: 600; color: #475569 !important; display: block; margin-top: 4px;">AI Academic Advisor · Online</span>
+        <div style="padding: 8px 0 10px;">
+            <div style="font-size: 27px;font-weight:700;color:#244b3d;line-height:1.2;">Vidyashilp University</div>
+            <div style="font-size:14px;font-weight:500;color:#69786f;margin-top:5px;">AI Academic Advisor <span style="color:#477b58;">● Online</span></div>
         </div>
     """, unsafe_allow_html=True)
 
-st.divider()
+if os.path.isfile(campus_path):
+    with open(campus_path, "rb") as campus_file:
+        campus_b64 = base64.b64encode(campus_file.read()).decode("ascii")
+    st.markdown(
+        f'<div class="campus-hero" style="background-image:url(data:image/jpeg;base64,{campus_b64});">'
+        '<div class="campus-hero-copy"><h1>Your campus. Your next step.</h1>'
+        '<p>Academic guidance, grounded in Vidyashilp University resources.</p></div></div>',
+        unsafe_allow_html=True
+    )
 
 # ============================================================
 # SIDEBAR (OPTIONAL DEFAULTS)
 # ============================================================
 
 with st.sidebar:
-    st.markdown("### 🎓 Student Profile")
-    st.markdown("Enter your details to get personalized guidance (Optional).")
+    st.markdown("## Vidyashilp")
+    st.caption("AI Academic Advisor")
     st.markdown("---")
 
-    program = st.selectbox(
-        "Program",
-        ["Not specified", "B.Tech", "BMS", "BA LLB", "BMS LLB", "B.A. Economics", "B.A. Psychology", "B.Des"],
-        index=0
-    )
+    with st.expander("🎓 Student Profile", expanded=True):
+        st.caption("Optional details for more relevant guidance.")
+        program = st.selectbox(
+            "Program",
+            ["Not specified", "B.Tech", "BMS", "BA LLB", "BMS LLB", "B.A. Economics", "B.A. Psychology", "B.Des"],
+            index=0
+        )
+        semester = st.selectbox(
+            "Current Semester",
+            ["Not specified", "1st Semester", "2nd Semester", "3rd Semester",
+             "4th Semester", "5th Semester", "6th Semester", "7th Semester",
+             "8th Semester", "9th Semester", "10th Semester"],
+            index=0
+        )
+        completed_credits = st.number_input(
+            "Completed Credits", min_value=0, max_value=400,
+            value=None, placeholder="Optional"
+        )
+        cgpa = st.number_input(
+            "CGPA", min_value=0.0, max_value=10.0,
+            value=None, step=0.1, placeholder="Optional"
+        )
 
-    semester = st.selectbox(
-        "Current Semester",
-        ["Not specified", "1st Semester", "2nd Semester", "3rd Semester",
-         "4th Semester", "5th Semester", "6th Semester", "7th Semester",
-         "8th Semester", "9th Semester", "10th Semester"],
-        index=0
-    )
-
-    completed_credits = st.number_input(
-        "Completed Credits",
-        min_value=0, max_value=400,
-        value=None,
-        placeholder="Optional"
-    )
-
-    cgpa = st.number_input(
-        "CGPA",
-        min_value=0.0, max_value=10.0,
-        value=None, step=0.1,
-        placeholder="Optional"
-    )
+    with st.expander("📚 Academic Resources", expanded=False):
+        st.markdown("**Official university resources**")
+        st.markdown("[Vidyashilp University website](https://vidyashilp.edu.in/)")
+        st.markdown("[Admissions information](https://vidyashilp.edu.in/admission-enquiryform/)")
+        st.markdown("[Contact the university](https://vidyashilp.edu.in/contact/)")
+        st.caption("Course and policy answers in chat include supporting source references when available.")
 
     st.markdown("---")
-
-    if st.button("🗑️ Clear Chat", use_container_width=True):
+    if st.button("Clear Chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
 

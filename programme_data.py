@@ -137,7 +137,7 @@ def _records_from_sheet(ws, filename, kind):
             for field, value, coord in raw_slots:
                 records.append({
                     "is_course_record": False,
-                    "document_type": "raw_elective_slot",
+                    "document_type": "raw_elective_slot" if field == "elective_slot" else "raw_programme_slot",
                     "slot_header": field,
                     "raw_value": value,
                     "programme": values.get("programme") or metadata["programme"],
@@ -146,7 +146,7 @@ def _records_from_sheet(ws, filename, kind):
                     "source": filename,
                     "sheet": ws.title,
                     "cells": {field: coord},
-                    "text": f"Raw elective/semester slot ({field}): {value}. Not normalized into a course. Source: {filename}, sheet {ws.title}, cell {coord}.",
+                    "text": f"Raw {('elective' if field == 'elective_slot' else 'programme semester')} slot ({field}): {value}. Not normalized into a course. Source: {filename}, sheet {ws.title}, cell {coord}.",
                 })
         return records
 

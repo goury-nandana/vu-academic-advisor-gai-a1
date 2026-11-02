@@ -116,22 +116,23 @@ def extract_archive_records(raw, kind):
                                 records.append({"text": text_value, "source": filename, "sheet": ws.title,
                                     "cells": cells, "document_type": doc_type, "course_code": None,
                                     "course_title": title, "credits": credits})
-                    slot_row, slot_cols = None, []
-                    for r in range(1, min(ws.max_row, 20) + 1):
-                        cols = [(col, ws.cell(r, col).value) for col in range(1, ws.max_column + 1)
-                                if field(ws.cell(r, col).value) == "elective_slot"]
-                        if cols:
-                            slot_row, slot_cols = r, cols
-                            break
-                    if slot_row:
-                        for r in range(slot_row + 1, ws.max_row + 1):
-                            for col, header in slot_cols:
-                                value = ws.cell(r, col).value
-                                if value is None or str(value).strip() == "":
-                                    continue
-                                coord = ws.cell(r, col).coordinate
-                                records.append({"text": f"Raw elective slot: {value}. Not normalized into a course. Source: {filename}, sheet {ws.title}, cell {coord}.",
-                                    "source": filename, "sheet": ws.title, "cells": {"slot": coord},
-                                    "document_type": "raw_elective_slot"})
+                    if not basket_header_row:
+                        slot_row, slot_cols = None, []
+                        for r in range(1, min(ws.max_row, 20) + 1):
+                            cols = [(col, ws.cell(r, col).value) for col in range(1, ws.max_column + 1)
+                                    if field(ws.cell(r, col).value) == "elective_slot"]
+                            if cols:
+                                slot_row, slot_cols = r, cols
+                                break
+                        if slot_row:
+                            for r in range(slot_row + 1, ws.max_row + 1):
+                                for col, header in slot_cols:
+                                    value = ws.cell(r, col).value
+                                    if value is None or str(value).strip() == "":
+                                        continue
+                                    coord = ws.cell(r, col).coordinate
+                                    records.append({"text": f"Raw elective slot: {value}. Not normalized into a course. Source: {filename}, sheet {ws.title}, cell {coord}.",
+                                        "source": filename, "sheet": ws.title, "cells": {"slot": coord},
+                                        "document_type": "raw_elective_slot"})
             wb.close()
     return records

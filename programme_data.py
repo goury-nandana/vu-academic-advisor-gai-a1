@@ -77,8 +77,9 @@ def _header_row(ws, max_scan=20):
     return None, []
 
 
-def _basket_header_groups(ws, max_scan=12):
-    """Find repeated (#, course-list title, credits) column groups."""
+def _basket_header_groups(ws, max_scan=20):
+    """Find every explicit (#, course-list title, credits) header group."""
+    result = []
     for row_idx in range(1, min(ws.max_row, max_scan) + 1):
         groups = []
         for col_idx in range(1, ws.max_column - 1):
@@ -93,75 +94,110 @@ def _basket_header_groups(ws, max_scan=12):
                 and credit_header in {"cr", "credit", "credits"}
             ):
                 groups.append((col_idx, col_idx + 1, col_idx + 2, str(title_header)))
-        if len(groups) >= 2:
-            return row_idx, groups
-    return None, []
+        if groups:
+            result.append((row_idx, groups))
+    return result
 
 
 def _records_from_basket_layout(ws, filename, metadata):
-    header_idx, groups = _basket_header_groups(ws)
-    if not header_idx:
-        return []
+    header_blocks = _basket_header_groups(ws)
     records = []
-    for row_idx in range(header_idx + 1, ws.max_row + 1):
+    for header_idx, groups in header_blocks:
         for number_col, title_col, credit_col, group_title in groups:
-            title = _cell_value(ws.cell(row_idx, title_col).value)
-            credits = _cell_value(ws.cell(row_idx, credit_col).value)
-            if title is None or credits is None or str(title).strip().lower() in {"total credits", "total credit"}:
-                continue
-            title = str(title).strip()
-            cells = {
-                "number": ws.cell(row_idx, number_col).coordinate,
-                "course_title": ws.cell(row_idx, title_col).coordinate,
-                "credits": ws.cell(row_idx, credit_col).coordinate,
-            }
-            if "/" in title:
-                records.append({
+            for row_idx in range(header_idx + 1, ws.max_row + 1):
+                title = _cell_value(ws.cell(row_idx, title_col).value)
+                credits = _cell_value(ws.cell(row_idx, credit_col).value)
+                # A later header in the same columns starts a new table, not a course row.
+                if title and _header_key(credits) in {"cr", "credit", "credits"} and (
+                    "course" in title.lower() or "elective" in title.lower()
+                ):
+                    break
+                if title is None or credits is None or str(title).strip().lower() in {"total credits", "total credit"}:
+                    continue
+                title = str(title).strip()
+                cells = {
+                    "number": ws.cell(row_idx, number_col).coordinate,
+                    "course_title": ws.cell(row_idx, title_col).coordinate,
+                    "credits": ws.cell(row_idx, credit_col).coordinate,
+                }
+                if re.match(r"^\d+\s+courses?\s+of\b", title, re.I):
+                    records.append({
+                        "is_course_record": False,
+                        "document_type": "programme_structure_note",
+                        "raw_value": title,
+                        "raw_credits": credits,
+                        "programme": metadata["programme"],
+                        "batch": metadata["batch"],
+                        "source": filename,
+                        "sheet": ws.title,
+                        "cells": cells,
+                        "text": f"Programme structure note: {title}; credits shown: {credits}. Source: {filename}, sheet {ws.title}, cells {cells}.",
+                    })
+                    continue
+                if "/" in title:
+                    records.append({
+                        "is_course_record": False,
+                        "document_type": "raw_elective_slot",
+                        "slot_header": group_title,
+                        "raw_value": title,
+                        "raw_credits": credits,
+                        "programme": metadata["programme"],
+                        "batch": metadata["batch"],
+                        "source": filename,
+                        "sheet": ws.title,
+                        "cells": cells,
+                        "text": f"Raw programme alternative slot: {title} (credits shown: {credits}). Not split into separate courses. Basket: {group_title}. Source: {filename}, sheet {ws.title}, cells {cells}.",
+                    })
+                    continue
+                basket = re.sub(r"\s*-\s*Courses?\s*$", "", group_title, flags=re.I).strip()
+                record = {
                     "is_course_record": False,
-                    "document_type": "raw_elective_slot",
-                    "slot_header": group_title,
-                    "raw_value": title,
-                    "raw_credits": credits,
+                    "document_type": "programme_structure_course",
+                    "course_code": None,
+                    "course_title": title,
+                    "credits": credits,
+                    "semester": None,
                     "programme": metadata["programme"],
                     "batch": metadata["batch"],
+                    "course_type": basket,
                     "source": filename,
                     "sheet": ws.title,
                     "cells": cells,
-                    "text": f"Raw programme alternative slot: {title} (credits shown: {credits}). Not split into separate courses. Basket: {group_title}. Source: {filename}, sheet {ws.title}, cells {cells}.",
-                })
-                continue
-            record = {
-                "is_course_record": False,
-                "document_type": "programme_structure_course",
-                "course_code": None,
-                "course_title": title,
-                "credits": credits,
-                "semester": None,
-                "programme": metadata["programme"],
-                "batch": metadata["batch"],
-                "course_type": re.sub(r"\s*-\\s*Courses?\\s*$", "", group_title, flags=re.I).strip(),
-                "source": filename,
-                "sheet": ws.title,
-                "cells": cells,
-            }
-            parts = [title, f"credits: {credits}", f"basket: {record['course_type']}"]
-            if record["programme"]:
-                parts.append(f"programme: {record['programme']}")
-            if record["batch"]:
-                parts.append(f"admission batch: {record['batch']}")
-            record["text"] = "; ".join(parts) + f". Source: {filename}, sheet {ws.title}, row {row_idx}."
-            records.append(record)
+                }
+                parts = [title, f"credits: {credits}", f"basket: {basket}"]
+                if record["programme"]:
+                    parts.append(f"programme: {record['programme']}")
+                if record["batch"]:
+                    parts.append(f"admission batch: {record['batch']}")
+                record["text"] = "; ".join(parts) + f". Source: {filename}, sheet {ws.title}, row {row_idx}."
+                records.append(record)
+
+    # Read basket credit requirements from an explicit Baskets/Credits header pair.
+    for header_row in range(1, min(ws.max_row, 8) + 1):
+        header = {_header_key(ws.cell(header_row, col).value): col for col in range(1, ws.max_column + 1)
+                  if ws.cell(header_row, col).value is not None}
+        basket_col = next((header[k] for k in ("baskets", "basket") if k in header), None)
+        credit_col = next((header[k] for k in ("credits", "credit", "creditstructure") if k in header), None)
+        if basket_col and credit_col:
+            for row_idx in range(header_row + 1, ws.max_row + 1):
+                basket = _cell_value(ws.cell(row_idx, basket_col).value)
+                credits = ws.cell(row_idx, credit_col).value
+                if basket and isinstance(credits, (int, float)):
+                    records.append({
+                        "is_course_record": False,
+                        "document_type": "programme_credit_structure",
+                        "basket": basket,
+                        "credits": credits,
+                        "programme": metadata["programme"],
+                        "batch": metadata["batch"],
+                        "source": filename,
+                        "sheet": ws.title,
+                        "cells": {"basket": ws.cell(row_idx, basket_col).coordinate,
+                                  "credits": ws.cell(row_idx, credit_col).coordinate},
+                        "text": f"{ws.title}; basket {basket}; required credits {credits}. Source: {filename}, row {row_idx}.",
+                    })
+            break
     return records
-
-
-def _explicit_batch_from_sheet(ws, row_idx):
-    """Return only a batch label explicitly written in the current/preceding rows."""
-    for r in range(row_idx, 0, -1):
-        for col in range(1, min(ws.max_column, 4) + 1):
-            match = re.search(r"\b(20\d{2})\s*batch\b", str(ws.cell(r, col).value or ""), re.I)
-            if match:
-                return match.group(1)
-    return None
 
 
 def _records_from_sheet(ws, filename, kind):
@@ -205,7 +241,7 @@ def _records_from_sheet(ws, filename, kind):
                     "semester": semester,
                     "prerequisite": values.get("prerequisite"),
                     "programme": values.get("programme") or metadata["programme"],
-                    "minor_name": values.get("minor_name") or (Path(filename).stem.split("_Minor_")[-1].replace("_", " ") if kind == "minor" else None),
+                    "minor_name": values.get("minor_name") or (ws.title if kind == "minor" else None),
                     "batch": row_batch,
                     "course_type": values.get("course_type"),
                     "ltp": values.get("ltp"),
@@ -225,6 +261,22 @@ def _records_from_sheet(ws, filename, kind):
                     parts.append(f"admission batch: {record['batch']}")
                 record["text"] = "; ".join(parts) + f". Source: {filename}, sheet {ws.title}, row {row_idx}."
                 records.append(record)
+            if title and (not code or not CODE_RE.fullmatch(str(code).strip())) and str(title).strip().lower() not in {"tbd", "to be decided"}:
+                raw_value = f"{code or 'Course code not provided'} — {title}"
+                records.append({
+                    "is_course_record": False,
+                    "document_type": "raw_elective_slot",
+                    "slot_header": "unresolved course row",
+                    "raw_value": raw_value,
+                    "programme": values.get("programme") or metadata["programme"],
+                    "minor_name": values.get("minor_name") or (ws.title if kind == "minor" else None),
+                    "batch": row_batch,
+                    "source": filename,
+                    "sheet": ws.title,
+                    "cells": {"course_code": cells.get("course_code", ws.cell(row_idx, 1).coordinate),
+                              "course_title": cells.get("course_title", ws.cell(row_idx, 1).coordinate)},
+                    "text": f"Unresolved source row: {raw_value}. Code/title pair is not normalized into a course. Source: {filename}, sheet {ws.title}, row {row_idx}.",
+                })
             # Preserve slot values separately. Do not infer course details from them.
             for field, value, coord in raw_slots:
                 records.append({

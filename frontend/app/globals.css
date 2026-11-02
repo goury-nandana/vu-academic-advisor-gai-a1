@@ -53,6 +53,15 @@ button:disabled{cursor:not-allowed}
 .bubble{padding:14px 20px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
 .bubble.user{max-width:70%;background:var(--blue);color:#fff;font-weight:500;border-radius:24px 24px 6px 24px}
 .bubble.bot{max-width:78%;background:#fff;border-radius:24px 24px 24px 6px;box-shadow:0 2px 14px rgba(31,63,158,.14)}
+.answer-md{white-space:normal;overflow-wrap:anywhere}
+.md-line{margin:0 0 4px}
+.md-heading{font-weight:650;margin:6px 0 4px}
+.md-list{display:flex;align-items:flex-start;gap:8px;margin:2px 0 4px;padding-left:2px}
+.md-list>span{flex:0 0 auto;color:var(--blue)}
+.md-gap{height:7px}
+.answer-md strong{font-weight:700}
+.answer-md em{font-style:italic}
+.answer-md code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f1f4fb;border-radius:4px;padding:1px 4px}
 .files{margin-top:6px;font-size:12px;opacity:.85}
 .sources{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .sources a,.sources span{font-size:12px;font-weight:600;color:var(--blue);background:var(--pale);border-radius:999px;padding:4px 10px;text-decoration:none}

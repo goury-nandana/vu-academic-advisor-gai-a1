@@ -53,12 +53,13 @@ def _field_for_header(value):
 def _metadata_from_filename(filename, sheet_name=None):
     name = Path(sheet_name).stem if sheet_name else Path(filename).stem
     batch_match = re.search(r"(?<!\d)(2022|2023|2024|2025|2026)(?!\d)", name)
-    programme = "B.Tech" if re.search(r"btech", name, re.I) else None
+    if batch_match is None:
+        batch_match = re.search(r"(?<!\d)(2022|2023|2024|2025|2026)(?!\d)", Path(filename).stem)
+    programme = "B.Tech" if re.search(r"btech", Path(filename).stem, re.I) or re.search(r"btech", name, re.I) else None
     return {
         "batch": batch_match.group(1) if batch_match else None,
         "programme": programme,
     }
-
 
 def _cell_value(value):
     if value is None:

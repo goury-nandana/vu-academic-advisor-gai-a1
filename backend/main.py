@@ -9,7 +9,7 @@ from programme_data import extract_archive_records
 
 app=FastAPI(title="VU Academic Advisor API")
 RAW="https://raw.githubusercontent.com/goury-nandana/vu-academic-advisor-gai-a2/main/"
-GH="https://github.com/goury-nandana/vu-academic-advisor-gai-a2/blob/main/"
+GH="https://raw.githubusercontent.com/goury-nandana/vu-academic-advisor-gai-a2/main/"
 def get(path):
     req=urllib.request.Request(RAW+urllib.parse.quote(path),headers={"User-Agent":"VU-Academic-Advisor"})
     with urllib.request.urlopen(req,timeout=25) as r:return r.read()
@@ -67,9 +67,10 @@ def search(q,docs):
     return [d for _,d in scores[:7]]
 SYS="""You are the AI Academic Advisor for Vidyashilp University, Bengaluru. Respond concisely and only from retrieved evidence. Never invent course codes, policy thresholds, eligibility, credits, or student-record facts. Never claim access to private university records; use profile only if explicitly supplied. For B.Tech minor questions, published Data Science and AI/ML tracks list Economics, Marketing, Psychology, Finance, Design, and Law; do not mix programmes' lists. If sources are insufficient, state that and suggest Digicampus or relevant office. Fees: Accounts; professors/HODs: department office; records/exams: Registrar. Specific course codes: advise Digicampus for details. For minor and programme-structure questions, use only rows explicitly matching the requested programme, minor, batch and named structure group. Never transfer a minor list or structure between programmes or batches. A raw elective slot or slash-delimited alternative is source text, not multiple confirmed course records: preserve it verbatim and state that the source does not resolve it into separate courses. If a code is missing or marked DON’T KNOW, report it as unavailable rather than guessing."""
 SOCIAL_RE = re.compile(
-    r"^(?:hi|hello|hey|good morning|good afternoon|good evening|"
-    r"how are you|how's it going|how do you do|thanks|thank you|"
-    r"thank you so much|good night)[!.?, ]*$",
+    r"^(?:h(?:i|e?y|ello|i{2,}|e{2,}y)|yo|sup|"
+    r"good\\s+(?:morning|afternoon|evening|night)|"
+    r"how\\s+(?:are\\s+you|r\\s+you|is\\s+it\\s+going|do\\s+you\\s+do)|"
+    r"what'?s\\s+up|thanks?|thank\\s+you(?:\\s+so\\s+much)?)[!.?, ]*$",
     re.I,
 )
 
@@ -78,8 +79,22 @@ SOCIAL_REPLY = (
     "What academic question can I help you with?"
 )
 
-def extract_upload(filename, raw):
+def extract_upload(filename, raw, client=None):
     ext=filename.lower().rsplit(".",1)[-1] if "." in filename else ""
+    if ext in {"webm","mp3","wav","m4a","ogg","flac","mp4","mpeg","mpga"}:
+        if client is None:
+            return ""
+        try:
+            transcription=client.audio.transcriptions.create(
+                file=(filename, raw),
+                model=os.getenv("GROQ_TRANSCRIPTION_MODEL","whisper-large-v3-turbo"),
+                response_format="text",
+                prompt="Vidyashilp University, academic courses, attendance, semester, credits, admissions.",
+            )
+            text=str(transcription).strip()
+            return "Voice note transcript: " + text if text else ""
+        except Exception as exc:
+            return f"Voice-note transcription failed: {exc}"
     try:
         if ext=="pdf":
             return "\\n".join(p.extract_text() or "" for p in PdfReader(io.BytesIO(raw)).pages)
@@ -105,6 +120,7 @@ async def health():return {"status":"ok","service":"VU Academic Advisor API"}
 async def chat(req:Request):
     key=os.getenv("GROQ_API_KEY","").strip()
     if not key:raise HTTPException(503,"Set GROQ_API_KEY in Vercel backend environment variables.")
+    client=Groq(api_key=key)
     form=await req.form(); question=str(form.get("question","")).strip()
     if not question:raise HTTPException(400,"question is required")
     if SOCIAL_RE.fullmatch(question):
@@ -118,14 +134,14 @@ async def chat(req:Request):
         if not hasattr(item,"filename") or not item.filename:continue
         raw=await item.read()
         if len(raw)>15*1024*1024:continue
-        extracted=extract_upload(item.filename,raw)[:12000]
+        extracted=extract_upload(item.filename,raw,client)[:12000]
         if extracted.strip():uploaded.append({"text":extracted,"source":"Student upload: "+item.filename})
     rows=search(question,load_docs()+uploaded)
     ctx="\n\n".join("Source: "+r["source"]+(f", page {r['page']}" if r.get("page") else "")+"\n"+r["text"] for r in rows)
     hist="\n".join(f"{m.get('role')}: {str(m.get('text',''))[:500]}" for m in history[-5:] if isinstance(m,dict))
     prof=json.dumps({k:v for k,v in profile.items() if v not in ("",None)})
     prompt=f"Explicit student details: {prof}\nPrevious chat: {hist}\nEvidence:\n{ctx or 'No matching evidence.'}\nQuestion: {question}\nAnswer grounded in the evidence."
-    client=Groq(api_key=key);answer=""
+    answer=""
     for model in [os.getenv("GROQ_MODEL","llama-3.3-70b-versatile"),"openai/gpt-oss-20b","openai/gpt-oss-120b"]:
         try:
             out=client.chat.completions.create(model=model,messages=[{"role":"system","content":SYS},{"role":"user","content":prompt}],temperature=.1,max_tokens=800)

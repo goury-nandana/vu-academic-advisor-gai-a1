@@ -78,6 +78,44 @@ def extract_archive_records(raw, kind):
                                 "source": filename, "sheet": ws.title, "cells": {name: coord},
                                 "document_type": "raw_elective_slot" if name == "elective_slot" else "raw_programme_slot"})
                 else:
+                    # Programme-structure sheets use repeated (#, course title, Cr)
+                    # basket groups rather than a single Course Code/Course Title header.
+                    groups = []
+                    basket_header_row = None
+                    for candidate in range(1, min(ws.max_row, 12) + 1):
+                        found = []
+                        for col in range(1, ws.max_column - 1):
+                            marker = key(ws.cell(candidate, col).value)
+                            title_header = ws.cell(candidate, col + 1).value
+                            credit_header = key(ws.cell(candidate, col + 2).value)
+                            if (marker in {"#", "no", "sno", "number"} and title_header
+                                and ("course" in str(title_header).lower() or "elective" in str(title_header).lower())
+                                and credit_header in {"cr", "credit", "credits"}):
+                                found.append((col, col + 1, col + 2, str(title_header)))
+                        if len(found) >= 2:
+                            basket_header_row, groups = candidate, found
+                            break
+                    if basket_header_row:
+                        for r in range(basket_header_row + 1, ws.max_row + 1):
+                            for number_col, title_col, credit_col, group_title in groups:
+                                title = ws.cell(r, title_col).value
+                                credits = ws.cell(r, credit_col).value
+                                if title is None or credits is None or str(title).strip().lower() in {"total credits", "total credit"}:
+                                    continue
+                                title = re.sub(r"\\s+", " ", str(title)).strip()
+                                cells = {"number": ws.cell(r, number_col).coordinate,
+                                         "course_title": ws.cell(r, title_col).coordinate,
+                                         "credits": ws.cell(r, credit_col).coordinate}
+                                if "/" in title:
+                                    text_value = f"Raw programme alternative slot: {title} (credits shown: {credits}). Not split into separate courses. Basket: {group_title}. Source: {filename}, sheet {ws.title}, cells {cells}."
+                                    doc_type = "raw_elective_slot"
+                                else:
+                                    basket = re.sub(r"\\s*-\\s*Courses?\\s*$", "", group_title, flags=re.I).strip()
+                                    text_value = f"{title}; credits: {credits}; basket: {basket}. Source: {filename}, sheet {ws.title}, row {r}."
+                                    doc_type = "programme_structure_course"
+                                records.append({"text": text_value, "source": filename, "sheet": ws.title,
+                                    "cells": cells, "document_type": doc_type, "course_code": None,
+                                    "course_title": title, "credits": credits})
                     slot_row, slot_cols = None, []
                     for r in range(1, min(ws.max_row, 20) + 1):
                         cols = [(col, ws.cell(r, col).value) for col in range(1, ws.max_column + 1)

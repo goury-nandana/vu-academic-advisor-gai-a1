@@ -1,6 +1,6 @@
 """FastAPI academic advisor service deployed as a Vercel Service."""
 from __future__ import annotations
-import io, os, re, urllib.request, urllib.parse, zipfile
+import io, json, os, re, urllib.request, urllib.parse, zipfile
 from functools import lru_cache
 from fastapi import FastAPI, HTTPException, Request
 from groq import Groq

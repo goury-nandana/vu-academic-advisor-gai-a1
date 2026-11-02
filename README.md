@@ -121,7 +121,7 @@ Do not commit API keys, `.env` files or `.streamlit/secrets.toml`.
 | `Minor_Courses_for_BTech_Students.xlsx` (legacy embedded extract) | Minor-course context |
 | Official VU website sources | Admissions, programmes, faculty, placements and campus information |
 
-The structured loader reads only the five semester-spread workbooks in the archive. It does not infer missing values or treat programme-structure sheets as semester-spread rows. Each structured row includes source workbook and cell coordinates.
+The B.Tech semester-spread loader reads the five batch-specific semester workbooks. A separate header-driven builder reads the seven minor workbooks and the B.Tech programme-structure workbooks. It maps only explicitly labelled columns; ambiguous elective/semester cells remain raw slot records with source workbook, sheet and cell coordinates. Missing fields are left blank, and slash-separated alternatives are never split into guessed courses.
 
 ## Tests
 
@@ -139,6 +139,6 @@ GitHub Actions runs the syntax check and unittest suite on pushes and pull reque
 - Structured semester-spread curriculum coverage is B.Tech batches 2022–2026. Do not assume a different cohort is covered.
 - The 2022–2025 workbook metadata does not establish a named track; the application leaves track unspecified.
 - Ambiguous elective cells, TBA placeholders, and combined alternative-course cells (for example, slash-separated codes with multiple titles or L-T-P values) are not converted into single course records. They require a separate source-aware treatment; the loader does not guess how to split them.
-- Minor-workbook extraction and non-B.Tech programme semester structures are not yet fully normalized into the structured course-record loader.
+- Minor workbooks and B.Tech programme structures are extracted through explicit header mapping. Ambiguous elective slots are retained as raw source values rather than normalized course records. Non-B.Tech programme structures are not yet covered.
 - Website information depends on the official pages being reachable when the website knowledge base is refreshed.
 - Real Groq API behaviour and the deployed Streamlit instance must be smoke-tested with the configured deployment secret; automated tests do not validate external API credentials.

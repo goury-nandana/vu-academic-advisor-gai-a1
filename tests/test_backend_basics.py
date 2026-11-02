@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 _backend_path = str(Path(__file__).resolve().parents[1] / "backend")
 sys.path.insert(0, _backend_path)
-from main import GH, SOCIAL_RE, extract_course_records, extract_upload, search
+from main import GH, SOCIAL_RE, extract_course_records, extract_upload, search, tok
 sys.path.remove(_backend_path)
 sys.modules.pop("programme_data", None)
 
@@ -36,6 +36,16 @@ class BackendBasicsTests(unittest.TestCase):
         result = search("min attendance?", docs)
         self.assertTrue(result)
         self.assertEqual(result[0]["source"], "handbook")
+
+    def test_btech_and_semester_synonyms_retrieve_matching_row(self):
+        self.assertIn("btech", tok("B.Tech"))
+        docs = [
+            {"text": "B.Tech course entry for semester 2; prerequisite None.", "source": "curriculum"},
+            {"text": "B.Tech course entry for semester 5; prerequisite None.", "source": "curriculum"},
+        ]
+        result = search("BTech second semester courses", docs)
+        self.assertTrue(result)
+        self.assertIn("semester 2", result[0]["text"])
 
     def test_structured_course_record_supports_space_hyphen_code_lookup(self):
         workbook = Workbook()

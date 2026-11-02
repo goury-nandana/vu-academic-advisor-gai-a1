@@ -150,41 +150,77 @@ html, body, [class*="css"] {
     color: #9aa7b5 !important;
 }
 
-/* -------------------- WhatsApp-style composer -------------------- */
+/* -------------------- ChatGPT-inspired light composer -------------------- */
 .st-key-whatsapp_composer {
     position: sticky;
     bottom: 0;
-    z-index: 20;
-    background: #f7f9fc;
-    border-top: 1px solid #e3e8ef;
-    padding: 12px 10px 14px;
-    margin-top: 18px;
+    z-index: 30;
+    background: rgba(247, 249, 252, 0.98);
+    border: 1px solid #dbe3ee;
+    border-radius: 28px;
+    padding: 10px 12px 8px;
+    margin: 22px auto 6px;
+    max-width: 980px;
+    box-shadow: 0 8px 28px rgba(20, 42, 75, 0.10);
 }
+.st-key-whatsapp_composer [data-testid="stTextInput"] { margin: 0 !important; }
 .st-key-whatsapp_composer [data-testid="stTextInput"] input {
-    min-height: 46px !important;
+    min-height: 48px !important;
     border-radius: 24px !important;
-    border: 1px solid #d6dee8 !important;
+    border: 1px solid #e0e6ef !important;
     background: #ffffff !important;
     color: #172033 !important;
     padding: 0 18px !important;
+    box-shadow: none !important;
+}
+.st-key-whatsapp_composer [data-testid="stTextInput"] input:focus {
+    border-color: #6b9be8 !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.10) !important;
 }
 .st-key-whatsapp_composer [data-testid="stAudioInput"] {
     min-width: 0 !important;
+    margin: 0 !important;
 }
 .st-key-whatsapp_composer [data-testid="stAudioInput"] button {
     min-height: 46px !important;
+    width: 46px !important;
     border-radius: 50% !important;
+    border: 1px solid #dce4ef !important;
+    background: #f0f4fa !important;
+    color: #25466f !important;
 }
 .st-key-whatsapp_composer [data-testid="stPopover"] > button {
     min-height: 46px !important;
     width: 46px !important;
     border-radius: 50% !important;
+    border: 1px solid #dce4ef !important;
+    background: #f0f4fa !important;
+    color: #25466f !important;
     font-size: 23px !important;
 }
 .st-key-whatsapp_composer [data-testid="stButton"] > button[kind="primary"] {
-    min-height: 46px !important;
+    min-height: 48px !important;
+    width: 48px !important;
     border-radius: 50% !important;
     padding: 0 !important;
+    background: #2563eb !important;
+    border: 1px solid #2563eb !important;
+    color: #ffffff !important;
+    font-size: 20px !important;
+    box-shadow: 0 3px 9px rgba(37, 99, 235, 0.22) !important;
+}
+.st-key-whatsapp_composer [data-testid="stButton"] > button[kind="primary"]:hover {
+    background: #1d4ed8 !important;
+    border-color: #1d4ed8 !important;
+}
+.st-key-whatsapp_composer [data-testid="stFileUploader"] { min-width: 280px; }
+.composer-disclaimer {
+    max-width: 980px;
+    margin: 5px auto 12px;
+    text-align: center;
+    color: #748196;
+    font-size: 11px;
+    letter-spacing: 0.01em;
 }
 
 /* -------------------- General buttons -------------------- */
@@ -294,7 +330,7 @@ div[data-testid="stButton"] > button:hover {
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
-APP_VERSION = "2026-11-01-assignment2-whatsapp-composer-v1"
+APP_VERSION = "2026-11-02-chatgpt-inspired-light-composer-v1"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Self-contained academic knowledge base: allows deployment when GitHub permits
@@ -1902,7 +1938,7 @@ with st.container(key="whatsapp_composer"):
 
     with composer_send:
         st.button(
-            "➤", key="advisor_send_message", type="primary",
+            "↑", key="advisor_send_message", type="primary",
             use_container_width=True,
             disabled=not bool(st.session_state.get("advisor_message_draft", "").strip()),
             on_click=queue_typed_message
@@ -1910,6 +1946,11 @@ with st.container(key="whatsapp_composer"):
 
 if uploaded_files:
     st.caption("Attached: " + ", ".join(file.name for file in uploaded_files))
+
+st.markdown(
+    '<div class="composer-disclaimer">VU AI Academic Advisor can make mistakes. Verify important academic information with official university sources.</div>',
+    unsafe_allow_html=True
+)
 
 # A recorded clip is transcribed only after the user explicitly sends it.
 if voice_recording is not None:

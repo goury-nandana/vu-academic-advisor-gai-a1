@@ -68,9 +68,9 @@ def search(q,docs):
 SYS="""You are the AI Academic Advisor for Vidyashilp University, Bengaluru. Respond concisely and only from retrieved evidence. Never invent course codes, policy thresholds, eligibility, credits, or student-record facts. Never claim access to private university records; use profile only if explicitly supplied. For B.Tech minor questions, published Data Science and AI/ML tracks list Economics, Marketing, Psychology, Finance, Design, and Law; do not mix programmes' lists. If sources are insufficient, state that and suggest Digicampus or relevant office. Fees: Accounts; professors/HODs: department office; records/exams: Registrar. Specific course codes: advise Digicampus for details. For minor and programme-structure questions, use only rows explicitly matching the requested programme, minor, batch and named structure group. Never transfer a minor list or structure between programmes or batches. A raw elective slot or slash-delimited alternative is source text, not multiple confirmed course records: preserve it verbatim and state that the source does not resolve it into separate courses. If a code is missing or marked DON’T KNOW, report it as unavailable rather than guessing."""
 SOCIAL_RE = re.compile(
     r"^(?:h(?:i|e?y|ello|i{2,}|e{2,}y)|yo|sup|"
-    r"good\\s+(?:morning|afternoon|evening|night)|"
-    r"how\\s+(?:are\\s+you|r\\s+you|is\\s+it\\s+going|do\\s+you\\s+do)|"
-    r"what'?s\\s+up|thanks?|thank\\s+you(?:\\s+so\\s+much)?)[!.?, ]*$",
+    r"good\s+(?:morning|afternoon|evening|night)|"
+    r"how\s+(?:are\\s+you|r\\s+you|is\s+it\s+going|do\s+you\s+do)|"
+    r"what'?s\s+up|thanks?|thank\\s+you(?:\\s+so\\s+much)?)[!.?, ]*$",
     re.I,
 )
 
@@ -136,11 +136,12 @@ async def chat(req:Request):
         if len(raw)>15*1024*1024:continue
         extracted=extract_upload(item.filename,raw,client)[:12000]
         if extracted.strip():uploaded.append({"text":extracted,"source":"Student upload: "+item.filename})
-    rows=search(question,load_docs()+uploaded)
+    rows=uploaded[:4] + search(question,load_docs())[:7]
     ctx="\n\n".join("Source: "+r["source"]+(f", page {r['page']}" if r.get("page") else "")+"\n"+r["text"] for r in rows)
     hist="\n".join(f"{m.get('role')}: {str(m.get('text',''))[:500]}" for m in history[-5:] if isinstance(m,dict))
     prof=json.dumps({k:v for k,v in profile.items() if v not in ("",None)})
-    prompt=f"Explicit student details: {prof}\nPrevious chat: {hist}\nEvidence:\n{ctx or 'No matching evidence.'}\nQuestion: {question}\nAnswer grounded in the evidence."
+    upload_instruction=("The student attached file(s). Read the uploaded-file evidence first and answer the request about its contents. If the prompt is generic (for example, 'look at my attachment'), briefly describe what the attachment contains and ask what they want to know. Do not say you cannot view attachments when extracted content is provided. " if uploaded else "")
+    prompt=f"{upload_instruction}Explicit student details: {prof}\nPrevious chat: {hist}\nEvidence:\n{ctx or 'No matching evidence.'}\nQuestion: {question}\nAnswer grounded in the evidence."
     answer=""
     for model in [os.getenv("GROQ_MODEL","llama-3.3-70b-versatile"),"openai/gpt-oss-20b","openai/gpt-oss-120b"]:
         try:

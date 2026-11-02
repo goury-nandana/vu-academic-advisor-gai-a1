@@ -77,10 +77,90 @@ def _header_row(ws, max_scan=20):
     return None, []
 
 
+def _basket_header_groups(ws, max_scan=12):
+    """Find repeated (#, course-list title, credits) column groups."""
+    for row_idx in range(1, min(ws.max_row, max_scan) + 1):
+        groups = []
+        for col_idx in range(1, ws.max_column - 1):
+            marker = _header_key(ws.cell(row_idx, col_idx).value)
+            title_header = _cell_value(ws.cell(row_idx, col_idx + 1).value)
+            credit_header = _header_key(ws.cell(row_idx, col_idx + 2).value)
+            if (
+                marker in {"#", "no", "sno", "number"}
+                and title_header
+                and ("course" in str(title_header).lower() or "elective" in str(title_header).lower())
+                and credit_header in {"cr", "credit", "credits"}
+            ):
+                groups.append((col_idx, col_idx + 1, col_idx + 2, str(title_header)))
+        if len(groups) >= 2:
+            return row_idx, groups
+    return None, []
+
+
+def _records_from_basket_layout(ws, filename, metadata):
+    header_idx, groups = _basket_header_groups(ws)
+    if not header_idx:
+        return []
+    records = []
+    for row_idx in range(header_idx + 1, ws.max_row + 1):
+        for number_col, title_col, credit_col, group_title in groups:
+            title = _cell_value(ws.cell(row_idx, title_col).value)
+            credits = _cell_value(ws.cell(row_idx, credit_col).value)
+            if title is None or credits is None or str(title).strip().lower() in {"total credits", "total credit"}:
+                continue
+            title = str(title).strip()
+            cells = {
+                "number": ws.cell(row_idx, number_col).coordinate,
+                "course_title": ws.cell(row_idx, title_col).coordinate,
+                "credits": ws.cell(row_idx, credit_col).coordinate,
+            }
+            if "/" in title:
+                records.append({
+                    "is_course_record": False,
+                    "document_type": "raw_elective_slot",
+                    "slot_header": group_title,
+                    "raw_value": title,
+                    "raw_credits": credits,
+                    "programme": metadata["programme"],
+                    "batch": metadata["batch"],
+                    "source": filename,
+                    "sheet": ws.title,
+                    "cells": cells,
+                    "text": f"Raw programme alternative slot: {title} (credits shown: {credits}). Not split into separate courses. Basket: {group_title}. Source: {filename}, sheet {ws.title}, cells {cells}.",
+                })
+                continue
+            record = {
+                "is_course_record": False,
+                "document_type": "programme_structure_course",
+                "course_code": None,
+                "course_title": title,
+                "credits": credits,
+                "semester": None,
+                "programme": metadata["programme"],
+                "batch": metadata["batch"],
+                "course_type": re.sub(r"\\s*-\\s*Courses?\\s*$", "", group_title, flags=re.I).strip(),
+                "source": filename,
+                "sheet": ws.title,
+                "cells": cells,
+            }
+            parts = [title, f"credits: {credits}", f"basket: {record['course_type']}"]
+            if record["programme"]:
+                parts.append(f"programme: {record['programme']}")
+            if record["batch"]:
+                parts.append(f"admission batch: {record['batch']}")
+            record["text"] = "; ".join(parts) + f". Source: {filename}, sheet {ws.title}, row {row_idx}."
+            records.append(record)
+    return records
+
+
 def _records_from_sheet(ws, filename, kind):
     header_idx, mapped = _header_row(ws)
     metadata = _metadata_from_filename(filename)
     records = []
+    if not header_idx and kind == "programme":
+        basket_records = _records_from_basket_layout(ws, filename, metadata)
+        if basket_records:
+            return basket_records
     if header_idx:
         for row_idx in range(header_idx + 1, ws.max_row + 1):
             values = {}

@@ -151,17 +151,26 @@ def _records_from_sheet(ws, filename, kind):
         return records
 
     # No course-code/title header pair: retain explicit elective/slot columns as raw values.
-    # Do not treat ordinary prose or unlabelled cells as courses.
-    for row_idx in range(1, ws.max_row + 1):
-        for col_idx in range(1, ws.max_column + 1):
-            header = _field_for_header(ws.cell(1, col_idx).value)
-            value = _cell_value(ws.cell(row_idx, col_idx).value)
-            if header == "elective_slot" and value is not None and row_idx > 1:
+    # Search for the header row rather than assuming it is the first row.
+    slot_header_row = None
+    slot_columns = []
+    for candidate in range(1, min(ws.max_row, 20) + 1):
+        cols = [(col, ws.cell(candidate, col).value) for col in range(1, ws.max_column + 1)
+                if _field_for_header(ws.cell(candidate, col).value) == "elective_slot"]
+        if cols:
+            slot_header_row, slot_columns = candidate, cols
+            break
+    if slot_header_row:
+        for row_idx in range(slot_header_row + 1, ws.max_row + 1):
+            for col_idx, header_value in slot_columns:
+                value = _cell_value(ws.cell(row_idx, col_idx).value)
+                if value is None:
+                    continue
                 coord = ws.cell(row_idx, col_idx).coordinate
                 records.append({
                     "is_course_record": False,
                     "document_type": "raw_elective_slot",
-                    "slot_header": str(ws.cell(1, col_idx).value),
+                    "slot_header": str(header_value),
                     "raw_value": value,
                     "programme": metadata["programme"],
                     "batch": metadata["batch"],

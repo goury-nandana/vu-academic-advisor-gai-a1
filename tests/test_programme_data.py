@@ -89,6 +89,34 @@ class ProgrammeDataBuilderTests(unittest.TestCase):
         self.assertTrue(all(row.get("source") and row.get("sheet") and row.get("cells") for row in rows))
         self.assertEqual({str(row["batch"]) for row in course_rows}, {"2022", "2023", "2024", "2025", "2026"})
 
+    def test_combined_minor_workbook_keeps_explicit_batch_and_unknown_code_raw(self):
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Psychology"
+        ws.append(["2024 Batch", "Course Code", "Course Title", "L", "T", "P", "Credit", "Semester", "Pre-rq"])
+        ws.append([None, "PSYC201/ PSYC103", "Biological Psychology/ Foundations of Psychology I", 3, 1, 0, 4, 3, "Nil"])
+        rows = _records_from_sheet(ws, "Minor_Courses_for_BTech_Students.xlsx", "minor")
+        raw = next(r for r in rows if r["document_type"] == "raw_elective_slot")
+        self.assertEqual(raw["raw_value"], "PSYC201/ PSYC103 — Biological Psychology/ Foundations of Psychology I")
+        self.assertEqual(raw["batch"], "2024")
+        self.assertFalse(raw["is_course_record"])
+
+    def test_second_programme_header_block_is_not_missed(self):
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Struct_2026_DS"
+        ws.append([None, "#", "Program Core - Courses", "Cr", None, "Electives", "Cr"])
+        ws.append([None, 1, "Data Structures", 4, None, "Probabilistic Graph Models", 4])
+        ws.append([None, 2, "Operating Systems", 4, None, "Option A / Option B", 4])
+        ws.append([None, None, None, None, None, "Internship and Capstone Project - Courses", "Cr"])
+        ws.append([None, None, None, None, None, "Summer Training/Internship", 2])
+        rows = _records_from_sheet(ws, "Semester_Spread_Structures_Sept_2026.xlsx", "programme")
+        titles = {r.get("course_title") for r in rows if r["document_type"] == "programme_structure_course"}
+        self.assertIn("Data Structures", titles)
+        self.assertIn("Summer Training/Internship", titles)
+        self.assertTrue(any(r.get("raw_value") == "Option A / Option B" for r in rows))
+        self.assertEqual({r["batch"] for r in rows if r.get("batch")}, {"2026"})
+
     def test_workbook_archives_load_only_matching_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             minor_path = Path(tmp) / "minor.zip"

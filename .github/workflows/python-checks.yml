@@ -17,6 +17,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Check app syntax
-        run: python -m py_compile app.py
+        run: python -m py_compile app.py course_data.py programme_data.py backend/main.py backend/programme_data.py
       - name: Run complete unittest suite
         run: python -m unittest discover -s tests -v

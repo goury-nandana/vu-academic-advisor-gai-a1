@@ -82,11 +82,12 @@ def _basket_header_groups(ws, max_scan=12):
     for row_idx in range(1, min(ws.max_row, max_scan) + 1):
         groups = []
         for col_idx in range(1, ws.max_column - 1):
-            marker = _header_key(ws.cell(row_idx, col_idx).value)
+            raw_marker = str(ws.cell(row_idx, col_idx).value or "").strip()
+            marker = _header_key(raw_marker)
             title_header = _cell_value(ws.cell(row_idx, col_idx + 1).value)
             credit_header = _header_key(ws.cell(row_idx, col_idx + 2).value)
             if (
-                marker in {"#", "no", "sno", "number"}
+                (raw_marker == "#" or marker in {"no", "sno", "number"})
                 and title_header
                 and ("course" in str(title_header).lower() or "elective" in str(title_header).lower())
                 and credit_header in {"cr", "credit", "credits"}

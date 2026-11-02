@@ -142,9 +142,14 @@ SYNONYMS={
     "programme":{"program","programmes","programs","curriculum"},
     "program":{"programme","programmes","programs","curriculum"},
     "minor":{"minors"},"major":{"specialization","specialisation","track"},
+    "first":{"1","1st"},"second":{"2","2nd"},"third":{"3","3rd"},"fourth":{"4","4th"},
+    "fifth":{"5","5th"},"sixth":{"6","6th"},"seventh":{"7","7th"},"eighth":{"8","8th"},
+    "1st":{"1","first"},"2nd":{"2","second"},"3rd":{"3","third"},"4th":{"4","fourth"},
+    "5th":{"5","fifth"},"6th":{"6","sixth"},"7th":{"7","seventh"},"8th":{"8","eighth"},
 }
 def tok(s):
-    words=re.findall(r"[a-z0-9]+",str(s).lower())
+    normalized=re.sub(r"\bb\s*\.?\s*tech\b","btech",str(s).lower())
+    words=re.findall(r"[a-z0-9]+",normalized)
     return [x for x in words if x not in STOP]
 def search(q,docs):
     original=tok(q)
@@ -298,8 +303,35 @@ async def chat(req:Request):
     if previous_user and (len(tok(question))<=4 or re.search(r"\b(it|that|those|them|there|also|what about|and the|which one)\b",question,re.I)):
         contextual_query=previous_user+" "+question
     generic_attachment_prompt=question.lower() in {"please look at my attachment","look at my attachment","please read my attachment"}
-    retrieved=search(contextual_query,load_docs()) if not generic_attachment_prompt else []
-    rows=uploaded[:6] + retrieved[:7]
+    corpus=load_docs()
+    retrieved=search(contextual_query,corpus) if not generic_attachment_prompt else []
+    # If a course code is mentioned, prefer exact normalized structured rows.
+    asked_codes={re.sub(r"[\s-]","",code).upper() for code in re.findall(r"\b[A-Za-z]{2,6}\s*[-]?\s*\d{3,4}[A-Za-z]?\b",question)}
+    asked_batch_match=re.search(r"\b(202[2-6])\b",question)
+    asked_batch=asked_batch_match.group(1) if asked_batch_match else None
+    if asked_codes:
+        exact_course_rows=[d for d in corpus if d.get("is_course_record") and d.get("course_code") in asked_codes and (not asked_batch or str(d.get("batch"))==asked_batch)]
+        if exact_course_rows:retrieved=exact_course_rows
+    # A semester-list request should return all matching structured entries,
+    # rather than only the seven chunks selected by generic relevance ranking.
+    semester_number=None
+    semester_words={"first":1,"1st":1,"second":2,"2nd":2,"third":3,"3rd":3,"fourth":4,"4th":4,
+        "fifth":5,"5th":5,"sixth":6,"6th":6,"seventh":7,"7th":7,"eighth":8,"8th":8}
+    for value in range(1,9):
+        if re.search(rf"\b(?:semester|sem)\s*(?:no\.?\s*)?{value}\b",question,re.I) or re.search(rf"\b(?:semester|sem){value}\b",question,re.I):
+            semester_number=value
+            break
+    if semester_number is None:
+        for word,value in semester_words.items():
+            if re.search(rf"\b(?:semester|sem)\s*(?:no\.?\s*)?{word}\b",question,re.I):
+                semester_number=value
+                break
+    program_is_btech=("btech" in tok(question) or "btech" in str(profile.get("program","")).lower().replace(".","").replace(" ",""))
+    list_intent=bool(re.search(r"\b(courses?|subjects?|list|which|curriculum)\b",question,re.I))
+    if semester_number and program_is_btech and list_intent and not generic_attachment_prompt:
+        semester_rows=[d for d in corpus if d.get("is_course_record") and d.get("semester")==semester_number and (not asked_batch or str(d.get("batch"))==asked_batch)]
+        if semester_rows:retrieved=semester_rows
+    rows=uploaded[:6] + retrieved
     ctx="\n\n".join("Source: "+r["source"]+(f", page {r['page']}" if r.get("page") else "")+"\n"+r["text"] for r in rows)
     hist="\n".join(f"{m.get('role')}: {str(m.get('text',''))[:500]}" for m in history[-5:] if isinstance(m,dict))
     prof=json.dumps({k:v for k,v in profile.items() if v not in ("",None)})
@@ -309,7 +341,7 @@ async def chat(req:Request):
     answer=""
     for model in [os.getenv("GROQ_MODEL","llama-3.3-70b-versatile"),"openai/gpt-oss-20b","openai/gpt-oss-120b"]:
         try:
-            out=client.chat.completions.create(model=model,messages=[{"role":"system","content":SYS},{"role":"user","content":prompt}],temperature=.1,max_tokens=800)
+            out=client.chat.completions.create(model=model,messages=[{"role":"system","content":SYS},{"role":"user","content":prompt}],temperature=.1,max_tokens=1200)
             answer=out.choices[0].message.content.strip();break
         except Exception:continue
     if not answer:raise HTTPException(502,"Groq answer generation failed; check key, model access, and rate limits.")

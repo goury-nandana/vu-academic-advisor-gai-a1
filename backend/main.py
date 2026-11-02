@@ -5,6 +5,7 @@ from functools import lru_cache
 from fastapi import FastAPI, HTTPException, Request
 from groq import Groq
 from pypdf import PdfReader
+from programme_data import extract_archive_records
 
 app=FastAPI(title="VU Academic Advisor API")
 RAW="https://raw.githubusercontent.com/goury-nandana/vu-academic-advisor-gai-a2/main/"
@@ -33,6 +34,21 @@ def load_docs():
                 if s:docs.append({"text":s,"source":filename,"url":GH+"VU_Semester_Data_Split.zip"})
             wb.close()
     except Exception:pass
+    # Minor workbooks are a separate source archive. Keep explicit course rows
+    # structured and ambiguous elective cells raw; never split or infer values.
+    try:
+        minor_raw = get("VU_Minor_Data_Split.zip")
+        for record in extract_archive_records(minor_raw, "minor"):
+            docs.append({**record, "url": GH + "VU_Minor_Data_Split.zip"})
+    except Exception:
+        pass
+    # Programme structures live beside semester spreads in the same archive.
+    try:
+        programme_raw = get("VU_Semester_Data_Split.zip")
+        for record in extract_archive_records(programme_raw, "programme"):
+            docs.append({**record, "url": GH + "VU_Semester_Data_Split.zip"})
+    except Exception:
+        pass
     chunks=[]
     for d in docs:
         words=d["text"].split()

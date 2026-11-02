@@ -36,7 +36,7 @@ def _norm(value):
 
 
 def _text(value):
-    return re.sub(r"\\s+", " ", str(value)).strip() if value is not None else ""
+    return re.sub(r"\s+", " ", str(value)).strip() if value is not None else ""
 
 
 def _header_map(row):
@@ -50,7 +50,7 @@ def _col(mapping, *names):
 def _batch(ws, row):
     for r in range(row, 0, -1):
         for c in range(1, min(ws.max_column, 4) + 1):
-            match = re.search(r"\\b(20\\d{2})\\s*batch\\b", _text(ws.cell(r, c).value), re.I)
+            match = re.search(r"\b(20\d{2})\s*batch\b", _text(ws.cell(r, c).value), re.I)
             if match:
                 return match.group(1)
     return None
@@ -108,24 +108,24 @@ def _minor_records(ws, filename):
 
 def _programme_records(ws, filename):
     out, seen = [], set()
-    match = re.search(r"(?:^|[^0-9])(20\\d{2})(?:$|[^0-9])", ws.title)
+    match = re.search(r"(?:^|[^0-9])(20\d{2})(?:$|[^0-9])", ws.title)
     batch = match.group(1) if match else None
     for header_row in range(1, min(ws.max_row, 20) + 1):
         headers = [
             (i, _text(ws.cell(header_row, i + 1).value))
             for i in range(ws.max_column)
             if ws.cell(header_row, i + 1).value is not None
-            and re.search(r"\\bcourses?\\b|\\belectives?\\b", _text(ws.cell(header_row, i + 1).value), re.I)
+            and re.search(r"\bcourses?\b|\belectives?\b", _text(ws.cell(header_row, i + 1).value), re.I)
         ]
         for title_idx, heading in headers:
             credit_idx = title_idx + 1
             if key(ws.cell(header_row, credit_idx + 1).value) not in {"cr", "credit", "credits"}:
                 continue
-            group = re.sub(r"\\s*[-–—]\\s*Courses?\\s*$", "", heading, flags=re.I).strip() or "Electives"
+            group = re.sub(r"\s*[-–—]\s*Courses?\s*$", "", heading, flags=re.I).strip() or "Electives"
             for r in range(header_row + 1, ws.max_row + 1):
                 title = _text(ws.cell(r, title_idx + 1).value)
                 credit = ws.cell(r, credit_idx + 1).value
-                if title and key(credit) in {"cr", "credit", "credits"} and re.search(r"\\bcourses?\\b|\\belectives?\\b", title, re.I):
+                if title and key(credit) in {"cr", "credit", "credits"} and re.search(r"\bcourses?\b|\belectives?\b", title, re.I):
                     break
                 if not title or key(title) in {"total credits", "course", "courses", "electives"}:
                     continue
@@ -133,7 +133,7 @@ def _programme_records(ws, filename):
                 if identity in seen:
                     continue
                 seen.add(identity)
-                summary = bool(re.match(r"^\\d+\\s+courses?\\s+of\\b", title, re.I))
+                summary = bool(re.match(r"^\d+\s+courses?\s+of\b", title, re.I))
                 record = {
                     "document_type": "programme_structure_note" if summary else "programme_structure_course",
                     "programme": None, "track": None, "batch": batch,
@@ -181,7 +181,7 @@ def extract_archive_records(raw, kind):
                 if kind == "minor":
                     records.extend(_minor_records(ws, filename))
                     continue
-                if kind == "programme" and re.search(r"\\bstruct", ws.title, re.I):
+                if kind == "programme" and re.search(r"\bstruct", ws.title, re.I):
                     records.extend(_programme_records(ws, filename))
                     continue
                 header_row, mapped = None, []

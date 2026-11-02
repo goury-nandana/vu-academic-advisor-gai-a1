@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 _backend_path = str(Path(__file__).resolve().parents[1] / "backend")
 sys.path.insert(0, _backend_path)
-from main import GH, SOCIAL_RE, extract_upload
+from main import GH, SOCIAL_RE, extract_upload, search
 sys.path.remove(_backend_path)
 sys.modules.pop("programme_data", None)
 
@@ -24,6 +24,23 @@ class BackendBasicsTests(unittest.TestCase):
     def test_source_links_use_direct_file_host_not_github_blob_viewer(self):
         self.assertTrue(GH.startswith("https://raw.githubusercontent.com/"))
         self.assertNotIn("/blob/", GH)
+
+    def test_min_attendance_query_retrieves_matching_evidence(self):
+        docs = [
+            {"text": "The minimum attendance requirement is sixty five percent.", "source": "handbook", "page": 3},
+            {"text": "Students may apply for admission using the portal.", "source": "admissions", "page": 8},
+        ]
+        result = search("min attendance?", docs)
+        self.assertTrue(result)
+        self.assertEqual(result[0]["source"], "handbook")
+
+    def test_png_image_upload_uses_vision_model(self):
+        client = Mock()
+        client.chat.completions.create.return_value.choices[0].message.content = "The image shows an attendance table."
+        text = extract_upload("schedule.png", b"fake-image-bytes", client)
+        self.assertIn("attendance table", text)
+        args = client.chat.completions.create.call_args.kwargs
+        self.assertEqual(args["messages"][0]["content"][1]["type"], "image_url")
 
     def test_webm_voice_note_is_transcribed(self):
         client = Mock()

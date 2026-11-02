@@ -1,20 +1,25 @@
 # VU Academic Advisor — Next.js frontend
 
-Design: white chat UI with one campus photo background, collapsible frosted side panel, fixed header pill
-(green ring while the advisor is answering, fades 5 s after the reply), and one bottom bar (mic, camera, file, send).
+The frontend talks to the FastAPI academic advisor using the same Vercel origin at `/api/chat`.
 
-## Run locally
+## Run frontend locally
 ```bash
 npm install
 npm run dev
 ```
 
-## Deploy (Vercel)
-Import the repo, set **Root Directory** to `frontend`.
+For local API-backed testing, run the FastAPI service from `backend/` separately and configure a local Next.js rewrite or use the Vercel Services local development workflow.
 
-## Connecting the advisor backend
-All backend access is in `app/advisor.ts`. Set `NEXT_PUBLIC_ADVISOR_API_URL` (a public URL only; keep Groq keys on the server)
-in Vercel → Project → Settings → Environment Variables. Without it the page shows a "not connected" reply.
+## Deploy to Vercel
+Import the repository with its **Root Directory set to the repository root**, not `frontend`. The repository-level `vercel.json` defines the frontend and backend Vercel Services and routes `/api/*` to FastAPI.
 
-Expected API: `POST {URL}/chat` (multipart/form-data) with `question`, `history` (JSON), `profile` (JSON), `files[]`,
-returning JSON `{ "answer": string, "sources": [{ "title": string, "url"?: string }] }`.
+Set `GROQ_API_KEY` as a private environment variable on the backend service in Vercel. Do not expose it to the browser or use a `NEXT_PUBLIC_` variable.
+
+## API contract
+POST `/api/chat` as multipart/form-data:
+- `question`: text
+- `history`: JSON array of prior user/assistant turns
+- `profile`: JSON object of explicitly provided student details
+- `files`: optional attachments (PDF, DOCX, TXT, MD, CSV, XLSX, PPTX; up to 15 MB each; text extraction only)
+
+Returns JSON `{ "answer": string, "sources": [{ "title": string, "url"?: string }] }`.

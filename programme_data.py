@@ -50,8 +50,8 @@ def _field_for_header(value):
     return None
 
 
-def _metadata_from_filename(filename):
-    name = Path(filename).stem
+def _metadata_from_filename(filename, sheet_name=None):
+    name = Path(sheet_name).stem if sheet_name else Path(filename).stem
     batch_match = re.search(r"(?<!\d)(2022|2023|2024|2025|2026)(?!\d)", name)
     programme = "B.Tech" if re.search(r"btech", name, re.I) else None
     return {
@@ -139,7 +139,7 @@ def _records_from_basket_layout(ws, filename, metadata):
                 "semester": None,
                 "programme": metadata["programme"],
                 "batch": metadata["batch"],
-                "course_type": re.sub(r"\\s*-\\s*Courses?\\s*$", "", group_title, flags=re.I).strip(),
+                "course_type": re.sub(r"\s*-\\s*Courses?\\s*$", "", group_title, flags=re.I).strip(),
                 "source": filename,
                 "sheet": ws.title,
                 "cells": cells,
@@ -154,9 +154,19 @@ def _records_from_basket_layout(ws, filename, metadata):
     return records
 
 
+def _explicit_batch_from_sheet(ws, row_idx):
+    """Return only a batch label explicitly written in the current/preceding rows."""
+    for r in range(row_idx, 0, -1):
+        for col in range(1, min(ws.max_column, 4) + 1):
+            match = re.search(r"\b(20\d{2})\s*batch\b", str(ws.cell(r, col).value or ""), re.I)
+            if match:
+                return match.group(1)
+    return None
+
+
 def _records_from_sheet(ws, filename, kind):
     header_idx, mapped = _header_row(ws)
-    metadata = _metadata_from_filename(filename)
+    metadata = _metadata_from_filename(filename, ws.title)
     records = []
     if not header_idx and kind == "programme":
         basket_records = _records_from_basket_layout(ws, filename, metadata)
@@ -164,6 +174,7 @@ def _records_from_sheet(ws, filename, kind):
             return basket_records
     if header_idx:
         for row_idx in range(header_idx + 1, ws.max_row + 1):
+            row_batch = _explicit_batch_from_sheet(ws, row_idx) or metadata["batch"]
             values = {}
             cells = {}
             raw_slots = []
@@ -195,7 +206,7 @@ def _records_from_sheet(ws, filename, kind):
                     "prerequisite": values.get("prerequisite"),
                     "programme": values.get("programme") or metadata["programme"],
                     "minor_name": values.get("minor_name") or (Path(filename).stem.split("_Minor_")[-1].replace("_", " ") if kind == "minor" else None),
-                    "batch": metadata["batch"],
+                    "batch": row_batch,
                     "course_type": values.get("course_type"),
                     "ltp": values.get("ltp"),
                     "source": filename,
@@ -223,7 +234,7 @@ def _records_from_sheet(ws, filename, kind):
                     "raw_value": value,
                     "programme": values.get("programme") or metadata["programme"],
                     "minor_name": values.get("minor_name"),
-                    "batch": metadata["batch"],
+                    "batch": row_batch,
                     "source": filename,
                     "sheet": ws.title,
                     "cells": {field: coord},
@@ -297,7 +308,11 @@ def load_minor_records(archive_path=MINOR_ARCHIVE):
 
 def load_programme_structure_records(archive_path=PROGRAMME_ARCHIVE):
     """Load programme-structure course rows and raw elective slots by explicit headers."""
-    return _load_archive(archive_path, lambda name: "programme_structure" in name.lower(), "programme")
+    return _load_archive(
+        archive_path,
+        lambda name: any(token in name.lower() for token in ("programme_structure", "semester_spread_structures", "semester_data_split")),
+        "programme",
+    )
 
 
 def load_minor_and_programme_records(minor_archive=MINOR_ARCHIVE, programme_archive=PROGRAMME_ARCHIVE):

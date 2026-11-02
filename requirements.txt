@@ -1,5 +1,7 @@
 streamlit
 groq
+fastapi
+python-multipart
 pypdf
 requests
 beautifulsoup4

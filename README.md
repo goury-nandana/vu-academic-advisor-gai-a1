@@ -4,6 +4,20 @@ Streamlit-based academic advising chatbot for Vidyashilp University (VU). It use
 
 **Live app:** https://vu-academic-advisor-gai-a1-hzdbiixzivwbjb3dvbfvka.streamlit.app/
 
+## Next.js frontend (Vercel migration)
+
+A new responsive Next.js UI is being developed in `frontend/`. The frontend is currently a preview scaffold and is **not yet connected** to the academic retrieval/Groq service. The Streamlit deployment remains the functional app during this migration.
+
+To preview the UI locally:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+For a Vercel preview, import this repository and set the project **Root Directory** to `frontend`. Do not configure the Groq key as a `NEXT_PUBLIC_*` variable. Backend/API integration and academic feature parity are the next migration stage.
+
 ## Current scope
 
 - Detailed B.Tech curriculum lookups for admission batches 2022–2026, using the batch-specific semester-spread workbook.

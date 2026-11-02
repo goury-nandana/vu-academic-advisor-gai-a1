@@ -85,10 +85,11 @@ def extract_archive_records(raw, kind):
                     for candidate in range(1, min(ws.max_row, 12) + 1):
                         found = []
                         for col in range(1, ws.max_column - 1):
-                            marker = key(ws.cell(candidate, col).value)
+                            raw_marker = str(ws.cell(candidate, col).value or "").strip()
+                            marker = key(raw_marker)
                             title_header = ws.cell(candidate, col + 1).value
                             credit_header = key(ws.cell(candidate, col + 2).value)
-                            if (marker in {"#", "no", "sno", "number"} and title_header
+                            if ((raw_marker == "#" or marker in {"no", "sno", "number"}) and title_header
                                 and ("course" in str(title_header).lower() or "elective" in str(title_header).lower())
                                 and credit_header in {"cr", "credit", "credits"}):
                                 found.append((col, col + 1, col + 2, str(title_header)))

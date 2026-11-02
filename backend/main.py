@@ -18,6 +18,66 @@ def pdf(path):
         reader=PdfReader(io.BytesIO(get(path)))
         return [{"text":re.sub(r"\s+"," ",p.extract_text() or "").strip(),"source":path,"page":i+1,"url":GH+urllib.parse.quote(path)} for i,p in enumerate(reader.pages) if (p.extract_text() or "").strip()]
     except Exception:return []
+def extract_course_records(archive_raw):
+    """Extract explicit B.Tech semester-spread course rows from the GitHub ZIP."""
+    from openpyxl import load_workbook
+    files={
+        "2022":"01_Semester_Spread_BTech_2022.xlsx",
+        "2023":"02_Semester_Spread_BTech_2023.xlsx",
+        "2024":"03_Semester_Spread_BTech_2024.xlsx",
+        "2025":"04_Semester_Spread_BTech_2025.xlsx",
+        "2026":"05_Semester_Spread_BTech_DS_2026.xlsx",
+    }
+    records=[]
+    archive=zipfile.ZipFile(io.BytesIO(archive_raw))
+    names=set(archive.namelist())
+    for batch,filename in files.items():
+        if filename not in names:continue
+        workbook=load_workbook(io.BytesIO(archive.read(filename)),read_only=True,data_only=True)
+        sheet=workbook.active
+        sem_columns={}
+        for col in range(1,sheet.max_column+1):
+            marker=re.sub(r"[\s-]","",str(sheet.cell(1,col).value or "")).upper()
+            if re.fullmatch(r"S[1-8]",marker):sem_columns[marker]=col
+        for row in range(3,sheet.max_row+1):
+            basket_code=re.sub(r"[\s-]","",str(sheet.cell(row,1).value or "")).upper()
+            basket_name=re.sub(r"[\s-]","",str(sheet.cell(row,2).value or "")).upper()
+            for sem,title_col in sem_columns.items():
+                code_col=title_col-1
+                raw_code=str(sheet.cell(row,code_col).value or "").strip()
+                title=str(sheet.cell(row,title_col).value or "").strip()
+                if not raw_code or not title or not re.fullmatch(r"[A-Za-z]{2,6}\s*[-]?\s*\d{3,4}[A-Za-z]?",raw_code):continue
+                prereq=sheet.cell(row,title_col+1).value
+                lval=sheet.cell(row,title_col+2).value
+                tval=sheet.cell(row,title_col+3).value
+                pval=sheet.cell(row,title_col+4).value
+                credits=sheet.cell(row,title_col+5).value
+                code=re.sub(r"[\s-]","",raw_code).upper()
+                semester=int(sem[1:])
+                record={
+                    "is_course_record":True,"document_type":"semester_spread",
+                    "course_code":code,"course_title":title,"prerequisite":prereq,
+                    "L":lval,"T":tval,"P":pval,"credits":credits,
+                    "semester":semester,"programme":"B.Tech",
+                    "track":"Data Science" if batch=="2026" else None,
+                    "batch":batch,"basket":{"code":basket_code or None,"name":basket_name or None},
+                    "source":filename,
+                    "cells":{"code":sheet.cell(row,code_col).coordinate,"title":sheet.cell(row,title_col).coordinate,
+                        "prerequisite":sheet.cell(row,title_col+1).coordinate,"L":sheet.cell(row,title_col+2).coordinate,
+                        "T":sheet.cell(row,title_col+3).coordinate,"P":sheet.cell(row,title_col+4).coordinate,
+                        "credits":sheet.cell(row,title_col+5).coordinate},
+                }
+                record["text"]=(
+                    f"{code} — {title}. B.Tech admission batch {batch}; semester {semester}; "
+                    f"credits {credits if credits is not None else 'not specified'}; "
+                    f"prerequisite {prereq if prereq not in (None,'') else 'not specified'}; "
+                    f"L-T-P {lval}-{tval}-{pval}."
+                )
+                records.append(record)
+        workbook.close()
+    archive.close()
+    return records
+
 @lru_cache(maxsize=1)
 def load_docs():
     docs=pdf("4. Student Handbook Aug 2026.pdf")+pdf("SOP STUDENT 17082026 - Final.pdf")
@@ -31,7 +91,10 @@ def load_docs():
             pass
     try:
         from openpyxl import load_workbook
-        z=zipfile.ZipFile(io.BytesIO(get("VU_Semester_Data_Split.zip")))
+        semester_archive=get("VU_Semester_Data_Split.zip")
+        # Add a validated, structured row for every explicit B.Tech course entry.
+        docs.extend(extract_course_records(semester_archive))
+        z=zipfile.ZipFile(io.BytesIO(semester_archive))
         for filename in z.namelist():
             if not filename.endswith(".xlsx"):continue
             wb=load_workbook(io.BytesIO(z.read(filename)),read_only=True,data_only=True); ws=wb.active

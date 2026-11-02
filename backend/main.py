@@ -50,6 +50,26 @@ def search(q,docs):
     scores.sort(key=lambda x:x[0],reverse=True)
     return [d for _,d in scores[:7]]
 SYS="""You are the AI Academic Advisor for Vidyashilp University, Bengaluru. Respond concisely and only from retrieved evidence. Never invent course codes, policy thresholds, eligibility, credits, or student-record facts. Never claim access to private university records; use profile only if explicitly supplied. For B.Tech minor questions, published Data Science and AI/ML tracks list Economics, Marketing, Psychology, Finance, Design, and Law; do not mix programmes' lists. If sources are insufficient, state that and suggest Digicampus or relevant office. Fees: Accounts; professors/HODs: department office; records/exams: Registrar. Specific course codes: advise Digicampus for details."""
+def extract_upload(filename, raw):
+    ext=filename.lower().rsplit(".",1)[-1] if "." in filename else ""
+    try:
+        if ext=="pdf":
+            return "\\n".join(p.extract_text() or "" for p in PdfReader(io.BytesIO(raw)).pages)
+        if ext in {"txt","md","csv"}:return raw.decode("utf-8",errors="ignore")
+        if ext=="docx":
+            from docx import Document
+            return "\\n".join(p.text for p in Document(io.BytesIO(raw)).paragraphs)
+        if ext=="xlsx":
+            from openpyxl import load_workbook
+            wb=load_workbook(io.BytesIO(raw),read_only=True,data_only=True)
+            return "\\n".join(" | ".join(str(v) for v in row if v is not None) for ws in wb.worksheets for row in ws.iter_rows(values_only=True))
+        if ext=="pptx":
+            from pptx import Presentation
+            prs=Presentation(io.BytesIO(raw))
+            return "\\n".join(sh.text for slide in prs.slides for sh in slide.shapes if hasattr(sh,"text"))
+    except Exception:return ""
+    return ""
+
 @app.get("/api")
 @app.get("/api/")
 async def health():return {"status":"ok","service":"VU Academic Advisor API"}
@@ -63,7 +83,14 @@ async def chat(req:Request):
     except Exception:history=[]
     try:profile=json.loads(str(form.get("profile","{}")))
     except Exception:profile={}
-    rows=search(question,load_docs())
+    uploaded=[]
+    for item in form.getlist("files"):
+        if not hasattr(item,"filename") or not item.filename:continue
+        raw=await item.read()
+        if len(raw)>15*1024*1024:continue
+        extracted=extract_upload(item.filename,raw)[:12000]
+        if extracted.strip():uploaded.append({"text":extracted,"source":"Student upload: "+item.filename})
+    rows=search(question,load_docs()+uploaded)
     ctx="\n\n".join("Source: "+r["source"]+(f", page {r['page']}" if r.get("page") else "")+"\n"+r["text"] for r in rows)
     hist="\n".join(f"{m.get('role')}: {str(m.get('text',''))[:500]}" for m in history[-5:] if isinstance(m,dict))
     prof=json.dumps({k:v for k,v in profile.items() if v not in ("",None)})

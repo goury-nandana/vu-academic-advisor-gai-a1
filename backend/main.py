@@ -465,6 +465,35 @@ async def chat(req:Request):
     if semester_number and program_is_btech and list_intent and not generic_attachment_prompt:
         semester_rows=[d for d in corpus if d.get("is_course_record") and d.get("semester")==semester_number and (not asked_batch or str(d.get("batch"))==asked_batch)]
         if semester_rows:retrieved=semester_rows
+    # Deterministic profile-summary response: avoid LLM inventing curriculum or course facts.
+    course_profile_intent = bool(re.search(r"\\b(what do you know|what do you know about|tell me about)\\b", question, re.I)
+                                and re.search(r"\\b(my|about my)\\b", question, re.I)
+                                and re.search(r"\\b(course|program|programme|curriculum)\\b", question, re.I))
+    if course_profile_intent and not uploaded:
+        stated_program = str(profile.get("program", "")).strip()
+        stated_semester = str(profile.get("semester", "")).strip()
+        unspecified = {"", "not specified", "none", "null"}
+        details = []
+        if stated_program.casefold() not in unspecified:
+            details.append(f"Your profile panel currently specifies **{stated_program}**.")
+        if stated_semester.casefold() not in unspecified:
+            details.append(f"It also specifies **{stated_semester}**.")
+        if not details:
+            answer = "Your profile panel does not specify a programme or semester yet. Select them in the Student Profile panel, or tell me your programme."
+        else:
+            program_key = re.sub(r"[^a-z0-9]+", "", stated_program.casefold())
+            matching_programme_records = [
+                d for d in corpus
+                if d.get("document_type") in {"programme_structure_course", "programme_credit_structure", "programme_structure_note"}
+                and re.sub(r"[^a-z0-9]+", "", str(d.get("programme") or "").casefold()) == program_key
+            ]
+            answer = " ".join(details)
+            if matching_programme_records:
+                answer += f" I found {len(matching_programme_records)} programme-structure records for that programme in the available corpus; ask about a specific semester or course to retrieve relevant details."
+            else:
+                answer += " The available source corpus does not contain a matching programme curriculum, so I cannot reliably list your courses, credits, or prerequisites."
+        return {"answer": answer, "sources": []}
+
     rows=uploaded[:6] + retrieved
     ctx="\n\n".join("Source: "+r["source"]+(f", page {r['page']}" if r.get("page") else "")+"\n"+r["text"] for r in rows)
     hist="\n".join(f"{m.get('role')}: {str(m.get('text',''))[:500]}" for m in history[-5:] if isinstance(m,dict))

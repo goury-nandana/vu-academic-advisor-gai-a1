@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 _backend_path = str(Path(__file__).resolve().parents[1] / "backend")
 sys.path.insert(0, _backend_path)
-from main import GH, SOCIAL_RE, extract_course_records, extract_upload, search, tok
+from main import GH, NONSENSE_RE, REACTION_RE, SOCIAL_RE, extract_course_records, extract_upload, search, tok
 sys.path.remove(_backend_path)
 sys.modules.pop("programme_data", None)
 
@@ -23,6 +23,21 @@ class BackendBasicsTests(unittest.TestCase):
         for message in ("minimum attendance?", "how do I apply to VU?", "course prerequisites"):
             with self.subTest(message=message):
                 self.assertIsNone(SOCIAL_RE.fullmatch(message))
+
+    def test_frustration_feedback_bypasses_retrieval(self):
+        for message in ("wtf", "wtf is this", "are u dumb", "this makes no sense", "not what I asked"):
+            with self.subTest(message=message):
+                self.assertIsNotNone(REACTION_RE.fullmatch(message))
+
+    def test_reaction_regex_does_not_capture_academic_questions(self):
+        for message in ("what is the attendance policy?", "what are the prerequisites?", "how do I apply?"):
+            with self.subTest(message=message):
+                self.assertIsNone(REACTION_RE.fullmatch(message))
+
+    def test_repeated_gibberish_is_detected(self):
+        message = "jdhhhhhhhhhhhhhhhhhhhhhhhhhdgggggggggggggcftuj"
+        self.assertIsNotNone(NONSENSE_RE.search(message))
+        self.assertLessEqual(len(tok(message)), 3)
 
     def test_source_links_use_direct_file_host_not_github_blob_viewer(self):
         self.assertTrue(GH.startswith("https://raw.githubusercontent.com/"))

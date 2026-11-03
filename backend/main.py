@@ -252,7 +252,7 @@ EMOTIONAL_DISTRESS_RE = re.compile(
     r"(?:grieving|bereaved|mourning))\b",
     re.I,
 )
-IDENTITY_RE = re.compile(r"^(?:are\s+(?:u|you)\s+(?:a\s+)?(?:girl|boy|male|female)|what\s+is\s+your\s+gender)[?.! ]*$", re.I)
+IDENTITY_RE = re.compile(r"^(?:are\s+(?:u|you)\s+(?:a\s+)?(?:girl|boy|male|female)(?:\s+or\s+(?:girl|boy|male|female))?|what\s+is\s+your\s+gender)[?.! ]*$", re.I)
 EMOTIONAL_REPLY = "I’m sorry your dog died. Grief, workload, and lack of sleep together can be a lot to carry. If possible, take a short rest and let someone you trust know how you’re doing. I can help you sort the workload into urgent and later tasks."
 IDENTITY_REPLY = "I’m an AI assistant, so I don’t have a gender."
 

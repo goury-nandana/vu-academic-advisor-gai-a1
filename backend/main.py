@@ -233,15 +233,15 @@ SOCIAL_RE = re.compile(
 
 SOCIAL_REPLY = "Hi! How can I help you today?"
 REACTION_RE = re.compile(
-    r"^(?:wtf(?:\\s+(?:is\\s+this|is\\s+that|was\\s+that))?|"
-    r"are\\s+(?:u|you)\\s+(?:dumb|stupid|idiot|serious)|"
-    r"(?:you(?:'re|\\s+are))\\s+(?:dumb|stupid|useless)|"
-    r"(?:this|that)\\s+(?:is|was)\\s+(?:bad|wrong|terrible|useless)|"
-    r"this\\s+makes\\s+no\\s+sense|not\\s+what\\s+i\\s+asked|"
-    r"stop\\s+repeating|you\\s+didn't\\s+answer(?:\\s+me)?)[!.?, ]*$",
+    r"^(?:wtf(?:\s+(?:is\s+this|is\s+that|was\s+that))?|"
+    r"are\s+(?:u|you)\s+(?:dumb|stupid|idiot|serious)|"
+    r"(?:you(?:'re|\s+are))\s+(?:dumb|stupid|useless)|"
+    r"(?:this|that)\s+(?:is|was)\s+(?:bad|wrong|terrible|useless)|"
+    r"this\s+makes\s+no\s+sense|not\s+what\s+i\s+asked|"
+    r"stop\s+repeating|you\s+didn't\s+answer(?:\s+me)?)[!.?, ]*$",
     re.I,
 )
-NONSENSE_RE = re.compile(r"(?:[a-z])\\1{5,}", re.I)
+NONSENSE_RE = re.compile(r"(.)\1{5,}", re.I)
 REACTION_REPLY = "That response missed the mark. I’ll avoid repeating it. Tell me what needs correcting, and I’ll answer more directly."
 NONSENSE_REPLY = "I couldn't make that out. Could you rephrase?"
 

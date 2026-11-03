@@ -44,10 +44,12 @@ function splitTableRow(line: string) {
 function AnswerText({ text }: { text: string }) {
   // The model sometimes emits escaped Markdown and pipe tables flattened onto one line.
   const normalized = text
+    // Normalize escaped Markdown characters and literal newline sequences from model output.
     .replace(/\\([*_])/g, "$1")
+    .replace(/\\n/g, "\n")
     .replace(/\r\n?/g, "\n")
-    // A flattened Markdown table has adjacent row-ending and row-start pipes.
-    // Split these boundaries, including when the separator row follows a header.
+    // Flattened Markdown tables commonly join row boundaries as ||. Turn those
+    // boundaries back into line breaks so the header/separator parser can run.
     .replace(/\|\s*\|\s*(?=\S)/g, "|\n|");
   const lines = normalized.split("\n");
   const rendered: React.ReactNode[] = [];

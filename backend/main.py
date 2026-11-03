@@ -246,8 +246,8 @@ LOW_VOWEL_SINGLE_WORD_RE = re.compile(r"^[a-z]{8,}$", re.I)
 EMOTIONAL_DISTRESS_RE = re.compile(
     r"\b(?:my\s+(?:dog|cat|pet|friend|family|parent|mother|father|relative)\s+(?:died|passed\s+away)|"
     r"(?:someone|my\s+\w+)\s+(?:died|passed\s+away)|"
-    r"(?:too\s+much|overwhelming|heavy)\s+workload|"
-    r"hav(?:en't|ent|ahvent)\s+(?:got(?:ten)?\s+)?(?:proper\s+)?sleep|"
+    r"(?:too\s+much|overwhelming|heavy)\s+workload|burdened\s+with\s+(?:assignments?|schoolwork|work)|"
+    r"(?:haven't|havent|ahvent)\s+(?:got(?:ten)?\s+)?(?:proper\s+)?sleep|"
     r"can't\s+sleep|"
     r"(?:grieving|bereaved|mourning))\b",
     re.I,

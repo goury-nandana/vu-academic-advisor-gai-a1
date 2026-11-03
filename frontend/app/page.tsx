@@ -23,35 +23,35 @@ function fmt(s: number) {
 }
 
 function renderInline(text: string) {
-  const tokens = text.split(/(\\*\\*[^*]+\\*\\*|\\*[^*]+\\*|\\x60[^\\x60]+\\x60|\\[[^\\]]+\\]\\([^)]+\\)|<https?:\\/\\/[^>]+>|<br\\s*\\/?\\s*>)/gi);
+  const tokens = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|\x60[^\x60]+\x60|\[[^\]]+\]\([^)]+\)|<https?:\/\/[^>]+>|<br\s*\/?\s*>)/gi);
   return tokens.map((token, index) => {
     if (token.startsWith("**") && token.endsWith("**")) return <strong key={index}>{token.slice(2, -2)}</strong>;
     if (token.startsWith("*") && token.endsWith("*")) return <em key={index}>{token.slice(1, -1)}</em>;
     if (token.startsWith("\x60") && token.endsWith("\x60")) return <code key={index}>{token.slice(1, -1)}</code>;
-    const link = token.match(/^\\[([^\\]]+)\\]\\((https?:\\/\\/[^)]+)\\)$/);
+    const link = token.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/);
     if (link) return <a key={index} href={link[2]} target="_blank" rel="noreferrer">{link[1]}</a>;
-    const angleUrl = token.match(/^<(https?:\\/\\/[^>]+)>$/);
+    const angleUrl = token.match(/^<(https?:\/\/[^>]+)>$/);
     if (angleUrl) return <a key={index} href={angleUrl[1]} target="_blank" rel="noreferrer">{angleUrl[1]}</a>;
-    if (/^<br\\s*\\/?\\s*>$/i.test(token)) return <br key={index} />;
+    if (/^<br\s*\/?\s*>$/i.test(token)) return <br key={index} />;
     return <span key={index}>{token}</span>;
   });
 }
 
 function splitTableRow(line: string) {
-  return line.trim().replace(/^\\|/, "").replace(/\\|$/, "").split("|").map((cell) => cell.trim());
+  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
 }
 
 function AnswerText({ text }: { text: string }) {
-  const lines = text.replace(/\\\\([*_])/g, "$1").split("\\n");
+  const lines = text.replace(/\\([*_])/g, "$1").split("\n");
   const rendered: React.ReactNode[] = [];
   let index = 0;
 
   while (index < lines.length) {
     const line = lines[index];
-    const heading = line.match(/^#{1,3}\\s+(.+)$/);
-    const bullet = line.match(/^\\s*[-*]\\s+(.+)$/);
-    const ordered = line.match(/^\\s*\\d+[.)]\\s+(.+)$/);
-    const separator = index + 1 < lines.length && /^\\s*\\|?\\s*:?-{3,}:?\\s*(\\|\\s*:?-{3,}:?\\s*)+\\|?\\s*$/.test(lines[index + 1]);
+    const heading = line.match(/^#{1,3}\s+(.+)$/);
+    const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+    const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
+    const separator = index + 1 < lines.length && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[index + 1]);
     const tableStart = line.includes("|") && separator;
 
     if (!line.trim()) {
@@ -79,7 +79,7 @@ function AnswerText({ text }: { text: string }) {
     }
     if (heading) rendered.push(<div className="md-heading" key={index}>{renderInline(heading[1])}</div>);
     else if (bullet) rendered.push(<div className="md-list" key={index}><span aria-hidden="true">•</span><div>{renderInline(bullet[1])}</div></div>);
-    else if (ordered) rendered.push(<div className="md-list" key={index}><span aria-hidden="true">{line.match(/^\\s*(\\d+)/)?.[1]}.</span><div>{renderInline(ordered[1])}</div></div>);
+    else if (ordered) rendered.push(<div className="md-list" key={index}><span aria-hidden="true">{line.match(/^\s*(\d+)/)?.[1]}.</span><div>{renderInline(ordered[1])}</div></div>);
     else rendered.push(<div className="md-line" key={index}>{renderInline(line)}</div>);
     index++;
   }

@@ -42,7 +42,8 @@ function splitTableRow(line: string) {
 }
 
 function AnswerText({ text }: { text: string }) {
-  const lines = text.replace(/\\([*_])/g, "$1").split("\n");
+  const normalized = text.replace(/\\([*_])/g, "$1").replace(/\|\s+\|/g, "|\n|");
+  const lines = normalized.split("\n");
   const rendered: React.ReactNode[] = [];
   let index = 0;
 
@@ -294,7 +295,7 @@ export default function Home() {
                     <span className={`dot ${live && m.id === lastBotId ? "on" : ""}`} />
                   </span>
                   <div className="bubble bot">
-                    {m.text}
+                    <AnswerText text={m.text} />
                     {m.sources && m.sources.length > 0 && (
                       <div className="sources">
                         {m.sources.map((s, i) =>

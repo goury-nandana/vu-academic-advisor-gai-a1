@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 _backend_path = str(Path(__file__).resolve().parents[1] / "backend")
 sys.path.insert(0, _backend_path)
-from main import GH, NONSENSE_RE, REACTION_RE, SOCIAL_RE, extract_course_records, extract_upload, search, tok
+from main import EMOTIONAL_DISTRESS_RE, GH, IDENTITY_RE, LOW_VOWEL_SINGLE_WORD_RE, NONSENSE_RE, REACTION_RE, SOCIAL_RE, extract_course_records, extract_upload, search, tok
 sys.path.remove(_backend_path)
 sys.modules.pop("programme_data", None)
 
@@ -38,6 +38,19 @@ class BackendBasicsTests(unittest.TestCase):
         message = "jdhhhhhhhhhhhhhhhhhhhhhhhhhdgggggggggggggcftuj"
         self.assertIsNotNone(NONSENSE_RE.search(message))
         self.assertLessEqual(len(tok(message)), 3)
+
+    def test_personal_gender_question_bypasses_academic_retrieval(self):
+        self.assertIsNotNone(IDENTITY_RE.fullmatch("are u girl or boy"))
+
+    def test_emotional_distress_is_detected(self):
+        message = "my dog died. i have too much workload. i havent got proper sleep"
+        self.assertIsNotNone(EMOTIONAL_DISTRESS_RE.search(message))
+
+    def test_single_word_gibberish_heuristic_matches_example(self):
+        message = "gdtedhcjcudn"
+        word = tok(message)[0]
+        self.assertIsNotNone(LOW_VOWEL_SINGLE_WORD_RE.fullmatch(word))
+        self.assertLessEqual(sum(ch in "aeiou" for ch in word), 2)
 
     def test_source_links_use_direct_file_host_not_github_blob_viewer(self):
         self.assertTrue(GH.startswith("https://raw.githubusercontent.com/"))

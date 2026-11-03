@@ -46,8 +46,9 @@ function AnswerText({ text }: { text: string }) {
   const normalized = text
     .replace(/\\([*_])/g, "$1")
     .replace(/\r\n?/g, "\n")
-    .replace(/\|\s*\|\s*(?=\|)/g, "|\n|")
-    .replace(/\|\s+\|/g, "|\n|");
+    // A flattened Markdown table has adjacent row-ending and row-start pipes.
+    // Split these boundaries, including when the separator row follows a header.
+    .replace(/\|\s*\|\s*(?=\S)/g, "|\n|");
   const lines = normalized.split("\n");
   const rendered: React.ReactNode[] = [];
   let index = 0;

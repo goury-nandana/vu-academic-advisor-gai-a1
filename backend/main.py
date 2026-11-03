@@ -242,6 +242,20 @@ REACTION_RE = re.compile(
     re.I,
 )
 NONSENSE_RE = re.compile(r"(.)\1{5,}", re.I)
+LOW_VOWEL_SINGLE_WORD_RE = re.compile(r"^[a-z]{8,}$", re.I)
+EMOTIONAL_DISTRESS_RE = re.compile(
+    r"\b(?:my\s+(?:dog|cat|pet|friend|family|parent|mother|father|relative)\s+(?:died|passed\s+away)|"
+    r"(?:someone|my\s+\w+)\s+(?:died|passed\s+away)|"
+    r"(?:too\s+much|overwhelming|heavy)\s+workload|"
+    r"haven't\s+(?:gotten\s+)?(?:proper\s+)?sleep|"
+    r"can't\s+sleep|"
+    r"(?:grieving|bereaved|mourning))\b",
+    re.I,
+)
+IDENTITY_RE = re.compile(r"^(?:are\s+(?:u|you)\s+(?:a\s+)?(?:girl|boy|male|female)|what\s+is\s+your\s+gender)[?.! ]*$", re.I)
+EMOTIONAL_REPLY = "I’m sorry your dog died. Grief, workload, and lack of sleep together can be a lot to carry. If possible, take a short rest and let someone you trust know how you’re doing. I can help you sort the workload into urgent and later tasks."
+IDENTITY_REPLY = "I’m an AI assistant, so I don’t have a gender."
+
 REACTION_REPLY = "That response missed the mark. I’ll avoid repeating it. Tell me what needs correcting, and I’ll answer more directly."
 NONSENSE_REPLY = "I couldn't make that out. Could you rephrase?"
 
@@ -349,9 +363,16 @@ async def chat(req:Request):
     if not question:raise HTTPException(400,"question is required")
     if SOCIAL_RE.fullmatch(question):
         return {"answer": SOCIAL_REPLY, "sources": []}
+    if IDENTITY_RE.fullmatch(question):
+        return {"answer": IDENTITY_REPLY, "sources": []}
+    if EMOTIONAL_DISTRESS_RE.search(question):
+        return {"answer": EMOTIONAL_REPLY, "sources": []}
     if REACTION_RE.fullmatch(question):
         return {"answer": REACTION_REPLY, "sources": []}
-    if NONSENSE_RE.search(question) and len(tok(question)) <= 3:
+    if (NONSENSE_RE.search(question) and len(tok(question)) <= 3) or (
+        len(tok(question)) == 1 and LOW_VOWEL_SINGLE_WORD_RE.fullmatch(tok(question)[0])
+        and sum(ch in "aeiou" for ch in tok(question)[0]) <= 2
+    ):
         return {"answer": NONSENSE_REPLY, "sources": []}
     key=os.getenv("GROQ_API_KEY","").strip()
     if not key:raise HTTPException(503,"Set GROQ_API_KEY in Vercel backend environment variables.")

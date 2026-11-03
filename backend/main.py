@@ -232,6 +232,18 @@ SOCIAL_RE = re.compile(
 )
 
 SOCIAL_REPLY = "Hi! How can I help you today?"
+REACTION_RE = re.compile(
+    r"^(?:wtf(?:\\s+(?:is\\s+this|is\\s+that|was\\s+that))?|"
+    r"are\\s+(?:u|you)\\s+(?:dumb|stupid|idiot|serious)|"
+    r"(?:you(?:'re|\\s+are))\\s+(?:dumb|stupid|useless)|"
+    r"(?:this|that)\\s+(?:is|was)\\s+(?:bad|wrong|terrible|useless)|"
+    r"this\\s+makes\\s+no\\s+sense|not\\s+what\\s+i\\s+asked|"
+    r"stop\\s+repeating|you\\s+didn't\\s+answer(?:\\s+me)?)[!.?, ]*$",
+    re.I,
+)
+NONSENSE_RE = re.compile(r"(?:[a-z])\\1{5,}", re.I)
+REACTION_REPLY = "That response missed the mark. I’ll avoid repeating it. Tell me what needs correcting, and I’ll answer more directly."
+NONSENSE_REPLY = "I couldn't make that out. Could you rephrase?"
 
 def extract_upload(filename, raw, client=None):
     """Extract text from common files, transcribe voice notes, and describe images."""
@@ -333,13 +345,17 @@ async def health_details():
     }
 @app.post("/api/chat")
 async def chat(req:Request):
-    key=os.getenv("GROQ_API_KEY","").strip()
-    if not key:raise HTTPException(503,"Set GROQ_API_KEY in Vercel backend environment variables.")
-    client=Groq(api_key=key)
     form=await req.form(); question=str(form.get("question","")).strip()
     if not question:raise HTTPException(400,"question is required")
     if SOCIAL_RE.fullmatch(question):
         return {"answer": SOCIAL_REPLY, "sources": []}
+    if REACTION_RE.fullmatch(question):
+        return {"answer": REACTION_REPLY, "sources": []}
+    if NONSENSE_RE.search(question) and len(tok(question)) <= 3:
+        return {"answer": NONSENSE_REPLY, "sources": []}
+    key=os.getenv("GROQ_API_KEY","").strip()
+    if not key:raise HTTPException(503,"Set GROQ_API_KEY in Vercel backend environment variables.")
+    client=Groq(api_key=key)
     try:history=json.loads(str(form.get("history","[]")))
     except Exception:history=[]
     try:profile=json.loads(str(form.get("profile","{}")))

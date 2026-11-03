@@ -42,7 +42,12 @@ function splitTableRow(line: string) {
 }
 
 function AnswerText({ text }: { text: string }) {
-  const normalized = text.replace(/\\([*_])/g, "$1").replace(/\|\s+\|/g, "|\n|");
+  // The model sometimes emits escaped Markdown and pipe tables flattened onto one line.
+  const normalized = text
+    .replace(/\\([*_])/g, "$1")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\|\s*\|\s*(?=\|)/g, "|\n|")
+    .replace(/\|\s+\|/g, "|\n|");
   const lines = normalized.split("\n");
   const rendered: React.ReactNode[] = [];
   let index = 0;

@@ -24,7 +24,6 @@ function fmt(s: number) {
 
 export default function Home() {
   const [messages, setMessages] = useState<Msg[]>([{ id: 0, role: "bot", text: GREETING }]);
-  const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [presence, setPresence] = useState<Presence>("off");
@@ -39,6 +38,7 @@ export default function Home() {
 
   const idRef = useRef(1);
   const endRef = useRef<HTMLDivElement>(null);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -106,7 +106,7 @@ export default function Home() {
   }
 
   async function send(text?: string) {
-    const typed = (text ?? draft).trim();
+    const typed = (text ?? draftRef.current?.value ?? "").trim();
     if ((!typed && attachments.length === 0) || busy || recording) return;
     const question = typed || "Please look at my attachment.";
     const files = attachments;
@@ -114,7 +114,7 @@ export default function Home() {
       .slice(-8)
       .map((m) => ({ role: m.role === "bot" ? ("assistant" as const) : ("user" as const), text: m.text }));
     setMessages((m) => [...m, { id: idRef.current++, role: "user", text: question, files: files.map((f) => f.name) }]);
-    setDraft("");
+    if (draftRef.current) { draftRef.current.value = ""; draftRef.current.style.height = ""; }
     setAttachments([]);
     setNotice("");
     setBusy(true);
@@ -276,14 +276,9 @@ export default function Home() {
           {notice && <div className="notice">{notice}</div>}
           <form className="composer" onSubmit={(e) => { e.preventDefault(); send(); }}>
             <textarea
+              ref={draftRef}
               rows={1}
-              value={draft}
               placeholder={recording ? "Recording… tap the square to stop" : "Ask an academic question…"}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                e.currentTarget.style.height = "auto";
-                e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 120) + "px";
-              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
               }}
@@ -298,7 +293,7 @@ export default function Home() {
             <button type="button" className="tool" onClick={() => fileInput.current?.click()} aria-label="Attach a file">
               <FileText size={22} />
             </button>
-            <button type="submit" className="send" aria-label="Send" disabled={busy || recording || (!draft.trim() && attachments.length === 0)}>
+            <button type="submit" className="send" aria-label="Send" disabled={busy || recording}>
               <ArrowUp size={22} />
             </button>
             <input ref={fileInput} type="file" hidden multiple

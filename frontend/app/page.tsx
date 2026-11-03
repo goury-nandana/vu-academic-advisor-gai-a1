@@ -61,7 +61,11 @@ function AnswerText({ text }: { text: string }) {
       continue;
     }
     if (tableStart) {
-      const headers = splitTableRow(line);
+      const pipeStart = line.indexOf("|");
+      const preamble = line.slice(0, pipeStart).trim();
+      const tableHeaderLine = line.slice(pipeStart).trim();
+      if (preamble) rendered.push(<div className="md-line" key={"pre-" + index}>{renderInline(preamble)}</div>);
+      const headers = splitTableRow(tableHeaderLine);
       const rows: string[][] = [];
       index += 2;
       while (index < lines.length && lines[index].trim() && lines[index].includes("|")) {

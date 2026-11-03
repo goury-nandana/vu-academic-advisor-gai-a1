@@ -178,9 +178,23 @@ def search(q,docs):
             if related not in STOP:
                 weights[related]=max(weights.get(related,0),0.35)
 
-    indexed_docs,indexed_tokens,doc_freq,n,avg_len=_search_index()
-    docs=indexed_docs
-    tokenized=indexed_tokens
+    # Use the precomputed index for the live corpus, but honor caller-supplied
+    # documents in isolated retrieval tests and any explicit smaller corpus.
+    live_docs = load_docs()
+    if docs is live_docs:
+        indexed_docs,indexed_tokens,doc_freq,n,avg_len=_search_index()
+        docs=indexed_docs
+        tokenized=indexed_tokens
+    else:
+        tokenized=[tok(d.get("text","")) for d in docs]
+        doc_freq={}
+        total_len=0
+        for terms in tokenized:
+            total_len+=len(terms)
+            for term in set(terms):
+                doc_freq[term]=doc_freq.get(term,0)+1
+        n=max(1,len(docs))
+        avg_len=max(1.0,total_len/n)
     k1=1.5
     b=0.75
     qterms=set(original)

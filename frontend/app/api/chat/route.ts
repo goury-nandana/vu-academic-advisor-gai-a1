@@ -292,6 +292,12 @@ function findStructuredCourseSearch(
     .sort((a, b) => normalizeCourseSearchText(b).length - normalizeCourseSearchText(a).length);
   const semester = extractCourseSemester(question);
   const hasBtechContext = isBtechProgramme(programme) || isBtechProgramme(question);
+  const matchingBtechCodes = ACADEMIC_KNOWLEDGE.courseRecords.some((record) =>
+    requestedCodes.includes(String(record.course_code || "").replace(/[\s-]/g, "").toUpperCase())
+  );
+  // A code absent from the semester-spread archive may still exist in Course_Plans or another
+  // official document. Let general document retrieval handle it instead of claiming no match.
+  if (requestedCodes.length && !matchingBtechCodes) return undefined;
   const semesterListIntent = semester !== undefined &&
     /\b(?:courses?|subjects?)\b/i.test(question) &&
     hasBtechContext;

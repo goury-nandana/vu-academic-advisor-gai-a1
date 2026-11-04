@@ -164,9 +164,14 @@ export async function POST(request: Request) {
   }catch(error){return NextResponse.json({error:"Answer generation failed: "+(error instanceof Error?error.message:"provider error")},{status:502});}
   if(!answer) answer="I could not generate an answer. Please rephrase the question or check the official VU sources.";
   if(pages.length&&!/\[\d+\]/.test(answer)) answer+="\n\nSources consulted: "+pages.map((p,i)=>"["+(i+1)+"] "+p.title).join("; ")+".";
-  const needsProgramme=/\b(minor|major|speciali[sz]ation|elective|programme options|program options)\b/i.test(combinedQuestion);
-  const followUps=needsProgramme&&!profile.program?["Which programme are you enrolled in?"]:[];
-  if(followUps.length&&!answer.toLowerCase().includes("which programme")) answer+="\n\nWhich programme are you enrolled in? I need this to avoid mixing requirements from different degrees.";
+  const programmeSpecific=/\b(minor|major|speciali[sz]ation|elective|programme options|program options|course code|prerequisite|curriculum|syllabus|semester|credit structure|course credits)\b/i.test(combinedQuestion);
+  const semesterSpecific=/\b(semester|term|this sem|next sem|current sem)\b/i.test(combinedQuestion);
+  const followUps:string[]=[];
+  if(programmeSpecific&&!profile.program) followUps.push("Which programme are you enrolled in?");
+  else if(semesterSpecific&&!profile.semester) followUps.push("Which semester are you currently in?");
+  if(followUps.length&&!answer.toLowerCase().includes(followUps[0].toLowerCase().replace("?",""))) {
+    answer+="\n\n"+followUps[0]+" I need this detail to avoid mixing requirements from different programmes or semesters.";
+  }
   pipeline.push("Generated answer with one configured model: "+MODEL);
 
   let visualization;

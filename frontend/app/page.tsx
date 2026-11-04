@@ -165,7 +165,9 @@ export default function Home() {
     window.speechSynthesis.speak(utterance);
   }
 
-  function clearChat() {\n    if ("speechSynthesis" in window) window.speechSynthesis.cancel();\n    setSpeakingId(null);
+  function clearChat() {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    setSpeakingId(null);
     if (idleTimer.current) clearTimeout(idleTimer.current);
     setPresence("off");
     setMessages([{ id: idRef.current++, role: "bot", text: GREETING }]);

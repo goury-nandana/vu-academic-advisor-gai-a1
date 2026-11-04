@@ -525,9 +525,9 @@ async def chat(req:Request):
         semester_rows=[d for d in corpus if d.get("is_course_record") and d.get("semester")==semester_number and (not asked_batch or str(d.get("batch"))==asked_batch)]
         if semester_rows:retrieved=semester_rows
     # Deterministic profile-summary response: avoid LLM inventing curriculum or course facts.
-    course_profile_intent = bool(re.search(r"\\b(what do you know|what do you know about|tell me about)\\b", question, re.I)
-                                and re.search(r"\\b(my|about my)\\b", question, re.I)
-                                and re.search(r"\\b(course|program|programme|curriculum)\\b", question, re.I))
+    course_profile_intent = bool(re.search(r"\b(what do you know|what do you know about|tell me about)\b", question, re.I)
+                                and re.search(r"\b(my|about my)\b", question, re.I)
+                                and re.search(r"\b(course|program|programme|curriculum)\b", question, re.I))
     if course_profile_intent and not uploaded:
         stated_program = str(profile.get("program", "")).strip()
         stated_semester = str(profile.get("semester", "")).strip()

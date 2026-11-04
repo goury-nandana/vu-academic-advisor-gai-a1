@@ -57,7 +57,8 @@ def load_course_records(archive_path=DATA_ARCHIVE):
                 for sem_label, title_col in semester_columns.items():
                     code_col = title_col - 1
                     raw_code = _clean(sheet.cell(row, code_col).value)
-                    title = _clean(sheet.cell(row, title_col).value)
+                    raw_title = sheet.cell(row, title_col).value
+                    title = re.sub(r"\s+", " ", str(raw_title or "")).strip()
                     if not raw_code or not title or not CODE_RE.fullmatch(raw_code):
                         continue
 

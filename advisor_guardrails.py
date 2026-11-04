@@ -49,3 +49,19 @@ def correction_reply() -> str:
     return ("You're right to challenge that. I cannot verify personal details from your university "
             "records, and I retract any personal or academic profile claim that you did not provide. "
             "Only details you explicitly share here or enter in the optional profile should be used.")
+
+
+def wrap_untrusted_material(material: str, label: str = "retrieved sources and student attachments") -> str:
+    """Wrap retrieved/uploaded content as data and escape tag-like delimiters.
+
+    This is a deterministic prompt-hardening boundary, not a guarantee that
+    a probabilistic language model will resist every prompt injection.
+    """
+    safe_label = re.sub(r"[^a-zA-Z0-9 _-]", "", str(label or "untrusted material"))[:80]
+    safe_material = (
+        str(material or "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+    return f"<UNTRUSTED_MATERIAL label=\"{safe_label}\">\n{safe_material}\n</UNTRUSTED_MATERIAL>"

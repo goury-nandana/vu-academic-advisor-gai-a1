@@ -107,3 +107,5 @@ button:disabled{cursor:not-allowed}
 .speak:hover{background:#cbd7f3}
 .answer-text{white-space:pre-wrap;overflow-wrap:anywhere}
 .answer-image{display:block;max-width:100%;height:auto;max-height:420px;object-fit:contain;border-radius:12px;margin:12px 0}
+
+.profile-help{margin:-4px 0 2px;font-size:12px;line-height:1.45;color:#3B3B4B}

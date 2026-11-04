@@ -1,0 +1,1744 @@
+{
+  "schema_version": 1,
+  "dataset_name": "Vidyashilp University Website Knowledge Base",
+  "canonical_domain": "https://vidyashilp.edu.in",
+  "captured_at": "2026-11-04",
+  "discovery_method": "Official homepage navigation plus the university HTML sitemap and indexed official page content",
+  "important_usage_note": "This is a curated, page-aware paraphrase dataset, not a full HTML mirror. Each chunk is linked to its original page URL. Pages marked listed_not_extracted or fetch_failed are present in the sitemap/navigation but do not have content chunks; do not answer detailed questions from their titles alone. Refresh dynamic pages (news, events, admissions, scholarships, faculty, campus) before relying on time-sensitive details.",
+  "chunking_strategy": {
+    "type": "semantic_page_and_heading_chunks",
+    "description": "Each page is a separate source. Longer pages are divided by meaningful page sections/headings rather than arbitrary word windows. Chunks have stable IDs and preserve page URL and section metadata.",
+    "overlap_words": 0,
+    "target_words_per_chunk": 90,
+    "maximum_words_per_source_page_in_this_export": 199
+  },
+  "sections": {
+    "HOME": [
+      "home"
+    ],
+    "ABOUT": [
+      "about",
+      "advisory_board",
+      "governing_bodies",
+      "faculty",
+      "vice_chancellor_message",
+      "campus",
+      "anti_ragging",
+      "sc_st_cell",
+      "equal_opportunity",
+      "disclosure"
+    ],
+    "ACADEMICS": [
+      "academics_overview",
+      "programme_economics",
+      "programme_psychology",
+      "programme_bdes",
+      "programme_bms",
+      "programme_ba_llb",
+      "programme_bms_llb",
+      "programme_btech_ds",
+      "programme_btech_aiml",
+      "doctorate",
+      "schools_overview",
+      "school_engineering",
+      "school_liberal_arts",
+      "school_business",
+      "school_law",
+      "school_design"
+    ],
+    "CENTRES": [
+      "centres_overview",
+      "ieee_wie",
+      "cmrg",
+      "ethnography_lab",
+      "community_engagement",
+      "wellness_centre",
+      "centre_writing",
+      "vucadi"
+    ],
+    "PARTNERSHIPS & RESEARCH": [
+      "global_initiatives",
+      "research_centre",
+      "working_papers"
+    ],
+    "NEWS": [
+      "events",
+      "fohe",
+      "summer_school",
+      "india_rising",
+      "media_news",
+      "knowledge_centre",
+      "blogs",
+      "careers"
+    ],
+    "ADMISSION": [
+      "admissions",
+      "scholarships",
+      "virtual_coffee_chat",
+      "campus_tour"
+    ],
+    "CONTACT": [
+      "contact"
+    ]
+  },
+  "pages": [
+    {
+      "id": "home",
+      "section": "HOME",
+      "title": "Vidyashilp University — Homepage",
+      "url": "https://vidyashilp.edu.in/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 3
+    },
+    {
+      "id": "about",
+      "section": "ABOUT",
+      "title": "About Us — Vidyashilp University",
+      "url": "https://vidyashilp.edu.in/about/",
+      "status": "content_captured",
+      "dynamic": false,
+      "chunk_count": 3
+    },
+    {
+      "id": "advisory_board",
+      "section": "ABOUT",
+      "title": "Advisory Board",
+      "url": "https://vidyashilp.edu.in/advisory-board/",
+      "status": "content_captured",
+      "dynamic": false,
+      "chunk_count": 1
+    },
+    {
+      "id": "governing_bodies",
+      "section": "ABOUT",
+      "title": "Governing Bodies",
+      "url": "https://vidyashilp.edu.in/governing-bodies2/",
+      "status": "fetch_failed",
+      "dynamic": false,
+      "chunk_count": 0
+    },
+    {
+      "id": "faculty",
+      "section": "ABOUT",
+      "title": "Faculty",
+      "url": "https://vidyashilp.edu.in/faculty/",
+      "status": "listed_not_extracted",
+      "dynamic": true,
+      "chunk_count": 0
+    },
+    {
+      "id": "vice_chancellor_message",
+      "section": "ABOUT",
+      "title": "Message from the Vice Chancellor",
+      "url": "https://vidyashilp.edu.in/message_from_vc/",
+      "status": "fetch_failed",
+      "dynamic": false,
+      "chunk_count": 0
+    },
+    {
+      "id": "campus",
+      "section": "ABOUT",
+      "title": "Campus",
+      "url": "https://vidyashilp.edu.in/vu-campus/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "anti_ragging",
+      "section": "ABOUT",
+      "title": "Anti-Ragging Committee",
+      "url": "https://vidyashilp.edu.in/anti-ragging-committee-3/",
+      "status": "listed_not_extracted",
+      "dynamic": false,
+      "chunk_count": 0
+    },
+    {
+      "id": "sc_st_cell",
+      "section": "ABOUT",
+      "title": "SC/ST Cell",
+      "url": "https://vidyashilp.edu.in/sc_st_cell/",
+      "status": "listed_not_extracted",
+      "dynamic": false,
+      "chunk_count": 0
+    },
+    {
+      "id": "equal_opportunity",
+      "section": "ABOUT",
+      "title": "Equal Opportunity Cell",
+      "url": "https://vidyashilp.edu.in/equal_opportunity_cell/",
+      "status": "listed_not_extracted",
+      "dynamic": false,
+      "chunk_count": 0
+    },
+    {
+      "id": "disclosure",
+      "section": "ABOUT",
+      "title": "Public and Mandatory Disclosure",
+      "url": "https://vidyashilp.edu.in/disclosure/",
+      "status": "listed_not_extracted",
+      "dynamic": true,
+      "chunk_count": 0
+    },
+    {
+      "id": "academics_overview",
+      "section": "ACADEMICS",
+      "title": "Undergraduate Programmes and Areas of Study",
+      "url": "https://vidyashilp.edu.in/#academics",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 2
+    },
+    {
+      "id": "programme_economics",
+      "section": "ACADEMICS",
+      "title": "B.A. (Hons.) / (Hons. with Research) in Economics",
+      "url": "https://vidyashilp.edu.in/schools/bachelor-of-arts-hons/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "programme_psychology",
+      "section": "ACADEMICS",
+      "title": "B.A. (Hons.) / (Hons. with Research) in Psychology",
+      "url": "https://vidyashilp.edu.in/schools/bachelor-of-arts-hons-with-research/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "programme_bdes",
+      "section": "ACADEMICS",
+      "title": "Bachelor of Design (B.Des.)",
+      "url": "https://vidyashilp.edu.in/schools/bachelor-of-design/",
+      "status": "listed_not_extracted",
+      "dynamic": true,
+      "chunk_count": 0
+    },
+    {
+      "id": "programme_bms",
+      "section": "ACADEMICS",
+      "title": "B.M.S. (Hons.) / (Hons. with Research) in Digital Business",
+      "url": "https://vidyashilp.edu.in/schools/b-m-s-hons-hons-with-research-in-digital-business/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 4
+    },
+    {
+      "id": "programme_ba_llb",
+      "section": "ACADEMICS",
+      "title": "B.A., LL.B. (Hons.)",
+      "url": "https://vidyashilp.edu.in/schools/b-a-ll-b-hons/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "programme_bms_llb",
+      "section": "ACADEMICS",
+      "title": "B.M.S., LL.B. (Hons.)",
+      "url": "https://vidyashilp.edu.in/schools/bachelor-of-management-studies-bachelor-of-laws-hons/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 2
+    },
+    {
+      "id": "programme_btech_ds",
+      "section": "ACADEMICS",
+      "title": "B.Tech. (Hons.) Computer Science & Engineering — Data Science",
+      "url": "https://vidyashilp.edu.in/schools/bachelor-of-technology-hons-computer-science-and-engineering-data-science/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 3
+    },
+    {
+      "id": "programme_btech_aiml",
+      "section": "ACADEMICS",
+      "title": "B.Tech. (Hons.) Computer Science & Engineering — AI & Machine Learning",
+      "url": "https://vidyashilp.edu.in/schools/b_tech_ai_ml/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 3
+    },
+    {
+      "id": "doctorate",
+      "section": "ACADEMICS",
+      "title": "Doctorate / Ph.D. Programme",
+      "url": "https://vidyashilp.edu.in/phd-program/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 2
+    },
+    {
+      "id": "schools_overview",
+      "section": "ACADEMICS",
+      "title": "Schools at Vidyashilp University",
+      "url": "https://vidyashilp.edu.in/schools/",
+      "status": "listed_not_extracted",
+      "dynamic": true,
+      "chunk_count": 0
+    },
+    {
+      "id": "school_engineering",
+      "section": "ACADEMICS",
+      "title": "School of Engineering and Technology",
+      "url": "https://vidyashilp.edu.in/School_of_Engineering_and_Technology/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "school_liberal_arts",
+      "section": "ACADEMICS",
+      "title": "School of Liberal Arts and Sciences",
+      "url": "https://vidyashilp.edu.in/School_of_Liberal_Arts_and_Sciences/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "school_business",
+      "section": "ACADEMICS",
+      "title": "School of Business and Entrepreneurship",
+      "url": "https://vidyashilp.edu.in/School_of_Business_and_Entrepreneurship/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "school_law",
+      "section": "ACADEMICS",
+      "title": "School of Law",
+      "url": "https://vidyashilp.edu.in/Law_School/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "school_design",
+      "section": "ACADEMICS",
+      "title": "School of Design",
+      "url": "https://vidyashilp.edu.in/School_of_Design/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "centres_overview",
+      "section": "CENTRES",
+      "title": "Schools and Centres Directory",
+      "url": "https://vidyashilp.edu.in/schools-centres/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "ieee_wie",
+      "section": "CENTRES",
+      "title": "IEEE Women in Engineering",
+      "url": "https://vidyashilp.edu.in/ieee-womens/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "cmrg",
+      "section": "CENTRES",
+      "title": "Centre for Market Regulations and Governance (CMRG)",
+      "url": "https://vidyashilp.edu.in/cmrg/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "ethnography_lab",
+      "section": "CENTRES",
+      "title": "Ethnography Lab",
+      "url": "https://vidyashilp.edu.in/ethnography-centre/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 2
+    },
+    {
+      "id": "community_engagement",
+      "section": "CENTRES",
+      "title": "Community Engagement Programme",
+      "url": "https://vidyashilp.edu.in/seru/seru.php",
+      "related_urls": [
+        "https://vidyashilp.edu.in/seru/partners.php"
+      ],
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "wellness_centre",
+      "section": "CENTRES",
+      "title": "Wellness Centre",
+      "url": "https://vidyashilp.edu.in/wellness-centre/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "centre_writing",
+      "section": "CENTRES",
+      "title": "Centre for Writing",
+      "url": "https://vidyashilp.edu.in/centre-for-writing/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "vucadi",
+      "section": "CENTRES",
+      "title": "Vidyashilp University Centre for Art, Design and Innovation (VUCADI)",
+      "url": "https://vidyashilp.edu.in/vucadi/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 2
+    },
+    {
+      "id": "global_initiatives",
+      "section": "PARTNERSHIPS & RESEARCH",
+      "title": "Office of Global Initiatives",
+      "url": "https://vidyashilp.edu.in/global-initiatives/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 2
+    },
+    {
+      "id": "research_centre",
+      "section": "PARTNERSHIPS & RESEARCH",
+      "title": "Vidyashilp Research Centre",
+      "url": "https://vidyashilp.edu.in/research/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 2
+    },
+    {
+      "id": "working_papers",
+      "section": "PARTNERSHIPS & RESEARCH",
+      "title": "VU Working Papers",
+      "url": null,
+      "status": "sitemap_listed_no_distinct_url",
+      "dynamic": true,
+      "chunk_count": 0
+    },
+    {
+      "id": "events",
+      "section": "NEWS",
+      "title": "VU Events",
+      "url": "https://vidyashilp.edu.in/events/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "fohe",
+      "section": "NEWS",
+      "title": "Future of Higher Education (FOHE)",
+      "url": "https://vidyashilp.edu.in/fohe/",
+      "status": "fetch_failed",
+      "dynamic": true,
+      "chunk_count": 0
+    },
+    {
+      "id": "summer_school",
+      "section": "NEWS",
+      "title": "Summer School 2026",
+      "url": "https://vidyashilp.edu.in/summer-school/2026/",
+      "status": "listed_not_extracted",
+      "dynamic": true,
+      "chunk_count": 0
+    },
+    {
+      "id": "india_rising",
+      "section": "NEWS",
+      "title": "India Rising Event",
+      "url": "https://vidyashilp.edu.in/indiarising/ir/home.php",
+      "status": "listed_not_extracted",
+      "dynamic": true,
+      "chunk_count": 0
+    },
+    {
+      "id": "media_news",
+      "section": "NEWS",
+      "title": "Media and News",
+      "url": "https://vidyashilp.edu.in/news/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "knowledge_centre",
+      "section": "NEWS",
+      "title": "Knowledge Center",
+      "url": "https://vidyashilp.edu.in/knowledge-center/",
+      "status": "listed_not_extracted",
+      "dynamic": true,
+      "chunk_count": 0
+    },
+    {
+      "id": "blogs",
+      "section": "NEWS",
+      "title": "Blogs",
+      "url": "https://vidyashilp.edu.in/blogs/post/new/index.php",
+      "status": "listed_not_extracted",
+      "dynamic": true,
+      "chunk_count": 0
+    },
+    {
+      "id": "careers",
+      "section": "NEWS",
+      "title": "Careers",
+      "url": "https://vidyashilp.edu.in/faculty-careers",
+      "status": "fetch_failed",
+      "dynamic": true,
+      "chunk_count": 0
+    },
+    {
+      "id": "admissions",
+      "section": "ADMISSION",
+      "title": "Study at VU / Admissions",
+      "url": "https://vidyashilp.edu.in/admissions/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 2
+    },
+    {
+      "id": "scholarships",
+      "section": "ADMISSION",
+      "title": "Scholarships",
+      "url": "https://vidyashilp.edu.in/scholarship/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 2
+    },
+    {
+      "id": "virtual_coffee_chat",
+      "section": "ADMISSION",
+      "title": "Virtual Coffee Chat",
+      "url": "https://vidyashilp.edu.in/coffee-chat-page/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "campus_tour",
+      "section": "ADMISSION",
+      "title": "Book a Campus Tour",
+      "url": "https://vidyashilp.edu.in/campus-tour/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 1
+    },
+    {
+      "id": "contact",
+      "section": "CONTACT",
+      "title": "Contact Us",
+      "url": "https://vidyashilp.edu.in/contact/",
+      "status": "content_captured",
+      "dynamic": true,
+      "chunk_count": 2
+    }
+  ],
+  "chunks": [
+    {
+      "chunk_id": "home__01",
+      "page_id": "home",
+      "section": "HOME",
+      "page_title": "Vidyashilp University — Homepage",
+      "page_url": "https://vidyashilp.edu.in/",
+      "heading": "University overview and programmes",
+      "chunk_index": 1,
+      "text": "Vidyashilp University is a private university in Bengaluru, Karnataka, established under Karnataka Act No. 20 of 2021. The homepage presents undergraduate programmes across engineering and technology, liberal arts and sciences, business and entrepreneurship, law, and design. Listed programmes include B.Tech Computer Science and Engineering with Data Science or AI/ML specialisations; B.A. Economics and Psychology; B.Des; B.M.S. Digital Business; and integrated B.A. LL.B. and B.M.S. LL.B. programmes.",
+      "keywords": [
+        "university",
+        "programmes",
+        "BTech",
+        "BMS",
+        "BA",
+        "BDes",
+        "law",
+        "Bengaluru"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "home__02",
+      "page_id": "home",
+      "section": "HOME",
+      "page_title": "Vidyashilp University — Homepage",
+      "page_url": "https://vidyashilp.edu.in/",
+      "heading": "Academic leadership and learning areas",
+      "chunk_index": 2,
+      "text": "The homepage highlights academic leadership across the University's schools and describes learning areas such as Data Science, Design, Psychology, Economics, Digital Business, and Law and Governance. The Data Science area lists topics including machine learning, artificial intelligence, natural language processing, deep learning, algorithms and Internet of Things. These are areas of study, not necessarily individual semester course titles or course codes.",
+      "keywords": [
+        "academic leadership",
+        "areas of study",
+        "machine learning",
+        "data science",
+        "design",
+        "digital business"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "home__03",
+      "page_id": "home",
+      "section": "HOME",
+      "page_title": "Vidyashilp University — Homepage",
+      "page_url": "https://vidyashilp.edu.in/",
+      "heading": "News, campus and contact overview",
+      "chunk_index": 3,
+      "text": "The homepage displays university events, public-facing news, campus-life information and application links. The published founding-campus address is No. 125, Bettenahalli, Kundana Hobli, Chapparkallu Road, Bengaluru 562110. The homepage lists 080 6963 0500 for admissions and 089 5118 4990 for other enquiries. Event and application information can change, so use the linked current pages for live details.",
+      "keywords": [
+        "campus",
+        "news",
+        "events",
+        "admissions",
+        "contact",
+        "address",
+        "phone"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "about__01",
+      "page_id": "about",
+      "section": "ABOUT",
+      "page_title": "About Us — Vidyashilp University",
+      "page_url": "https://vidyashilp.edu.in/about/",
+      "heading": "Vidyashilp Education Group and university foundation",
+      "chunk_index": 1,
+      "text": "The university describes its background through the Vidyashilp Education Group, which began with a single room and 30 students in 1982 and has since developed schools and preschools in Bengaluru. Vidyashilp University is presented as an extension of that education legacy, with an institutional focus on collaboration, responsive learning, service and preparing students for life, work and leadership.",
+      "keywords": [
+        "history",
+        "Vidyashilp Education Group",
+        "foundation",
+        "1982",
+        "legacy"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "about__02",
+      "page_id": "about",
+      "section": "ABOUT",
+      "page_title": "About Us — Vidyashilp University",
+      "page_url": "https://vidyashilp.edu.in/about/",
+      "heading": "Vision",
+      "chunk_index": 2,
+      "text": "The university's stated vision is to provide interdisciplinary learning that contributes to a sustainably inclusive society. It emphasises translating ideas into action and nurturing socially conscious innovators, leaders and change-makers.",
+      "keywords": [
+        "vision",
+        "interdisciplinary",
+        "inclusion",
+        "socially conscious"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "about__03",
+      "page_id": "about",
+      "section": "ABOUT",
+      "page_title": "About Us — Vidyashilp University",
+      "page_url": "https://vidyashilp.edu.in/about/",
+      "heading": "Mission and educational approach",
+      "chunk_index": 3,
+      "text": "The mission describes developing students' knowledge, skills and values; encouraging teaching, learning, research, innovation and entrepreneurship; supporting interdisciplinary study and real-world partnerships; fostering wellbeing and inclusivity; using technology in experiential learning; and contributing to ecological sustainability and societal challenges.",
+      "keywords": [
+        "mission",
+        "experiential learning",
+        "research",
+        "innovation",
+        "entrepreneurship",
+        "sustainability"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "academics_overview__01",
+      "page_id": "academics_overview",
+      "section": "ACADEMICS",
+      "page_title": "Undergraduate Programmes and Areas of Study",
+      "page_url": "https://vidyashilp.edu.in/#academics",
+      "heading": "Undergraduate programme directory",
+      "chunk_index": 1,
+      "text": "The university sitemap lists undergraduate programmes in Economics, Psychology, Design, Management Studies, integrated Law, and Computer Science and Engineering with Data Science or Artificial Intelligence and Machine Learning specialisations. The homepage presents the same broad programme portfolio. Programme-specific eligibility, duration, fees and selection requirements should be taken from the individual programme page and current admissions information.",
+      "keywords": [
+        "undergraduate",
+        "programmes",
+        "degree",
+        "eligibility",
+        "programme directory"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "academics_overview__02",
+      "page_id": "academics_overview",
+      "section": "ACADEMICS",
+      "page_title": "Undergraduate Programmes and Areas of Study",
+      "page_url": "https://vidyashilp.edu.in/#academics",
+      "heading": "Schools and areas of study",
+      "chunk_index": 2,
+      "text": "The sitemap groups academic delivery under the School of Engineering and Technology, School of Liberal Arts and Sciences, School of Business and Entrepreneurship, School of Law, and School of Design. Homepage areas of study include Data Science, Design, Psychology, Economics, Digital Business, and Law and Governance. These are broad academic domains and should not be confused with a confirmed course catalogue.",
+      "keywords": [
+        "schools",
+        "areas of study",
+        "engineering",
+        "liberal arts",
+        "business",
+        "law",
+        "design"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_bms__01",
+      "page_id": "programme_bms",
+      "section": "ACADEMICS",
+      "page_title": "B.M.S. (Hons.) / (Hons. with Research) in Digital Business",
+      "page_url": "https://vidyashilp.edu.in/schools/b-m-s-hons-hons-with-research-in-digital-business/",
+      "heading": "Programme overview",
+      "chunk_index": 1,
+      "text": "The B.M.S. (Hons.) is an interdisciplinary Digital Business degree combining management with technology, economics, psychology, law and data-informed decisions. The page highlights analytical thinking, practical learning, industry engagement, business models and organisational strategy. A B.M.S. (Hons. with Research) pathway is also listed.",
+      "keywords": [
+        "BMS",
+        "Digital Business",
+        "management",
+        "business",
+        "programme overview"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_bms__02",
+      "page_id": "programme_bms",
+      "section": "ACADEMICS",
+      "page_title": "B.M.S. (Hons.) / (Hons. with Research) in Digital Business",
+      "page_url": "https://vidyashilp.edu.in/schools/b-m-s-hons-hons-with-research-in-digital-business/",
+      "heading": "Programme structure and learning components",
+      "chunk_index": 2,
+      "text": "The published structure is four years, eight semesters and 164 credits. Listed study areas include critical and design thinking, communication, sustainability, psychology, data visualisation, Python, marketing, accounting, business research, operations, fintech and digital supply chains. This is a programme overview, not a batch-specific semester plan.",
+      "keywords": [
+        "BMS",
+        "164 credits",
+        "4 years",
+        "8 semesters",
+        "curriculum",
+        "programme structure"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_bms__03",
+      "page_id": "programme_bms",
+      "section": "ACADEMICS",
+      "page_title": "B.M.S. (Hons.) / (Hons. with Research) in Digital Business",
+      "page_url": "https://vidyashilp.edu.in/schools/b-m-s-hons-hons-with-research-in-digital-business/",
+      "heading": "Specialisation tracks and minors",
+      "chunk_index": 3,
+      "text": "Listed specialisation tracks are Marketing, Finance, Startup Management and HR Management. Listed minors include Data Science, Economics, Design, Law and Technology. The research pathway refers to advanced research methodology and a dissertation. Public programme listings do not confirm which minors run in a particular semester.",
+      "keywords": [
+        "BMS",
+        "specialisation",
+        "Marketing",
+        "Finance",
+        "Startup Management",
+        "HR",
+        "minors",
+        "Data Science"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_bms__04",
+      "page_id": "programme_bms",
+      "section": "ACADEMICS",
+      "page_title": "B.M.S. (Hons.) / (Hons. with Research) in Digital Business",
+      "page_url": "https://vidyashilp.edu.in/schools/b-m-s-hons-hons-with-research-in-digital-business/",
+      "heading": "Admissions information",
+      "chunk_index": 4,
+      "text": "The 2026–27 page lists a four-year full-time programme and a minimum 10+2 score of 50%, irrespective of discipline. Its selection steps include registration, application, a session with the Admissions Programme Head, Dean interaction and personal interview. Verify current fees, deadlines and eligibility on the admissions page.",
+      "keywords": [
+        "BMS",
+        "admissions",
+        "2026-27",
+        "eligibility",
+        "selection process",
+        "fees"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_btech_ds__01",
+      "page_id": "programme_btech_ds",
+      "section": "ACADEMICS",
+      "page_title": "B.Tech. (Hons.) Computer Science & Engineering — Data Science",
+      "page_url": "https://vidyashilp.edu.in/schools/bachelor-of-technology-hons-computer-science-and-engineering-data-science/",
+      "heading": "Programme overview",
+      "chunk_index": 1,
+      "text": "The B.Tech. (Hons.) in Computer Science and Engineering with Data Science specialisation is described as an interdisciplinary engineering programme designed around data science and computer science. The page highlights preparation for data-driven work across industry, academia and research. It lists minors such as Economics, Marketing, Psychology, Finance, Design and Law.",
+      "keywords": [
+        "BTech",
+        "Data Science",
+        "computer science",
+        "major",
+        "minors"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_btech_ds__02",
+      "page_id": "programme_btech_ds",
+      "section": "ACADEMICS",
+      "page_title": "B.Tech. (Hons.) Computer Science & Engineering — Data Science",
+      "page_url": "https://vidyashilp.edu.in/schools/bachelor-of-technology-hons-computer-science-and-engineering-data-science/",
+      "heading": "Programme structure",
+      "chunk_index": 2,
+      "text": "The public Data Science programme page describes a four-year degree with 180 credits across eight semesters. Its listed study areas include programming in Python, data structures, algorithms, computer organisation, operating systems, networks, databases, data visualisation, artificial intelligence, Internet of Things, statistics, calculus and linear algebra. It also lists advanced data-analysis and research-methods content. Consult batch-specific semester spreadsheets for exact course codes and semester placement.",
+      "keywords": [
+        "BTech Data Science",
+        "180 credits",
+        "4 years",
+        "8 semesters",
+        "programme structure",
+        "course list"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_btech_ds__03",
+      "page_id": "programme_btech_ds",
+      "section": "ACADEMICS",
+      "page_title": "B.Tech. (Hons.) Computer Science & Engineering — Data Science",
+      "page_url": "https://vidyashilp.edu.in/schools/bachelor-of-technology-hons-computer-science-and-engineering-data-science/",
+      "heading": "Major, minors and learning focus",
+      "chunk_index": 3,
+      "text": "The Data Science page identifies Data Science as the major and names Economics, Marketing, Psychology, Finance, Design and Law as minor options. Its domain descriptions refer to applied deep learning, full-stack development, computational modelling, algorithms, data acumen, artificial intelligence and machine learning. These are published programme themes; they do not by themselves confirm a specific course code or whether an elective runs in a given semester.",
+      "keywords": [
+        "BTech",
+        "Data Science major",
+        "minors",
+        "machine learning",
+        "deep learning",
+        "electives"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_btech_aiml__01",
+      "page_id": "programme_btech_aiml",
+      "section": "ACADEMICS",
+      "page_title": "B.Tech. (Hons.) Computer Science & Engineering — AI & Machine Learning",
+      "page_url": "https://vidyashilp.edu.in/schools/b_tech_ai_ml/",
+      "heading": "Programme overview",
+      "chunk_index": 1,
+      "text": "The B.Tech. (Hons.) in Computer Science and Engineering with Artificial Intelligence and Machine Learning specialisation is described as a four-year programme combining computer science, AI, machine learning, mathematics, data science and ethics. Its stated aim is to develop both theoretical foundations and practical skills for building intelligent systems. The programme page lists minors in Economics, Marketing, Psychology, Finance, Design and Law.",
+      "keywords": [
+        "BTech",
+        "AI/ML",
+        "Artificial Intelligence",
+        "Machine Learning",
+        "computer science"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_btech_aiml__02",
+      "page_id": "programme_btech_aiml",
+      "section": "ACADEMICS",
+      "page_title": "B.Tech. (Hons.) Computer Science & Engineering — AI & Machine Learning",
+      "page_url": "https://vidyashilp.edu.in/schools/b_tech_ai_ml/",
+      "heading": "Programme structure and core subjects",
+      "chunk_index": 2,
+      "text": "The AI/ML programme page describes 180 credits over eight semesters. Its published core areas include data structures, theoretical computer science, algorithms, digital design and computer organisation, object-oriented programming, microprocessors, operating systems, networks, databases, optimisation, machine learning and artificial intelligence. The honours core includes deep learning, natural language processing, reinforcement learning, computer vision and cloud computing with AI model deployment.",
+      "keywords": [
+        "AI/ML",
+        "180 credits",
+        "8 semesters",
+        "course structure",
+        "Machine Learning",
+        "Deep Learning"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_btech_aiml__03",
+      "page_id": "programme_btech_aiml",
+      "section": "ACADEMICS",
+      "page_title": "B.Tech. (Hons.) Computer Science & Engineering — AI & Machine Learning",
+      "page_url": "https://vidyashilp.edu.in/schools/b_tech_ai_ml/",
+      "heading": "Electives and minors",
+      "chunk_index": 3,
+      "text": "The page describes elective choices such as generative AI, probabilistic graphical models, Bayesian machine learning, multi-modal learning, full-stack development, backend systems and API development, big-data analytics, web frameworks and mobile application development. It lists minors in Economics, Psychology, Design, Marketing, Finance and Law. An elective or minor being listed publicly does not prove it is offered to a particular cohort in a particular semester.",
+      "keywords": [
+        "AI/ML",
+        "electives",
+        "Generative AI",
+        "Bayesian methods",
+        "minors",
+        "course availability"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_economics__01",
+      "page_id": "programme_economics",
+      "section": "ACADEMICS",
+      "page_title": "B.A. (Hons.) / (Hons. with Research) in Economics",
+      "page_url": "https://vidyashilp.edu.in/schools/bachelor-of-arts-hons/",
+      "heading": "Programme overview",
+      "chunk_index": 1,
+      "text": "The B.A. (Hons.) in Economics is described as combining liberal-arts perspectives with foundational and advanced economic theory. The university also lists a B.A. (Hons. with Research) pathway for eligible students, involving a supervised research project in the final semester and a stated route to applying for Ph.D. study after the degree. The page lists minors including Finance, Data Science, Marketing, Psychology, Law and Design.",
+      "keywords": [
+        "BA Economics",
+        "Economics",
+        "research",
+        "minors",
+        "programme"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_psychology__01",
+      "page_id": "programme_psychology",
+      "section": "ACADEMICS",
+      "page_title": "B.A. (Hons.) / (Hons. with Research) in Psychology",
+      "page_url": "https://vidyashilp.edu.in/schools/bachelor-of-arts-hons-with-research/",
+      "heading": "Programme overview",
+      "chunk_index": 1,
+      "text": "The B.A. (Hons.) in Psychology focuses on human behaviour and mental processes through theory, interdisciplinary learning and research-oriented application. The university also offers a research pathway for eligible students, involving a supervised final-semester research project. Listed minors include Finance, Data Science, Marketing, Economics, Law and Design; the programme page also identifies Clinical, Counselling and Cognitive Psychology as specialisation tracks.",
+      "keywords": [
+        "BA Psychology",
+        "psychology",
+        "research",
+        "specialisation",
+        "minors"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_ba_llb__01",
+      "page_id": "programme_ba_llb",
+      "section": "ACADEMICS",
+      "page_title": "B.A., LL.B. (Hons.)",
+      "page_url": "https://vidyashilp.edu.in/schools/b-a-ll-b-hons/",
+      "heading": "Integrated law programme",
+      "chunk_index": 1,
+      "text": "The B.A., LL.B. (Hons.) is presented as a five-year integrated law programme combining liberal-arts study with legal education. The university describes a staged learning journey: broad critical thinking and social perspectives first, followed by legal foundations and later advocacy, research, moot courts, legal clinics and internships. The published career areas include legal practice, corporate roles, policy, research and related public-service pathways.",
+      "keywords": [
+        "BA LLB",
+        "integrated law",
+        "5 years",
+        "legal education",
+        "moot court",
+        "internship"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_bms_llb__01",
+      "page_id": "programme_bms_llb",
+      "section": "ACADEMICS",
+      "page_title": "B.M.S., LL.B. (Hons.)",
+      "page_url": "https://vidyashilp.edu.in/schools/bachelor-of-management-studies-bachelor-of-laws-hons/",
+      "heading": "Integrated business and law programme",
+      "chunk_index": 1,
+      "text": "The B.M.S., LL.B. (Hons.) is described as a five-year integrated degree combining business management and legal study. The programme page highlights business-related legal areas such as mergers and acquisitions, technology law, intellectual property and international trade law. Its published structure is 205 credits over ten semesters. Admissions eligibility and selection criteria should be checked against the current programme page.",
+      "keywords": [
+        "BMS LLB",
+        "integrated law",
+        "business management",
+        "205 credits",
+        "10 semesters",
+        "technology law"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "programme_bms_llb__02",
+      "page_id": "programme_bms_llb",
+      "section": "ACADEMICS",
+      "page_title": "B.M.S., LL.B. (Hons.)",
+      "page_url": "https://vidyashilp.edu.in/schools/bachelor-of-management-studies-bachelor-of-laws-hons/",
+      "heading": "Programme and career orientation",
+      "chunk_index": 2,
+      "text": "The programme description presents the B.M.S., LL.B. as distinct from the B.A., LL.B. because it places stronger emphasis on the relationship between business and law. It describes pathways that can include legal practice, corporate legal work, legal analysis, policy, legal technology, research and management-related roles. Public career-pathway lists are indicative programme information, not a guarantee of employment outcomes.",
+      "keywords": [
+        "BMS LLB",
+        "career pathways",
+        "corporate law",
+        "legal analyst",
+        "legal technology"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "doctorate__01",
+      "page_id": "doctorate",
+      "section": "ACADEMICS",
+      "page_title": "Doctorate / Ph.D. Programme",
+      "page_url": "https://vidyashilp.edu.in/phd-program/",
+      "heading": "Research areas",
+      "chunk_index": 1,
+      "text": "The Ph.D. programme page lists research specialisations spanning Computer Science, Data Science, Mathematics and Statistics, Material Science, Economics, Psychology, Literature, Sociology and Anthropology, Law and Business Studies. Data Science-related areas include artificial intelligence, machine learning, natural language processing, deep learning, multi-modal learning and audio/video analytics. The listed areas may change as research priorities and supervisors are updated.",
+      "keywords": [
+        "PhD",
+        "doctorate",
+        "research areas",
+        "machine learning",
+        "data science"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "doctorate__02",
+      "page_id": "doctorate",
+      "section": "ACADEMICS",
+      "page_title": "Doctorate / Ph.D. Programme",
+      "page_url": "https://vidyashilp.edu.in/phd-program/",
+      "heading": "Ph.D. admission route",
+      "chunk_index": 2,
+      "text": "The Ph.D. page describes full-time and part-time options and an admission route involving the Vidyashilp University Ph.D. Entrance Test followed by an interview or viva voce, subject to stated exemptions. The page also publishes intake schedules, application details and eligibility criteria. Because these are intake-specific and regulatory requirements can change, applicants should rely on the current Ph.D. admission notice and official information booklet.",
+      "keywords": [
+        "PhD",
+        "PET",
+        "entrance test",
+        "interview",
+        "eligibility",
+        "full time",
+        "part time"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "school_engineering__01",
+      "page_id": "school_engineering",
+      "section": "ACADEMICS",
+      "page_title": "School of Engineering and Technology",
+      "page_url": "https://vidyashilp.edu.in/School_of_Engineering_and_Technology/",
+      "heading": "School overview",
+      "chunk_index": 1,
+      "text": "The School of Engineering and Technology describes an applied, experiential approach to engineering education. Its public description highlights computational science, data science, machine learning, generative AI and ethical technology, and lists B.Tech. programmes in Data Science and AI/ML. The school page introduces the programmes; exact semester-wise courses and codes should be taken from the relevant batch-specific semester-spread records.",
+      "keywords": [
+        "School of Engineering",
+        "BTech",
+        "Data Science",
+        "AI/ML",
+        "Machine Learning"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "school_business__01",
+      "page_id": "school_business",
+      "section": "ACADEMICS",
+      "page_title": "School of Business and Entrepreneurship",
+      "page_url": "https://vidyashilp.edu.in/School_of_Business_and_Entrepreneurship/",
+      "heading": "School overview",
+      "chunk_index": 1,
+      "text": "The School of Business and Entrepreneurship presents the B.M.S. (Hons.) and B.M.S. (Hons. with Research) programmes. Its public page emphasises personalised academic guidance, industry links, experiential learning, innovation, strategic thinking and entrepreneurship. It also describes exposure to industry mentors, corporate partners and start-up networks, including opportunities to develop and test venture ideas.",
+      "keywords": [
+        "School of Business",
+        "BMS",
+        "entrepreneurship",
+        "industry connect",
+        "business"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "school_design__01",
+      "page_id": "school_design",
+      "section": "ACADEMICS",
+      "page_title": "School of Design",
+      "page_url": "https://vidyashilp.edu.in/School_of_Design/",
+      "heading": "School of Design approach",
+      "chunk_index": 1,
+      "text": "The School of Design frames learning around design, technology and the humanities. Its page identifies themes such as climate change, urban needs, human-machine relations, care, ageing, health and sustainability. It describes a design process involving research, making, reflection, testing, failure and reframing, and mentions choice-based minors across Law, Technology, Management, Psychology and Economics.",
+      "keywords": [
+        "School of Design",
+        "BDes",
+        "design process",
+        "minors",
+        "Communication Design"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "centres_overview__01",
+      "page_id": "centres_overview",
+      "section": "CENTRES",
+      "page_title": "Schools and Centres Directory",
+      "page_url": "https://vidyashilp.edu.in/schools-centres/",
+      "heading": "Schools and centres directory",
+      "chunk_index": 1,
+      "text": "The Schools and Centres directory lists five schools: Engineering and Technology; Liberal Arts and Sciences; Business and Entrepreneurship; Law; and Design. Its centres list includes the Centre for Market Regulations and Governance, Wellness Centre, Centre for Writing, Ethnography Centre, IEEE Women in Engineering and IEEE. The university sitemap additionally lists the Community Engagement Programme and VUCADI.",
+      "keywords": [
+        "schools",
+        "centres",
+        "CMRG",
+        "Wellness Centre",
+        "Centre for Writing",
+        "Ethnography",
+        "IEEE",
+        "VUCADI"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "cmrg__01",
+      "page_id": "cmrg",
+      "section": "CENTRES",
+      "page_title": "Centre for Market Regulations and Governance (CMRG)",
+      "page_url": "https://vidyashilp.edu.in/cmrg/",
+      "heading": "CMRG purpose and activities",
+      "chunk_index": 1,
+      "text": "The Centre for Market Regulations and Governance is described as an interdisciplinary research and education initiative spanning law, economics, regulation and governance. It aims to build regulatory literacy, improve governance and contribute to policy reform by connecting academic research with government, industry and other stakeholders. Its focus is on knowledge and practical tools for understanding complex market regulation and institutional decision-making.",
+      "keywords": [
+        "CMRG",
+        "regulation",
+        "governance",
+        "law",
+        "economics",
+        "policy"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "ethnography_lab__01",
+      "page_id": "ethnography_lab",
+      "section": "CENTRES",
+      "page_title": "Ethnography Lab",
+      "page_url": "https://vidyashilp.edu.in/ethnography-centre/",
+      "heading": "Ethnography Lab purpose",
+      "chunk_index": 1,
+      "text": "The Ethnography Lab is an initiative linked to the university's research and liberal-arts activity. It provides a platform for faculty, students and external stakeholders to collaborate on ethnographic research and discussion. Its stated objectives include promoting ethnographic methods, community engagement, public knowledge sharing and an intellectual community grounded in fieldwork and conversation.",
+      "keywords": [
+        "Ethnography Lab",
+        "research",
+        "fieldwork",
+        "community engagement"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "ethnography_lab__02",
+      "page_id": "ethnography_lab",
+      "section": "CENTRES",
+      "page_title": "Ethnography Lab",
+      "page_url": "https://vidyashilp.edu.in/ethnography-centre/",
+      "heading": "Ethnography Lab activities",
+      "chunk_index": 2,
+      "text": "The lab describes work on urban neighbourhoods, including observation, interviews, oral histories and historical material to understand how places and communities change. It also hosts talks and workshops and contributes to teaching research methods. The public page mentions guided field visits and methods such as walking and sensory ethnography as learning activities for undergraduate students.",
+      "keywords": [
+        "urban ethnography",
+        "fieldwork",
+        "workshops",
+        "teaching",
+        "research methods"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "community_engagement__01",
+      "page_id": "community_engagement",
+      "section": "CENTRES",
+      "page_title": "Community Engagement Programme",
+      "page_url": "https://vidyashilp.edu.in/seru/seru.php",
+      "heading": "Community engagement focus areas",
+      "chunk_index": 1,
+      "text": "The Community Engagement Programme describes work across education, health and wellbeing, environment and sustainability, legal support, and sports and culture. Its activities include student volunteering, a legal aid clinic, a community mental-health initiative and a student community-service club. It partners with local Anganwadis and government primary schools, where students support teaching and extracurricular activities.",
+      "keywords": [
+        "community engagement",
+        "volunteering",
+        "education",
+        "health",
+        "legal aid",
+        "sustainability"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "wellness_centre__01",
+      "page_id": "wellness_centre",
+      "section": "CENTRES",
+      "page_title": "Wellness Centre",
+      "page_url": "https://vidyashilp.edu.in/wellness-centre/",
+      "heading": "Wellness Centre services",
+      "chunk_index": 1,
+      "text": "The Wellness Centre describes psychological support for students and staff through a qualified counselling psychologist in a confidential setting. The page lists support that may include understanding difficulties, planning responses, improving self-awareness and building resilience. It refers to concerns such as stress, anxiety, depression, academic difficulties, family or relationship concerns, bullying and other personal wellbeing issues. For urgent or emergency concerns, use appropriate emergency services rather than relying only on a webpage.",
+      "keywords": [
+        "Wellness Centre",
+        "counselling",
+        "mental health",
+        "student support",
+        "wellbeing"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "centre_writing__01",
+      "page_id": "centre_writing",
+      "section": "CENTRES",
+      "page_title": "Centre for Writing",
+      "page_url": "https://vidyashilp.edu.in/centre-for-writing/",
+      "heading": "Centre for Writing purpose",
+      "chunk_index": 1,
+      "text": "The Centre for Writing is a faculty-and-student initiative intended to strengthen academic and creative reading, writing and communication within the university. Its activities include workshops, talks and other events; support for university writing courses; a Reading Club; and author lectures. The page describes a longer-term aim of offering individual writing guidance to students.",
+      "keywords": [
+        "Centre for Writing",
+        "writing",
+        "reading club",
+        "academic writing",
+        "creative writing"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "vucadi__01",
+      "page_id": "vucadi",
+      "section": "CENTRES",
+      "page_title": "Vidyashilp University Centre for Art, Design and Innovation (VUCADI)",
+      "page_url": "https://vidyashilp.edu.in/vucadi/",
+      "heading": "VUCADI purpose",
+      "chunk_index": 1,
+      "text": "VUCADI, the Vidyashilp University Centre for Art, Design and Innovation, is described as an interdisciplinary platform for creativity, innovation, social engagement and regenerative thinking. It connects students, faculty, researchers and practitioners across the university's schools and supports projects that bring together business, technology, law, design, humanities and environmental studies.",
+      "keywords": [
+        "VUCADI",
+        "art",
+        "design",
+        "innovation",
+        "interdisciplinary"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "vucadi__02",
+      "page_id": "vucadi",
+      "section": "CENTRES",
+      "page_title": "Vidyashilp University Centre for Art, Design and Innovation (VUCADI)",
+      "page_url": "https://vidyashilp.edu.in/vucadi/",
+      "heading": "VUCADI programmes and approach",
+      "chunk_index": 2,
+      "text": "The centre describes workshops, residencies, public interventions, research projects and collaborative initiatives as ways to connect creative practice with social and environmental change. Its Slow North initiative documents North Bengaluru's changing landscapes, communities, stories and cultural practices through publications, interviews, essays, visual documentation, mapping and public conversations.",
+      "keywords": [
+        "VUCADI",
+        "Slow North",
+        "publishing",
+        "research",
+        "community"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "global_initiatives__01",
+      "page_id": "global_initiatives",
+      "section": "PARTNERSHIPS & RESEARCH",
+      "page_title": "Office of Global Initiatives",
+      "page_url": "https://vidyashilp.edu.in/global-initiatives/",
+      "heading": "International partnerships",
+      "chunk_index": 1,
+      "text": "The Office of Global Initiatives describes work to build an international academic ecosystem through institutional partnerships, faculty exchanges and student mobility. The website lists partnerships or initiatives involving the University of Wisconsin–Madison, Babson College, Illinois Institute of Technology, IE University, University of Applied Arts Vienna, F+F School of Design, Japan-COIL Association, Study Japan Initiative and Nordic Centre in India. Programme formats and availability can change by intake.",
+      "keywords": [
+        "global initiatives",
+        "international partnerships",
+        "student exchange",
+        "faculty exchange",
+        "study abroad"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "global_initiatives__02",
+      "page_id": "global_initiatives",
+      "section": "PARTNERSHIPS & RESEARCH",
+      "page_title": "Office of Global Initiatives",
+      "page_url": "https://vidyashilp.edu.in/global-initiatives/",
+      "heading": "Global opportunities and activities",
+      "chunk_index": 2,
+      "text": "The page presents international summer schools, research opportunities, mobility programmes, visiting faculty and collaborative projects as ways for students and faculty to gain international exposure. It also highlights thought-leadership events and cross-institutional initiatives. Specific eligibility, scholarship availability, dates and seat limits must be checked on the current programme announcement.",
+      "keywords": [
+        "global initiatives",
+        "summer school",
+        "research opportunities",
+        "mobility",
+        "scholarships"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "research_centre__01",
+      "page_id": "research_centre",
+      "section": "PARTNERSHIPS & RESEARCH",
+      "page_title": "Vidyashilp Research Centre",
+      "page_url": "https://vidyashilp.edu.in/research/",
+      "heading": "Vidyashilp Research Centre purpose",
+      "chunk_index": 1,
+      "text": "The Vidyashilp Research Centre (VRC) is described as supporting interdisciplinary and interconnected research, innovation and problem-solving. It works with the university's schools and centres and seeks to connect academia, business, industry and local communities. Its objectives include developing research culture, promoting interdisciplinary projects, pursuing collaborative research and disseminating findings through reports and publications.",
+      "keywords": [
+        "VRC",
+        "research centre",
+        "interdisciplinary research",
+        "innovation",
+        "collaboration"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "research_centre__02",
+      "page_id": "research_centre",
+      "section": "PARTNERSHIPS & RESEARCH",
+      "page_title": "Vidyashilp Research Centre",
+      "page_url": "https://vidyashilp.edu.in/research/",
+      "heading": "Research support and focus areas",
+      "chunk_index": 2,
+      "text": "The VRC page describes support such as research fellowships, adjunct or visiting expertise, seed grants and access to available research infrastructure. Listed focus areas include social sciences and liberal arts, statistics and mathematics as foundations for data science, digital-economy research in economics, technology-enabled teaching and learning, and design studies oriented toward the circular economy. The centre is accountable to the university's Research and Innovation Council.",
+      "keywords": [
+        "research funding",
+        "seed grants",
+        "research fellowships",
+        "statistics",
+        "data science",
+        "circular economy"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "events__01",
+      "page_id": "events",
+      "section": "NEWS",
+      "page_title": "VU Events",
+      "page_url": "https://vidyashilp.edu.in/events/",
+      "heading": "Events page and upcoming programme",
+      "chunk_index": 1,
+      "text": "The university Events page separates upcoming and past events. At the time captured, it highlighted an Ethnography Symposium scheduled for 12–13 November 2026 and VU Intersect 2026, a business-planning and panel event for undergraduate students held on 30 October 2026. The page also listed a CMRG workshop on regulatory impact assessments and public consultations scheduled for 8–9 May 2026. Dates and event status must be refreshed before use.",
+      "keywords": [
+        "events",
+        "upcoming events",
+        "Ethnography Symposium",
+        "VU Intersect",
+        "CMRG workshop"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "media_news__01",
+      "page_id": "media_news",
+      "section": "NEWS",
+      "page_title": "Media and News",
+      "page_url": "https://vidyashilp.edu.in/news/",
+      "heading": "Media and university news",
+      "chunk_index": 1,
+      "text": "The Media page collects news coverage, commentary and expert contributions associated with Vidyashilp University and its faculty. Recent items shown during capture included a September 2026 article by Prof. Chandan Gowda, a June 2026 story about the School of Design, and several 2026 media features on social media, mental health, phone addiction, parenting and higher education. This page is dynamic; use the page URL for the latest list and article dates.",
+      "keywords": [
+        "news",
+        "media",
+        "faculty articles",
+        "press coverage",
+        "2026"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "admissions__01",
+      "page_id": "admissions",
+      "section": "ADMISSION",
+      "page_title": "Study at VU / Admissions",
+      "page_url": "https://vidyashilp.edu.in/admissions/",
+      "heading": "How to apply",
+      "chunk_index": 1,
+      "text": "The Admissions page explains that selection criteria depend on the programme chosen and links to individual programme requirements. Its described application journey includes starting an application, registering details, completing the application and any programme-specific assessment or selection rounds, attending faculty interactions or interviews where required, and receiving the university's decision by email. Applicants should follow the deadlines and instructions shown for their intake.",
+      "keywords": [
+        "admissions",
+        "apply",
+        "application process",
+        "selection criteria",
+        "interview"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "admissions__02",
+      "page_id": "admissions",
+      "section": "ADMISSION",
+      "page_title": "Study at VU / Admissions",
+      "page_url": "https://vidyashilp.edu.in/admissions/",
+      "heading": "Programme-specific selection and enquiries",
+      "chunk_index": 2,
+      "text": "The admissions website lists undergraduate choices including B.Tech Data Science, BMS Digital Business, Economics, Psychology, Design and integrated law programmes. It states that selection criteria differ by programme. Students who miss selection-round registration are advised to contact the university enquiry/admissions team; late applications may be considered in some circumstances but are not guaranteed. Always verify deadlines and eligibility on the current intake page.",
+      "keywords": [
+        "admissions",
+        "programmes",
+        "eligibility",
+        "selection rounds",
+        "late applications"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "scholarships__01",
+      "page_id": "scholarships",
+      "section": "ADMISSION",
+      "page_title": "Scholarships",
+      "page_url": "https://vidyashilp.edu.in/scholarship/",
+      "heading": "Scholarship categories",
+      "chunk_index": 1,
+      "text": "The scholarship page describes merit-based, need-based and talent-based support. Named categories include the P. Dayananda Pai Scholarship, SAT/Dean's Honours Scholarship, scholarships for talent in sports and creative pursuits, and categories for students from specified family or social circumstances. The page says each scholarship has eligibility rules and a predetermined fee-waiver percentage; applicants can express interest and apply online.",
+      "keywords": [
+        "scholarships",
+        "merit",
+        "need based",
+        "talent based",
+        "fee waiver"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "scholarships__02",
+      "page_id": "scholarships",
+      "section": "ADMISSION",
+      "page_title": "Scholarships",
+      "page_url": "https://vidyashilp.edu.in/scholarship/",
+      "heading": "Scholarship application conditions",
+      "chunk_index": 2,
+      "text": "The scholarship page states that a student cannot apply for more than one scholarship and that the scholarship committee's decision is final. It distinguishes support offered at admission from other award categories. Scholarship amounts, percentages, criteria and application windows should be checked with the current official scholarship notice rather than inferred from older pages or third-party descriptions.",
+      "keywords": [
+        "scholarship conditions",
+        "committee",
+        "eligibility",
+        "application"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "virtual_coffee_chat__01",
+      "page_id": "virtual_coffee_chat",
+      "section": "ADMISSION",
+      "page_title": "Virtual Coffee Chat",
+      "page_url": "https://vidyashilp.edu.in/coffee-chat-page/",
+      "heading": "Virtual coffee chat",
+      "chunk_index": 1,
+      "text": "The university offers a 20-minute virtual coffee chat with its counselling team. The page presents it as an opportunity for prospective students and families to discuss programme offerings and the university's admissions approach. Booking requires selecting an academic year, date and time slot and entering the requested contact and school details. Availability and booking rules are displayed on the current booking form.",
+      "keywords": [
+        "virtual coffee chat",
+        "counselling team",
+        "admissions",
+        "booking",
+        "20 minutes"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "contact__01",
+      "page_id": "contact",
+      "section": "CONTACT",
+      "page_title": "Contact Us",
+      "page_url": "https://vidyashilp.edu.in/contact/",
+      "heading": "Campus address and general contact details",
+      "chunk_index": 1,
+      "text": "The Contact page lists Vidyashilp University's founding campus at No. 125, Bettenahalli, Kundana Hobli, Chapparkallu Road, Bengaluru 562110. It provides a general-enquiry form and separates reception contacts from admissions contacts. The page lists reception at 089 5118 4990 and admissions at admission@vidyashilp.edu.in / 080 6963 0500. Use the contact page for any updated email or phone details.",
+      "keywords": [
+        "contact",
+        "address",
+        "Bengaluru",
+        "phone",
+        "email",
+        "admission"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "contact__02",
+      "page_id": "contact",
+      "section": "CONTACT",
+      "page_title": "Contact Us",
+      "page_url": "https://vidyashilp.edu.in/contact/",
+      "heading": "Contact categories",
+      "chunk_index": 2,
+      "text": "The contact page lists separate contact routes for reception and admissions and also includes a fee-payment email address, vureceivable@vidyashilp.edu.in. The form asks for the user's category, name, email, phone number and message. For admission-specific questions, use the admissions contact; for other enquiries, use reception or the general form. Contact information can change and should be checked on the live page.",
+      "keywords": [
+        "contact form",
+        "fee payments",
+        "reception",
+        "admissions",
+        "email"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "advisory_board__01",
+      "page_id": "advisory_board",
+      "section": "ABOUT",
+      "page_title": "Advisory Board",
+      "page_url": "https://vidyashilp.edu.in/advisory-board/",
+      "heading": "Advisory board and governance contributors",
+      "chunk_index": 1,
+      "text": "The Advisory Board page lists advisors to the Chancellor and members or former members associated with university governance bodies. Public profiles include academic leaders and former university administrators, legal professionals and industry figures. The sitemap also links to former Board of Management, Academic Council and Research and Innovation Council members. Treat names and positions as website-published profiles that may change.",
+      "keywords": [
+        "Advisory Board",
+        "Chancellor",
+        "Board of Management",
+        "Academic Council",
+        "Research and Innovation Council"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "campus__01",
+      "page_id": "campus",
+      "section": "ABOUT",
+      "page_title": "Campus",
+      "page_url": "https://vidyashilp.edu.in/vu-campus/",
+      "heading": "Campus facilities and location",
+      "chunk_index": 1,
+      "text": "The campus page describes the founding campus in Bengaluru and a Central Campus listed as under development. Facilities shown include laboratories, a library, design studios and a university café. The page also highlights student life through sports, clubs, festivals, expeditions and other activities. It describes the campus site as approximately 40 acres; development status and facilities should be reconfirmed on the live page.",
+      "keywords": [
+        "campus",
+        "facilities",
+        "library",
+        "labs",
+        "design studio",
+        "VU Cafe",
+        "student life"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "ieee_wie__01",
+      "page_id": "ieee_wie",
+      "section": "CENTRES",
+      "page_title": "IEEE Women in Engineering",
+      "page_url": "https://vidyashilp.edu.in/ieee-womens/",
+      "heading": "IEEE Women in Engineering student chapter",
+      "chunk_index": 1,
+      "text": "The IEEE Women in Engineering student chapter at Vidyashilp University is presented as a platform for supporting women in engineering and science. Its stated activities include events, workshops, mentorship and collaborative research. The chapter aims to encourage professional growth, networking, innovation, knowledge sharing, leadership development and gender diversity in STEM.",
+      "keywords": [
+        "IEEE WIE",
+        "women in engineering",
+        "STEM",
+        "mentorship",
+        "student chapter"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "school_liberal_arts__01",
+      "page_id": "school_liberal_arts",
+      "section": "ACADEMICS",
+      "page_title": "School of Liberal Arts and Sciences",
+      "page_url": "https://vidyashilp.edu.in/School_of_Liberal_Arts_and_Sciences/",
+      "heading": "School overview and learning approach",
+      "chunk_index": 1,
+      "text": "The School of Liberal Arts and Sciences describes an interdisciplinary approach combining creative learning, quantitative rigour and social inquiry. The page highlights critical thinking, community engagement, experiential and international learning, internships, creative pursuits and student career development. It lists Economics and Psychology undergraduate programmes and features the Ethnography Lab as a research initiative.",
+      "keywords": [
+        "School of Liberal Arts",
+        "Economics",
+        "Psychology",
+        "critical thinking",
+        "internships",
+        "Ethnography Lab"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "school_law__01",
+      "page_id": "school_law",
+      "section": "ACADEMICS",
+      "page_title": "School of Law",
+      "page_url": "https://vidyashilp.edu.in/Law_School/",
+      "heading": "School of Law and legal learning",
+      "chunk_index": 1,
+      "text": "The School of Law describes five-year integrated undergraduate law programmes and highlights foundational and emerging legal domains. Its public page refers to learning beyond the classroom through moot courts, legal and local bodies, clinics, externships, simulations, competitions and pro bono community service. It also identifies the Legal Clinic and the Centre for Market Regulations and Governance as related activities.",
+      "keywords": [
+        "School of Law",
+        "BA LLB",
+        "BMS LLB",
+        "legal clinic",
+        "moot court",
+        "CMRG"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    },
+    {
+      "chunk_id": "campus_tour__01",
+      "page_id": "campus_tour",
+      "section": "ADMISSION",
+      "page_title": "Book a Campus Tour",
+      "page_url": "https://vidyashilp.edu.in/campus-tour/",
+      "heading": "Booking a campus tour",
+      "chunk_index": 1,
+      "text": "The campus-tour page invites prospective students and families to schedule a visit and explore the university campus. It states that the university is closed on Sundays and public holidays. The page shows campus images and repeats the founding campus address and admissions contact details. Use the live booking page to check available tour slots and current closure rules.",
+      "keywords": [
+        "campus tour",
+        "visit campus",
+        "schedule a tour",
+        "admissions",
+        "campus address"
+      ],
+      "source_type": "official_website_page",
+      "captured_at": "2026-11-04",
+      "content_style": "faithful_paraphrase"
+    }
+  ],
+  "coverage_summary": {
+    "navigation_pages_discovered": 51,
+    "pages_with_content_chunks": 35,
+    "pages_listed_but_not_extracted": 11,
+    "pages_fetch_failed": 4,
+    "chunks": 56,
+    "source_page_word_counts": {
+      "home": 194,
+      "about": 127,
+      "academics_overview": 117,
+      "programme_bms": 184,
+      "programme_btech_ds": 181,
+      "programme_btech_aiml": 186,
+      "programme_economics": 67,
+      "programme_psychology": 60,
+      "programme_ba_llb": 63,
+      "programme_bms_llb": 125,
+      "doctorate": 125,
+      "school_engineering": 60,
+      "school_business": 56,
+      "school_design": 53,
+      "centres_overview": 56,
+      "cmrg": 61,
+      "ethnography_lab": 107,
+      "community_engagement": 54,
+      "wellness_centre": 72,
+      "centre_writing": 53,
+      "vucadi": 96,
+      "global_initiatives": 118,
+      "research_centre": 118,
+      "events": 70,
+      "media_news": 71,
+      "admissions": 128,
+      "scholarships": 116,
+      "virtual_coffee_chat": 62,
+      "contact": 122,
+      "advisory_board": 60,
+      "campus": 63,
+      "ieee_wie": 50,
+      "school_liberal_arts": 53,
+      "school_law": 59,
+      "campus_tour": 58
+    }
+  }
+}

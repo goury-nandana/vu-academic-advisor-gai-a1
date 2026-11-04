@@ -2,24 +2,60 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Camera, FileText, Mic, Square, X, Volume2, VolumeX } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { askAdvisor, type Source, type Visualization } from "./advisor";
 
 type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[]; pipeline?: string[]; model?: string; visualization?: Visualization; followUps?: string[]; fileNotes?: string[] };
 type Presence = "off" | "typing" | "recent";
 
-function renderAnswer(text: string, sources: Source[] = []) {
-  // Render HTTPS image links and turn [n] markers into the exact source links for this response.
-  const parts = text.split(/(!\[[^\]]*\]\(https?:\/\/[^\s)]+\)|\[\d+\])/g);
-  return parts.map((part, index) => {
-    const imageMatch = part.match(/^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/);
-    const citeMatch = part.match(/^\[(\d+)\]$/);
-    if (imageMatch) return <img key={index} className="answer-image" src={imageMatch[2]} alt={imageMatch[1] || "Advisor visual"} loading="lazy" />;
-    if (citeMatch) {
-      const source = sources[Number(citeMatch[1]) - 1];
-      if (source?.url) return <a key={index} className="inline-citation" href={source.url} target="_blank" rel="noreferrer">[{citeMatch[1]}]</a>;
-    }
-    return <span key={index}>{part}</span>;
+function normalizeAnswerMarkdown(input: string, sources: Source[] = []) {
+  let markdown = String(input || "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\\\*\\\*/g, "**")
+    .replace(/\\\*/g, "*")
+    .replace(/\\_/g, "_")
+    .replace(/\\\|/g, "|")
+    .replace(/\\?<br\s*\/?>/gi, " / ")
+    .replace(/<br\s*\/?>/gi, " / ")
+    // Arbitrary model-supplied image URLs and the chat logo are not answer content.
+    .replace(/!\[[^\]]*\]\(https?:\/\/[^\s)]+\)/g, "")
+    .replace(/^\s*svg\s*$/gim, "")
+    // Repair common one-line Markdown tables: "| header | |---|---| | row | row |".
+    .replace(/\|\s+\|(?=\s*(?:[-:]|\w))/g, "|\n|")
+    .replace(/\[(\d+)\s*†\s*L[\d,–-]+\]/gi, "[$1]")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  markdown = markdown.replace(/\[(\d+)\](?!\()/g, (marker: string, number: string) => {
+    const source = sources[Number(number) - 1];
+    return source?.url ? "[" + marker + "](" + source.url + ")" : marker;
   });
+  return markdown;
+}
+
+function renderAnswer(text: string, sources: Source[] = []) {
+  return (
+    <div className="answer-markdown">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ href, children }) => {
+            if (!href || !/^https?:\/\//i.test(href)) return <span>{children}</span>;
+            return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
+          },
+          img: () => null,
+          table: ({ children }) => (
+            <div className="markdown-table-wrap">
+              <table>{children}</table>
+            </div>
+          ),
+        }}
+      >
+        {normalizeAnswerMarkdown(text, sources)}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 function renderVisualization(visual?: Visualization) {

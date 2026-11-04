@@ -1,0 +1,7 @@
+fastapi
+groq
+pypdf
+openpyxl
+python-multipart
+python-docx
+python-pptx

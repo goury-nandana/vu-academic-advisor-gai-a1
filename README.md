@@ -1,12 +1,12 @@
 # VU Academic Advisor — DATA308 Generative AI Assignment 2
 
-Streamlit-based academic advising chatbot for Vidyashilp University (VU). It uses Groq for answer generation, structured retrieval from the original B.Tech semester-spread workbooks, and a separate official-website knowledge source.
+Academic advising chatbot for Vidyashilp University (VU), with a Next.js frontend and FastAPI/Groq backend designed for a unified Vercel Services deployment. The original Streamlit implementation remains available as a reference and fallback.
 
 **Live app:** https://vu-academic-advisor-gai-a1-hzdbiixzivwbjb3dvbfvka.streamlit.app/
 
 ## Next.js frontend (Vercel migration)
 
-A new responsive Next.js UI is being developed in `frontend/`. The frontend is currently a preview scaffold and is **not yet connected** to the academic retrieval/Groq service. The Streamlit deployment remains the functional app during this migration.
+The Next.js frontend in `frontend/` is connected to the FastAPI service in `backend/` through same-origin `/api/chat`. The service retrieves from the Student Handbook, SOP, Course Plans, and B.Tech semester-spread data, then generates grounded answers with Groq. The `vercel.json` file configures Vercel Services for both components.
 
 To preview the UI locally:
 
@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-For a Vercel preview, import this repository and set the project **Root Directory** to `frontend`. Do not configure the Groq key as a `NEXT_PUBLIC_*` variable. Backend/API integration and academic feature parity are the next migration stage.
+For unified Vercel deployment, import this repository with the **Root Directory set to the repository root** (not `frontend`), so Vercel reads `vercel.json` and builds the frontend and backend services. Configure `GROQ_API_KEY` as a server-side environment variable for the backend service only. Never use a `NEXT_PUBLIC_*` prefix for the secret. After merging, confirm Vercel Services is enabled for the project and redeploy.
 
 ## Current scope
 
@@ -121,7 +121,7 @@ Do not commit API keys, `.env` files or `.streamlit/secrets.toml`.
 | `Minor_Courses_for_BTech_Students.xlsx` (legacy embedded extract) | Minor-course context |
 | Official VU website sources | Admissions, programmes, faculty, placements and campus information |
 
-The structured loader reads only the five semester-spread workbooks in the archive. It does not infer missing values or treat programme-structure sheets as semester-spread rows. Each structured row includes source workbook and cell coordinates.
+The B.Tech semester-spread loader reads the five batch-specific semester workbooks. A separate header-driven builder reads the seven minor workbooks and the B.Tech programme-structure workbooks. It maps only explicitly labelled columns; ambiguous elective/semester cells remain raw slot records with source workbook, sheet and cell coordinates. Missing fields are left blank, and slash-separated alternatives are never split into guessed courses.
 
 ## Tests
 
@@ -139,6 +139,6 @@ GitHub Actions runs the syntax check and unittest suite on pushes and pull reque
 - Structured semester-spread curriculum coverage is B.Tech batches 2022–2026. Do not assume a different cohort is covered.
 - The 2022–2025 workbook metadata does not establish a named track; the application leaves track unspecified.
 - Ambiguous elective cells, TBA placeholders, and combined alternative-course cells (for example, slash-separated codes with multiple titles or L-T-P values) are not converted into single course records. They require a separate source-aware treatment; the loader does not guess how to split them.
-- Minor-workbook extraction and non-B.Tech programme semester structures are not yet fully normalized into the structured course-record loader.
+- Minor workbooks and B.Tech programme structures are extracted through explicit header mapping. Ambiguous elective slots are retained as raw source values rather than normalized course records. Non-B.Tech programme structures are not yet covered.
 - Website information depends on the official pages being reachable when the website knowledge base is refreshed.
 - Real Groq API behaviour and the deployed Streamlit instance must be smoke-tested with the configured deployment secret; automated tests do not validate external API credentials.

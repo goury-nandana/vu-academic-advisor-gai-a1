@@ -22,6 +22,10 @@ from course_data import (
     load_course_records as _load_course_records,
     course_records_for_question as _course_records_for_question,
 )
+from programme_data import (
+    load_minor_records as _load_minor_records,
+    load_programme_structure_records as _load_programme_structure_records,
+)
 
 from advisor_guardrails import (
     acknowledgement_reply,
@@ -59,7 +63,7 @@ apply_theme()
 # ============================================================
 
 MODEL = "llama-3.3-70b-versatile"
-APP_VERSION = "2026-11-02-reference-recreation-v1"
+APP_VERSION = "2026-11-02-header-driven-programme-builders-v1"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Self-contained academic knowledge base: allows deployment when GitHub permits
@@ -153,10 +157,19 @@ def _cell_text(value):
     return re.sub(r"\s+", " ", str(value)).strip()
 
 def load_structured_course_records():
-    """Load structured course records from the original batch-specific workbooks."""
+    """Load semester, minor and programme-structure records with source provenance."""
     try:
         records = _load_course_records()
-        st.session_state.course_data_error = None
+        warnings = []
+        for label, loader in (
+            ("minor workbooks", _load_minor_records),
+            ("programme structures", _load_programme_structure_records),
+        ):
+            try:
+                records.extend(loader())
+            except Exception as exc:
+                warnings.append(f"{label}: {type(exc).__name__}: {exc}")
+        st.session_state.course_data_error = "; ".join(warnings) if warnings else None
         return records
     except Exception as exc:
         st.session_state.course_data_error = f"{type(exc).__name__}: {exc}"

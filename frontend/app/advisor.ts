@@ -1,15 +1,9 @@
-// The ONLY place the page talks to the advisor backend.
-// Set NEXT_PUBLIC_ADVISOR_API_URL (a public URL, never a secret) to your backend, e.g. https://my-advisor.onrender.com
-// Expected: POST {API}/chat  (multipart/form-data)
-//   question: string | history: JSON [{role:"user"|"assistant", text}] | profile: JSON {program, semester, completedCredits, cgpa}
-//   files: File[] (documents, images, voice notes)
-// Response (JSON): { answer: string, sources?: [{ title: string, url?: string }] }
-
+// Frontend calls the Python API through the same Vercel origin.
+// Groq credentials remain server-side in the backend service environment.
 export type Source = { title: string; url?: string };
 export type Profile = { program: string; semester: string; completedCredits: string; cgpa: string };
 export type HistoryItem = { role: "user" | "assistant"; text: string };
-
-const API = process.env.NEXT_PUBLIC_ADVISOR_API_URL?.replace(/\/$/, "");
+const API = "/api";
 
 export async function askAdvisor(input: {
   question: string;
@@ -17,20 +11,23 @@ export async function askAdvisor(input: {
   profile: Profile;
   files: File[];
 }): Promise<{ answer: string; sources: Source[] }> {
-  if (!API) {
-    return {
-      answer:
-        "The advisor service is not connected to this page yet, so I can't answer academic questions here. Please check official university sources for now.",
-      sources: [],
-    };
-  }
   const form = new FormData();
   form.append("question", input.question);
   form.append("history", JSON.stringify(input.history));
   form.append("profile", JSON.stringify(input.profile));
   input.files.forEach((f) => form.append("files", f, f.name));
   const res = await fetch(`${API}/chat`, { method: "POST", body: form });
-  if (!res.ok) throw new Error(`Advisor API returned ${res.status}`);
+  if (!res.ok) {
+    let detail = `Advisor API returned ${res.status}`;
+    try {
+      const error = (await res.json()) as { detail?: string };
+      if (error.detail) detail = error.detail;
+    } catch {}
+    throw new Error(detail);
+  }
   const data = (await res.json()) as { answer?: string; sources?: Source[] };
-  return { answer: data.answer ?? "I couldn't find an answer to that.", sources: data.sources ?? [] };
+  return {
+    answer: data.answer ?? "I couldn't find an answer to that.",
+    sources: data.sources ?? [],
+  };
 }

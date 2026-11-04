@@ -1,0 +1,41 @@
+name: Deploy frontend to Vercel
+
+on:
+  push:
+    branches:
+      - vercel-academic-api
+    paths:
+      - "frontend/**"
+      - ".github/workflows/vercel-deploy.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_pwVWrzoe9z1otjVO3fztlXi5
+      VERCEL_PROJECT_ID: prj_CiwdRxo4RfYRqkCoC4zom20ub86X
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel
+
+      - name: Pull Vercel project settings
+        working-directory: frontend
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build frontend
+        working-directory: frontend
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy frontend
+        working-directory: frontend
+        run: vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"

@@ -22,9 +22,9 @@ The browser chat keeps text-to-speech playback through the browser Speech Synthe
 
 ## Model comparison: measured facts only
 
-The live web route uses one configured answer-generation model: llama-3.3-70b-versatile. Image descriptions and audio transcription use separate task-specific Groq endpoints if those attachments are submitted. The answer UI names the model and states that no multi-model comparison was performed for that turn.
+The live web route uses openai/gpt-oss-120b for answer generation and structured visual summaries, qwen/qwen3.8-27b for image understanding, and whisper-large-v3-turbo for voice-note transcription. The Streamlit app uses openai/gpt-oss-120b with openai/gpt-oss-20b as its fallback. The live answer UI names the answer-generation model and states that no multi-model comparison was performed for that turn. The benchmark candidate list has been refreshed to the three current documented Groq models: openai/gpt-oss-20b, openai/gpt-oss-120b and qwen/qwen3.8-27b.
 
-The separate benchmark_runner.py script is designed to compare ten candidate Groq models against a common set of questions and source context, record latency/token usage, and leave rubric scores blank for independent human assessment. It requires VU_LLM_Benchmark_Framework.xlsx, which is not present in this repository. No benchmark run, score sheet or defensible model ranking is available. Therefore, this submission makes no claim that one model outperforms another.
+The separate benchmark_runner.py script is designed to compare those three candidate Groq models against a common set of questions and source context, record latency/token usage, and leave rubric scores blank for independent human assessment. It requires VU_LLM_Benchmark_Framework.xlsx, which is not present in this repository. No benchmark run, score sheet or defensible model ranking is available. Therefore, this submission makes no claim that one model outperforms another.
 
 ## Human evaluation rubric (0–4 each)
 

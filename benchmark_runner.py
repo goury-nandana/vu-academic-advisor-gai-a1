@@ -1,4 +1,4 @@
-"""Run the same VU benchmark questions against up to ten Groq-hosted models.
+"""Run the same VU benchmark questions against three current Groq-hosted models.
 
 Uses the configured Groq API key and free-tier access only; it never requests payment.
 All models receive the same question-specific source context and the same system prompt.

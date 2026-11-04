@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Camera, FileText, Mic, Square, X } from "lucide-react";
+import { ArrowUp, Camera, FileText, Mic, Square, X, Volume2, VolumeX } from "lucide-react";
 import { askAdvisor, type Source } from "./advisor";
 
 type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[] };
 type Presence = "off" | "typing" | "recent";
+
+function renderAnswer(text: string) {
+  // Render explicit Markdown image links from advisor output; ordinary text remains React-escaped.
+  const parts = text.split(/(!\\[[^\\]]*\\]\\(https?:\\/\\/[^\\s)]+\\))/g);
+  return parts.map((part, index) => {
+    const match = part.match(/^!\\[([^\\]]*)\\]\\((https?:\\/\\/[^\\s)]+)\\)$/);
+    return match ? <img key={index} className="answer-image" src={match[2]} alt={match[1] || "Advisor visual"} loading="lazy" /> : <span key={index}>{part}</span>;
+  });
+}
 
 const GREETING =
   "Hi! I'm the VU Academic Advisor. Ask me about courses, programmes, prerequisites, credits, semesters and admissions.";
@@ -30,7 +39,7 @@ export default function Home() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [notice, setNotice] = useState("");
   const [recording, setRecording] = useState(false);
-  const [seconds, setSeconds] = useState(0);
+  const [seconds, setSeconds] = useState(0);\n  const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [program, setProgram] = useState("Not specified");
   const [semester, setSemester] = useState("Not specified");
   const [credits, setCredits] = useState("");
@@ -138,7 +147,7 @@ export default function Home() {
     }
   }
 
-  function clearChat() {
+  function toggleSpeech(id: number, text: string) {\n    if (typeof window === "undefined" || !("speechSynthesis" in window)) {\n      setNotice("Text-to-speech is not supported in this browser.");\n      return;\n    }\n    if (speakingId === id) {\n      window.speechSynthesis.cancel();\n      setSpeakingId(null);\n      return;\n    }\n    window.speechSynthesis.cancel();\n    const utterance = new SpeechSynthesisUtterance(text);\n    utterance.onend = () => setSpeakingId(null);\n    utterance.onerror = () => setSpeakingId(null);\n    setSpeakingId(id);\n    window.speechSynthesis.speak(utterance);\n  }\n\n  function clearChat() {\n    if ("speechSynthesis" in window) window.speechSynthesis.cancel();\n    setSpeakingId(null);
     if (idleTimer.current) clearTimeout(idleTimer.current);
     setPresence("off");
     setMessages([{ id: idRef.current++, role: "bot", text: GREETING }]);
@@ -303,7 +312,7 @@ export default function Home() {
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           </form>
           <div className="disclaimer">
-            This is an AI and can make mistakes. Please verify important details with official university sources.
+            AI-generated academic guidance may be incomplete or outdated. Verify course codes, credits, prerequisites, eligibility, deadlines and university policies against the latest official VU documents before making academic decisions.
           </div>
         </div>
       </main>

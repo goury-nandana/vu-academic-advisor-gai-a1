@@ -4,19 +4,23 @@ Streamlit-based academic advising chatbot for Vidyashilp University (VU). It use
 
 **Live app:** https://vu-academic-advisor-gai-a1-hzdbiixzivwbjb3dvbfvka.streamlit.app/
 
-## Next.js frontend (Vercel migration)
+## Next.js frontend and Vercel API
 
-A new responsive Next.js UI is being developed in `frontend/`. The frontend is currently a preview scaffold and is **not yet connected** to the academic retrieval/Groq service. The Streamlit deployment remains the functional app during this migration.
+The responsive Next.js UI is in `frontend/`. It calls its same-origin Next.js route at `POST /api/chat`; the route uses the server-side `GROQ_API_KEY`, fetches allowlisted official VU webpages, returns clickable source citations and can return a source-bounded visual summary. Never expose the Groq key through a `NEXT_PUBLIC_*` variable.
 
-To preview the UI locally:
+Vercel settings for this repository: **Framework: Next.js**, **Root Directory: frontend**, **Install Command: npm ci**, **Build Command: npm run build**. Add `GROQ_API_KEY` to Vercel Production and Preview server-side environment variables. The API does not require a separate backend URL.
+
+Run locally:
 
 ```bash
 cd frontend
-npm install
+npm ci
+npm run typecheck
+npm run build
 npm run dev
 ```
 
-For a Vercel preview, import this repository and set the project **Root Directory** to `frontend`. Do not configure the Groq key as a `NEXT_PUBLIC_*` variable. Backend/API integration and academic feature parity are the next migration stage.
+The web route supports TXT/MD/CSV, images and audio attachments up to 4 MB combined. PDF/DOCX/XLSX/PPTX extraction remains available in the Streamlit implementation. The Next.js route does not load the batch-specific B.Tech semester-spread workbooks; detailed course-code, credit and prerequisite answers must be checked against the student's registered Digicampus curriculum or the existing Streamlit academic-data workflow. Vercel SSO protection is preserved, so authorized access may be needed to open the deployment.
 
 ## Current scope
 
@@ -71,8 +75,8 @@ The first command is a small smoke run; the second runs the full question set. T
 Python 3.11+ is recommended.
 
 ```bash
-git clone https://github.com/goury-nandana/vu-academic-advisor-gai-a1.git
-cd vu-academic-advisor-gai-a1
+git clone https://github.com/goury-nandana/vu-academic-advisor-gai-a2.git
+cd vu-academic-advisor-gai-a2
 python -m venv .venv
 # Windows: .venv\\Scripts\\activate
 # macOS/Linux:
@@ -125,14 +129,18 @@ The structured loader reads only the five semester-spread workbooks in the archi
 
 ## Tests
 
-Run:
+Run Python checks from the repository root and frontend checks from `frontend/`:
 
 ```bash
+python -m py_compile app.py course_data.py advisor_guardrails.py upload_support.py benchmark_runner.py
 python -m unittest discover -s tests -v
-python -m py_compile app.py course_data.py
+cd frontend
+npm ci
+npm run typecheck
+npm run build
 ```
 
-GitHub Actions runs the syntax check and unittest suite on pushes and pull requests to `main`.
+GitHub Actions runs the Python syntax/unit tests plus the Next.js TypeScript check and production build on pushes and pull requests to `main`.
 
 ## Known limitations
 
@@ -142,3 +150,10 @@ GitHub Actions runs the syntax check and unittest suite on pushes and pull reque
 - Minor-workbook extraction and non-B.Tech programme semester structures are not yet fully normalized into the structured course-record loader.
 - Website information depends on the official pages being reachable when the website knowledge base is refreshed.
 - Real Groq API behaviour and the deployed Streamlit instance must be smoke-tested with the configured deployment secret; automated tests do not validate external API credentials.
+
+
+## Assignment evidence and limitations
+
+- The web chat displays the answer-generation model and the response pipeline. It does not claim a live multi-model ranking. The benchmark harness is not evidence of a completed comparison until its missing input workbook is supplied and the responses are scored.
+- The privacy review adds deterministic prompt-boundary tests, not a live model penetration test. Provider retention and production abuse controls remain to be verified.
+- The three-output legal/copyright evaluation remains incomplete until three actual redacted chat transcripts and their cited sources are captured. No fictional outputs are used as evidence.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Camera, FileText, Mic, Square, X, Volume2, VolumeX } from "lucide-react";
+import { ArrowUp, Camera, Check, Copy, FileText, Mic, Square, X, Volume2, VolumeX } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { askAdvisor, type Source, type Visualization } from "./advisor";
@@ -161,6 +161,7 @@ export default function Home() {
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const [program, setProgram] = useState("Not specified");
   const [semester, setSemester] = useState("Not specified");
   const [credits, setCredits] = useState("");
@@ -295,9 +296,19 @@ export default function Home() {
     window.speechSynthesis.speak(utterance);
   }
 
+  async function copyAnswer(id: number, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+    } catch {
+      setNotice("Clipboard access is unavailable. Check your browser permissions and try again.");
+    }
+  }
+
   function clearChat() {
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     setSpeakingId(null);
+    setCopiedId(null);
     if (idleTimer.current) clearTimeout(idleTimer.current);
     setPresence("off");
     setMessages([{ id: idRef.current++, role: "bot", text: GREETING }]);
@@ -394,6 +405,9 @@ export default function Home() {
                     {m.fileNotes && m.fileNotes.length > 0 && <div className="file-notes">{m.fileNotes.map((note, i) => <p key={i}>{note}</p>)}</div>}
                     {m.followUps && m.followUps.length > 0 && <div className="follow-ups">{m.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => send(followUp)} disabled={busy}>{followUp}</button>)}</div>}
 
+                    <button type="button" className="speak" onClick={() => void copyAnswer(m.id, m.text)} aria-label={copiedId === m.id ? "Response copied" : "Copy response"} title={copiedId === m.id ? "Copied" : "Copy response"}>
+                      {copiedId === m.id ? <Check size={16} /> : <Copy size={16} />}
+                    </button>
                     <button type="button" className="speak" onClick={() => toggleSpeech(m.id, m.text)} aria-label={speakingId === m.id ? "Stop speaking" : "Read answer aloud"} title={speakingId === m.id ? "Stop speaking" : "Read answer aloud"}>
                       {speakingId === m.id ? <VolumeX size={16} /> : <Volume2 size={16} />}
                     </button>

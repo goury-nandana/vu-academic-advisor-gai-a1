@@ -83,12 +83,22 @@ def load_docs():
     docs=pdf("4. Student Handbook Aug 2026.pdf")+pdf("SOP STUDENT 17082026 - Final.pdf")
     try:docs.append({"text":get("Course_Plans.txt").decode("utf-8",errors="ignore"),"source":"Course_Plans.txt","url":GH+"Course_Plans.txt"})
     except Exception:pass
-    # Include the programme overview file and the committed official-site reference index.
-    for filename in ("Programme_Structure.txt","website_sources.json"):
-        try:
-            docs.append({"text":get(filename).decode("utf-8",errors="ignore"),"source":filename,"url":GH+urllib.parse.quote(filename)})
-        except Exception:
-            pass
+    # Include programme overview, and index official-site entries as individually
+    # citeable records so website citations open the relevant VU page, not the JSON index.
+    try:
+        docs.append({"text":get("Programme_Structure.txt").decode("utf-8",errors="ignore"),
+                     "source":"Programme_Structure.txt","url":GH+"Programme_Structure.txt"})
+    except Exception:
+        pass
+    try:
+        site_entries=json.loads(get("website_sources.json").decode("utf-8",errors="ignore"))
+        if isinstance(site_entries,list):
+            for entry in site_entries:
+                if not isinstance(entry,dict) or not entry.get("name") or not entry.get("url"):continue
+                docs.append({"text":str(entry["name"])+" — official Vidyashilp University webpage: "+str(entry["url"]),
+                             "source":str(entry["name"]),"url":str(entry["url"])})
+    except Exception:
+        pass
     try:
         from openpyxl import load_workbook
         semester_archive=get("VU_Semester_Data_Split.zip")

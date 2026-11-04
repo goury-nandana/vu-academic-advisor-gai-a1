@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import academicKnowledgeJson from "../../../data/vu-academic-knowledge.json";
 
 export const runtime = "nodejs";
 const MODEL = "openai/gpt-oss-120b";
@@ -66,6 +67,101 @@ async function readAudio(key: string, file: File) {
   if (!response.ok) throw new Error("Audio transcription returned HTTP " + response.status + ".");
   return ((await response.json()) as {text?:string}).text?.trim() ?? "";
 }
+
+type AcademicDocument = {
+  source?: string;
+  title?: string;
+  page?: number | string;
+  sheet?: string;
+  section?: string;
+  type?: string;
+  text: string;
+};
+type CourseRecord = {
+  course_code: string;
+  course_title: string;
+  prerequisite?: string;
+  credits?: string | number;
+  semester?: number;
+  programme?: string;
+  track?: string | null;
+  batch?: string;
+  source?: string;
+  cells?: Record<string, string>;
+  text?: string;
+};
+const ACADEMIC_KNOWLEDGE = academicKnowledgeJson as unknown as {
+  schemaVersion: number;
+  documents: AcademicDocument[];
+  courseRecords: CourseRecord[];
+};
+
+const SEARCH_STOP_WORDS = new Set(["the","and","for","with","what","how","does","can","you","are","from","that","please","tell","about","this","what","which","where","when"]);
+function queryWords(value: string) {
+  return (value.toLowerCase().match(/[a-z0-9]{3,}/g) ?? []).filter((word) => !SEARCH_STOP_WORDS.has(word));
+}
+
+function retrieveAcademic(question: string): AcademicDocument[] {
+  const query = queryWords(question);
+  const attendanceIntent = /\b(attendance|attend|absen(?:ce|t)?|condonation|shortage|present|minimum attendance)\b/i.test(question);
+  const expanded = new Set(query);
+  if (attendanceIntent) {
+    ["attendance","attend","absence","absent","condonation","shortage","present","minimum","percentage","required","classes","class"].forEach((word) => expanded.add(word));
+  }
+  const courseCodes = (question.match(/\b[A-Za-z]{2,6}[\s-]?\d{3,4}[A-Za-z]?\b/g) ?? [])
+    .map((code) => code.replace(/[\s-]/g, "").toUpperCase());
+  const scored = ACADEMIC_KNOWLEDGE.documents.map((document) => {
+    const body = String(document.text || "");
+    const searchable = (String(document.source || "") + " " + String(document.title || "") + " " + String(document.section || "") + " " + body).toLowerCase();
+    let score = 0;
+    for (const term of expanded) {
+      if (searchable.includes(term)) score += term.length >= 7 ? 2 : 1;
+    }
+    if (attendanceIntent) {
+      if (/\battendance\b/i.test(body)) score += 9;
+      if (/\b(?:minimum|at least|required|mandatory)\b.{0,55}\b(?:attendance|present|classes)\b|\b(?:attendance|present|classes)\b.{0,55}\b(?:minimum|percentage|required|mandatory)\b/i.test(body)) score += 5;
+      if (/\b\d{1,3}\s?%/.test(body)) score += 2;
+      if (/\b(?:condonation|shortage|absence|medical leave)\b/i.test(body)) score += 3;
+      if (/Student Handbook/i.test(document.source || "")) score += 4;
+      if (/SOP STUDENT/i.test(document.source || "")) score += 3;
+    }
+    if (courseCodes.some((code) => searchable.replace(/[\s-]/g, "").includes(code))) score += 15;
+    return { document, score };
+  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score);
+
+  const selected: AcademicDocument[] = [];
+  const seen = new Set<string>();
+  for (const item of scored) {
+    const d = item.document;
+    const key = [d.source || "", d.page ?? d.sheet ?? "", d.section || "", d.text.slice(0, 100)].join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    selected.push(d);
+    if (selected.length >= (attendanceIntent ? 7 : 5)) break;
+  }
+  return selected;
+}
+
+function academicSourceUrl(source: string, page?: number | string) {
+  const path = source.split("/").map((part) => encodeURIComponent(part)).join("/");
+  const pageNumber = Number(page);
+  return "https://github.com/goury-nandana/vu-academic-advisor-gai-a2/blob/main/" + path +
+    (Number.isFinite(pageNumber) && pageNumber > 0 ? "#page=" + Math.floor(pageNumber) : "");
+}
+
+function formatAcademicSource(document: AcademicDocument, index: number) {
+  const source = String(document.source || document.title || "VU academic document");
+  const page = document.page ? " · p. " + document.page : "";
+  const section = document.section ? " · " + document.section : "";
+  return {
+    title: source + page + section,
+    url: academicSourceUrl(source, document.page),
+    text: document.text,
+    citation: index + 1,
+    type: "academic",
+  };
+}
+
 async function retrieve(question: string) {
   const q = question.toLowerCase();
   const preferred: string[] = [];

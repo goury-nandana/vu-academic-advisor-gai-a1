@@ -15,6 +15,11 @@ The Next.js frontend submits chat turns to the same-origin POST /api/chat route.
 
 This is a sequential retrieval-and-generation pipeline. It is not a swarm of autonomous agents and does not claim independent autonomous decision-making.
 
+## Speech and visual output
+
+The browser chat keeps text-to-speech playback through the browser Speech Synthesis API. Voice-note uploads are transcribed through the configured Whisper endpoint. When asked for an infographic, chart, diagram or flow, the route can request a structured visual summary from the model and the client renders it as an accessible visual card. Image uploads can be interpreted by the separate vision model. This is not a raster image generator: assistant-created visuals are evidence-bounded UI infographics, not downloadable artwork.
+
+
 ## Model comparison: measured facts only
 
 The live web route uses one configured answer-generation model: llama-3.3-70b-versatile. Image descriptions and audio transcription use separate task-specific Groq endpoints if those attachments are submitted. The answer UI names the model and states that no multi-model comparison was performed for that turn.

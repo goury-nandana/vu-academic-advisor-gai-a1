@@ -1,36 +1,47 @@
-// The ONLY place the page talks to the advisor backend.
-// Set NEXT_PUBLIC_ADVISOR_API_URL (a public URL, never a secret) to your backend, e.g. https://my-advisor.onrender.com
-// Expected: POST {API}/chat  (multipart/form-data)
-//   question: string | history: JSON [{role:"user"|"assistant", text}] | profile: JSON {program, semester, completedCredits, cgpa}
-//   files: File[] (documents, images, voice notes)
-// Response (JSON): { answer: string, sources?: [{ title: string, url?: string }] }
-
-export type Source = { title: string; url?: string };
+// All browser-to-backend traffic is handled here. The default endpoint is same-origin.
+export type Source = { title: string; url: string };
 export type Profile = { program: string; semester: string; completedCredits: string; cgpa: string };
 export type HistoryItem = { role: "user" | "assistant"; text: string };
+export type Visualization = {
+  kind: "bars" | "steps" | "cards";
+  title: string;
+  items: Array<{ label: string; value?: number; valueLabel?: string; detail?: string }>;
+};
+export type AdvisorReply = {
+  answer: string;
+  sources: Source[];
+  pipeline: string[];
+  model: string;
+  visualization?: Visualization;
+  followUps: string[];
+  fileNotes: string[];
+};
 
-const API = process.env.NEXT_PUBLIC_ADVISOR_API_URL?.replace(/\/$/, "");
+const EXTERNAL_API = process.env.NEXT_PUBLIC_ADVISOR_API_URL?.replace(/\/$/, "") ?? "";
 
 export async function askAdvisor(input: {
   question: string;
   history: HistoryItem[];
   profile: Profile;
   files: File[];
-}): Promise<{ answer: string; sources: Source[] }> {
-  if (!API) {
-    return {
-      answer:
-        "The advisor service is not connected to this page yet, so I can't answer academic questions here. Please check official university sources for now.",
-      sources: [],
-    };
-  }
+}): Promise<AdvisorReply> {
   const form = new FormData();
   form.append("question", input.question);
   form.append("history", JSON.stringify(input.history));
   form.append("profile", JSON.stringify(input.profile));
-  input.files.forEach((f) => form.append("files", f, f.name));
-  const res = await fetch(`${API}/chat`, { method: "POST", body: form });
-  if (!res.ok) throw new Error(`Advisor API returned ${res.status}`);
-  const data = (await res.json()) as { answer?: string; sources?: Source[] };
-  return { answer: data.answer ?? "I couldn't find an answer to that.", sources: data.sources ?? [] };
+  input.files.forEach((file) => form.append("files", file, file.name));
+
+  const endpoint = EXTERNAL_API ? EXTERNAL_API + "/chat" : "/api/chat";
+  const response = await fetch(endpoint, { method: "POST", body: form, cache: "no-store" });
+  const data = await response.json().catch(() => ({})) as Partial<AdvisorReply> & { error?: string };
+  if (!response.ok) throw new Error(data.error || "Advisor API returned " + response.status + ".");
+  return {
+    answer: data.answer ?? "I could not find an answer to that.",
+    sources: Array.isArray(data.sources) ? data.sources : [],
+    pipeline: Array.isArray(data.pipeline) ? data.pipeline : [],
+    model: data.model ?? "Model not reported",
+    visualization: data.visualization,
+    followUps: Array.isArray(data.followUps) ? data.followUps : [],
+    fileNotes: Array.isArray(data.fileNotes) ? data.fileNotes : [],
+  };
 }

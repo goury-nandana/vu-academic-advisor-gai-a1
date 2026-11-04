@@ -1,29 +1,31 @@
-# Agent Pipeline and Model Comparison — A2
+# Advisor Pipeline and Model Comparison — A2
 
-## Intended grounded response pipeline
-```mermaid
-flowchart TD
-  A[Student question + optional profile/files] --> B[Input validation and file extraction]
-  B --> C[Conversation context and clarification detection]
-  C --> D[Course-record lookup: exact code, programme, batch, semester]
-  D --> E{Relevant structured records found?}
-  E -->|Yes| F[Use matching course records]
-  E -->|No| G[Retrieve relevant source passages]
-  F --> H[Construct evidence-bound prompt]
-  G --> H
-  H --> I[LLM response generation]
-  I --> J[Deterministic guardrails and claim checks]
-  J --> K[Answer + source references to frontend]
-  K --> L[Student verifies against official VU sources]
-```
+## Live web-answer pipeline
 
-## Model comparison framework
-The `benchmark_runner.py` script is configured to use the same benchmark questions and source context for candidate models, record response latency and token usage, and leave human scoring fields blank for independent evaluation. It checks the configured Groq account's available model list and stops if the required ten candidate models are not available; it does not silently substitute paid models.
+The Next.js frontend submits chat turns to the same-origin POST /api/chat route. The route performs these steps:
 
-## Evaluation rubric (human-scored, 0–4 each)
-- Factual accuracy against the gold facts
-- Grounding in cited VU sources
-- No unsupported/hallucinated claims
-- Appropriate clarification for missing batch/profile context
+1. Validate the question, optional student profile and attachment size/type.
+2. Process supported text, image and audio attachments; report unsupported file formats instead of silently claiming to read them.
+3. Select and fetch a small set of allowlisted official Vidyashilp University webpages.
+4. Rank fetched excerpts against the question and assign citation numbers only to pages actually fetched for that turn.
+5. Escape and separate retrieved webpages and student-supplied content as untrusted data.
+6. Generate an answer with the configured Groq model and explicit source-grounding, privacy and prompt-injection instructions.
+7. When a visual is requested, optionally generate a structured infographic/steps/bar summary from facts already present in the answer and retrieved excerpts. The UI renders it as a visual card; it is not a general-purpose image-generation model.
+8. Return the answer, clickable citations, pipeline steps, model identifier, optional visual, follow-ups and file-processing notes to the chat.
 
-**Results status:** No model rankings or score claims are included here. Execute the benchmark, manually score responses, and append the CSV plus an analysis before reporting a winner.
+This is a sequential retrieval-and-generation pipeline. It is not a swarm of autonomous agents and does not claim independent autonomous decision-making.
+
+## Model comparison: measured facts only
+
+The live web route uses one configured answer-generation model: llama-3.3-70b-versatile. Image descriptions and audio transcription use separate task-specific Groq endpoints if those attachments are submitted. The answer UI names the model and states that no multi-model comparison was performed for that turn.
+
+The separate benchmark_runner.py script is designed to compare ten candidate Groq models against a common set of questions and source context, record latency/token usage, and leave rubric scores blank for independent human assessment. It requires VU_LLM_Benchmark_Framework.xlsx, which is not present in this repository. No benchmark run, score sheet or defensible model ranking is available. Therefore, this submission makes no claim that one model outperforms another.
+
+## Human evaluation rubric (0–4 each)
+
+- Factual accuracy against the source-backed gold facts.
+- Grounding and correct use of actual citations.
+- Absence of unsupported or hallucinated claims.
+- Appropriate clarification when programme, semester or batch information is missing.
+
+A comparison is reportable only after the missing input workbook is supplied, all available models are run against the same questions/context, unavailable models are recorded as unavailable, and responses are independently scored.

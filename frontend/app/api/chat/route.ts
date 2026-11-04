@@ -90,6 +90,8 @@ type CourseRecord = {
   source?: string;
   cells?: Record<string, string>;
   text?: string;
+  document_type?: string;
+  is_course_record?: boolean;
   L?: string | number | null;
   T?: string | number | null;
   P?: string | number | null;
@@ -417,8 +419,8 @@ function structuredCourseAnswer(search: StructuredCourseSearch): string {
     } else {
       answer += "The matching records list these course codes: **" + codes.join(", ") + "**.\n\n";
     }
-    answer += "| Admission batch | Course code | Semester | Credits | Prerequisite | Track in source |\n";
-    answer += "| --- | --- | ---: | ---: | --- | --- |\n";
+    answer += "| Admission batch | Course code | Semester | Credits | Prerequisite | Track in source | Source |\n";
+    answer += "| --- | --- | ---: | ---: | --- | --- | --- |\n";
     for (const record of records) {
       answer += "| " + String(record.batch || "Not specified") +
         " | " + record.course_code +
@@ -426,7 +428,7 @@ function structuredCourseAnswer(search: StructuredCourseSearch): string {
         " | " + credits(record.credits) +
         " | " + prerequisite(record.prerequisite) +
         " | " + String(record.track || "Not specified") +
-        " |" + sourceCitations(record) + "\n";
+        " |" + sourceCitations(record) + " |\n";
     }
     answer += "\nThe source only identifies the 2026 records as Data Science. The 2022–2025 records do not specify a specialisation, so their track should not be inferred.";
     return answer;

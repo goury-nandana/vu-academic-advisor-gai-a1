@@ -457,13 +457,18 @@ async def chat(req:Request):
                 source = next((d for d in minor_records if str(d.get("minor_name", "")).strip() == name), None)
                 if source and source not in rows:
                     rows.append(source)
-            batch_match = re.search(r"\b(20\d{2})\s*(?:batch|b(?:atch)?)\b|\b(?:batch|b(?:atch)?)\s*(20\d{2})\b", question, re.I)
-            programme_match = re.search(r"\b(bms|b\s*\.?\s*tech|btech)\b", question, re.I)
+            years = sorted(set(re.findall(r"\b(20\d{2})\b", question)))
+            programme_labels = []
+            if re.search(r"\bbms\b", question, re.I):
+                programme_labels.append("BMS")
+            if re.search(r"\b(?:regular\s+)?b\s*\.?\s*tech\b|\bbtech\b|\bbtceh\b|\bcse\b", question, re.I):
+                programme_labels.append("regular B.Tech")
             asks_university_wide = bool(re.search(r"\b(at\s+vu|at\s+vidyashilp|offered\s+at\s+vu|university[- ]wide|all\s+(?:programmes|programs))\b", question, re.I))
-            if batch_match and programme_match and not asks_university_wide:
-                batch = next(group for group in batch_match.groups() if group)
-                programme = "BMS" if programme_match.group(1).lower() == "bms" else "B.Tech"
-                answer = f"I can’t verify which minors were available to the {batch} {programme} batch from the retrieved records. The minor archive names these areas generally: **{names_text}**; it does not establish availability for that specific cohort."
+            asks_cohort = bool(years and programme_labels and re.search(r"\b(batch|betch|btech|btceh|bms|cse)\b", question, re.I))
+            if asks_cohort and not asks_university_wide:
+                cohorts = [f"{year} {programme} batch" for year in years for programme in programme_labels]
+                cohort_text = " and ".join(cohorts)
+                answer = f"I can’t verify minor eligibility for the {cohort_text} from the retrieved cohort-specific records. The minor archive names these areas generally: **{names_text}**; it does not establish which were available to those batches."
             else:
                 answer = f"The minor archive names these minor areas: **{names_text}**. This is an archive-wide list, not confirmation that every programme or batch can choose every minor."
             sources = []

@@ -263,10 +263,11 @@ export default function Home() {
         files,
       });
       setMessages((m) => [...m, { id: idRef.current++, role: "bot", text: r.answer, ...r }]);
-    } catch {
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Unknown request error";
       setMessages((m) => [
         ...m,
-        { id: idRef.current++, role: "bot", text: "I couldn't reach the advisor right now. Please try again." },
+        { id: idRef.current++, role: "bot", text: "The advisor request failed: " + detail },
       ]);
     } finally {
       setBusy(false);
@@ -402,10 +403,10 @@ export default function Home() {
                     {m.followUps && m.followUps.length > 0 && <div className="follow-ups">{m.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => send(followUp)} disabled={busy}>{followUp}</button>)}</div>}
 
                     <button type="button" className="speak" onClick={() => void copyAnswer(m.id, m.text)} aria-label={copiedId === m.id ? "Response copied" : "Copy response"} title={copiedId === m.id ? "Copied" : "Copy response"}>
-                      {copiedId === m.id ? <Check size={16} /> : <Copy size={16} />}
+                      {copiedId === m.id ? <Check size={16} aria-hidden="true" focusable="false" /> : <Copy size={16} aria-hidden="true" focusable="false" />}
                     </button>
                     <button type="button" className="speak" onClick={() => toggleSpeech(m.id, m.text)} aria-label={speakingId === m.id ? "Stop speaking" : "Read answer aloud"} title={speakingId === m.id ? "Stop speaking" : "Read answer aloud"}>
-                      {speakingId === m.id ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                      {speakingId === m.id ? <VolumeX size={16} aria-hidden="true" focusable="false" /> : <Volume2 size={16} aria-hidden="true" focusable="false" />}
                     </button>
                     {m.sources && m.sources.length > 0 && (
                       <div className="sources">

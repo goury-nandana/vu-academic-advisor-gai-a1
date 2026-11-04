@@ -330,7 +330,7 @@ function getSimpleSocialAnswer(question: string): string | undefined {
   if (/^(?:cat|cats)$/.test(normalized)) {
     return "Do you mean the CAT entrance examination, a cat as an animal, or something else? Please clarify what you want to know.";
   }
-  if (/\b(?:my|our)\s+(?:dog|cat|pet|friend|family member|someone)\s+died\b|\b(?:my dog|my cat|my pet)\s+(?:passed away|has died)\b/i.test(normalized)) {
+  if (/\\b(?:my|our)\\s+(?:dog|cat|pet|friend|family member|someone)\\s+(?:died|dies|passed away)\\b|\\b(?:my dog|my cat|my pet)\\s+(?:passed away|has died|died|dies)\\b/i.test(normalized)) {
     return "I’m sorry for your loss. Losing a pet or someone close can be painful. Take the time you need, and consider talking with someone you trust. You can talk about it here too.";
   }
   if (/\b(?:i am|i'm|im|feeling|feel|been feeling)\b.{0,60}\b(?:sad|upset|low|down|lonely|stressed|overwhelmed|depressed|in depression|anxious|anxiety|hopeless)\b|\b(?:sad|upset|low|down|lonely|stressed|overwhelmed|depressed|anxious|anxiety)\b.{0,60}\b(?:today|right now|lately|because)\b/i.test(normalized)) {

@@ -165,7 +165,7 @@ function inferSemesterAnswer(value: string): string | undefined {
   return semester + suffix + " Semester";
 }
 
-function getPendingMinorQuestion(history: ChatHistoryItem[]): string | undefined {function getPendingBtechCourseQuestion(
+function getPendingBtechCourseQuestion(
   history: ChatHistoryItem[],
   currentQuestion: string
 ): string | undefined {
@@ -196,7 +196,7 @@ function getPendingMinorQuestion(history: ChatHistoryItem[]): string | undefined
   return continued;
 }
 
-
+function getPendingMinorQuestion(history: ChatHistoryItem[]): string | undefined {
   if (!history.length) return undefined;
   const latest = history[history.length - 1];
   if (
@@ -269,7 +269,7 @@ function isMinorQuestion(question: string): boolean {
   return /\bminor(?:s)?\b/i.test(question);
 }
 
-function normalizeCourseSearchText(value: unknown): string {function getSimpleSocialAnswer(question: string): string | undefined {
+function getSimpleSocialAnswer(question: string): string | undefined {
   const normalized = question.trim().toLowerCase().replace(/[.!?]+$/g, "");
   if (/^(?:hi+|hello+|hey+|hii+|good morning|good afternoon|good evening|namaste)(?: there)?$/.test(normalized)) {
     return "Hello. I’m the VU Academic Advisor. You can ask me about Vidyashilp University programmes, courses, prerequisites, credits, semesters and admissions.";
@@ -280,7 +280,7 @@ function normalizeCourseSearchText(value: unknown): string {function getSimpleSo
   return undefined;
 }
 
-
+function normalizeCourseSearchText(value: unknown): string {
   return String(value || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
 }
 
@@ -846,7 +846,7 @@ function formatAcademicSource(document: AcademicDocument, index: number) {
   };
 }
 
-async function retrieve(question: string) {function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
+function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
   const terms = queryWords(question);
   if (!terms.length) return [];
   const query = question.toLowerCase();
@@ -911,7 +911,7 @@ function deterministicAdmissionsAnswer(
   return answer;
 }
 
-
+async function retrieve(question: string) {
   const q = question.toLowerCase();
   const preferred: string[] = [];
   if (/\bbms\b|digital business|management studies/i.test(q)) preferred.push("BMS Digital Business");

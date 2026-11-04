@@ -18,6 +18,8 @@ function normalizeAnswerMarkdown(input: string, sources: Source[] = []) {
     .replace(/\\\|/g, "|")
     .replace(/\\?<br\s*\/?>/gi, " / ")
     .replace(/<br\s*\/?>/gi, " / ")
+    // Move an inline table header onto its own block when the model appends it to a heading.
+    .replace(/([^\n])\s+(?=\|[^|\n]+\|[^|\n]+\|\s+\|?\s*[-:]{3,})/g, "$1\n\n")
     // Arbitrary model-supplied image URLs and the chat logo are not answer content.
     .replace(/!\[[^\]]*\]\(https?:\/\/[^\s)]+\)/g, "")
     .replace(/^\s*svg\s*$/gim, "")

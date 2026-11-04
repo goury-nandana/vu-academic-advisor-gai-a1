@@ -60,7 +60,7 @@ function repairFlattenedMarkdownTables(value: string) {
   return value;
 }
 
-function normalizeAnswerMarkdown(input: string, sources: Source[] = []) {
+function normalizeAnswerMarkdown(input: string) {
   let markdown = String(input || "")
     .replace(/\r\n?/g, "\n")
     .replace(/\\\*\\\*/g, "**")
@@ -78,13 +78,9 @@ function normalizeAnswerMarkdown(input: string, sources: Source[] = []) {
     .trim();
 
   markdown = repairFlattenedMarkdownTables(markdown);
-  markdown = markdown.replace(/\[(\d+)\](?!\()/g, (marker: string, number: string) => {
-    const source = sources[Number(number) - 1];
-    return source?.url ? "[" + marker + "](" + source.url + ")" : marker;
-  });
   return markdown;
 }
-function renderAnswer(text: string, sources: Source[] = []) {
+function renderAnswer(text: string) {
   return (
     <div className="answer-markdown">
       <ReactMarkdown
@@ -104,7 +100,7 @@ function renderAnswer(text: string, sources: Source[] = []) {
           ),
         }}
       >
-        {normalizeAnswerMarkdown(text, sources)}
+        {normalizeAnswerMarkdown(text)}
       </ReactMarkdown>
     </div>
   );
@@ -400,7 +396,7 @@ export default function Home() {
                     <span className={`dot ${live && m.id === lastBotId ? "on" : ""}`} />
                   </span>
                   <div className="bubble bot">
-                    <div className="answer-text">{renderAnswer(m.text, m.sources)}</div>
+                    <div className="answer-text">{renderAnswer(m.text)}</div>
                     {renderVisualization(m.visualization)}
                     {m.fileNotes && m.fileNotes.length > 0 && <div className="file-notes">{m.fileNotes.map((note, i) => <p key={i}>{note}</p>)}</div>}
                     {m.followUps && m.followUps.length > 0 && <div className="follow-ups">{m.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => send(followUp)} disabled={busy}>{followUp}</button>)}</div>}
@@ -413,13 +409,17 @@ export default function Home() {
                     </button>
                     {m.sources && m.sources.length > 0 && (
                       <div className="sources">
-                        {m.sources.map((s, i) =>
-                          s.url ? (
-                            <a key={i} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>
-                          ) : (
-                            <span key={i}>{s.title}</span>
-                          ),
-                        )}
+                        {m.sources
+                          .filter((source, index, all) =>
+                            all.findIndex((item) => (item.url || item.title) === (source.url || source.title)) === index
+                          )
+                          .map((s, i) =>
+                            s.url ? (
+                              <a key={s.url} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>
+                            ) : (
+                              <span key={s.title + "-" + i}>{s.title}</span>
+                            ),
+                          )}
                       </div>
                     )}
                   </div>

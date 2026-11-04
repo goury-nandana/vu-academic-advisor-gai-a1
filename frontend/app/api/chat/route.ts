@@ -293,7 +293,7 @@ export async function POST(request: Request) {
     answer=await groq(key,[{role:"system",content:system},{role:"user",content:prompt}],MODEL);
   }catch(error){return NextResponse.json({error:"Answer generation failed: "+(error instanceof Error?error.message:"provider error")},{status:502});}
   if(!answer) answer="I could not generate an answer. Please rephrase the question or check the official VU sources.";
-  if(pages.length&&!/\[\d+\]/.test(answer)) answer+="\n\nSources consulted: "+sources.map((source)=>"["+source.citation+"] "+source.title).join("; ")+".";
+  if(sources.length&&!/\[\d+\]/.test(answer)) answer+="\n\nSources consulted: "+sources.map((source)=>"["+source.citation+"] "+source.title).join("; ")+".";
   const programmeSpecific=/\b(minor|major|speciali[sz]ation|elective|programme options|program options|course code|prerequisite|curriculum|syllabus|semester|credit structure|course credits)\b/i.test(combinedQuestion);
   const semesterSpecific=/\b(semester|term|this sem|next sem|current sem)\b/i.test(combinedQuestion);
   const followUps:string[]=[];

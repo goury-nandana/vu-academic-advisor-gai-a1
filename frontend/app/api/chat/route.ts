@@ -272,7 +272,7 @@ export async function POST(request: Request) {
     answer=await groq(key,[{role:"system",content:system},{role:"user",content:prompt}],MODEL);
   }catch(error){return NextResponse.json({error:"Answer generation failed: "+(error instanceof Error?error.message:"provider error")},{status:502});}
   if(!answer) answer="I could not generate an answer. Please rephrase the question or check the official VU sources.";
-  if(pages.length&&!/\[\d+\]/.test(answer)) answer+="\n\nSources consulted: "+pages.map((p,i)=>"["+(i+1)+"] "+p.title).join("; ")+".";
+  if(pages.length&&!/\[\d+\]/.test(answer)) answer+="\n\nSources consulted: "+sources.map((source)=>"["+source.citation+"] "+source.title).join("; ")+".";
   const programmeSpecific=/\b(minor|major|speciali[sz]ation|elective|programme options|program options|course code|prerequisite|curriculum|syllabus|semester|credit structure|course credits)\b/i.test(combinedQuestion);
   const semesterSpecific=/\b(semester|term|this sem|next sem|current sem)\b/i.test(combinedQuestion);
   const followUps:string[]=[];
@@ -284,18 +284,18 @@ export async function POST(request: Request) {
   pipeline.push("Generated answer with one configured model: "+MODEL);
 
   let visualization;
-  if(/\b(chart|graph|infographic|visuali[sz]e|diagram|flowchart|visual summary)\b/i.test(combinedQuestion)&&pages.length){
+  if(/\b(chart|graph|infographic|visuali[sz]e|diagram|flowchart|visual summary)\b/i.test(combinedQuestion)&&sources.length){
     try{
       const raw=await groq(key,[
         {role:"system",content:"Return JSON only with kind (bars,steps,cards), title and items. Use ONLY facts/numbers present in the answer and source excerpts. Never infer or calculate missing values. Use bars only for comparable numbers; steps for a process; cards for non-numeric comparisons. At most six items."},
-        {role:"user",content:"Request: "+combinedQuestion+"\nAnswer: "+answer+"\nEvidence: "+pages.map((p,i)=>"["+(i+1)+"] "+p.title+"\n"+p.text.slice(0,2200)).join("\n\n")},
+        {role:"user",content:"Request: "+combinedQuestion+"\nAnswer: "+answer+"\nEvidence: "+sources.map((source)=>"["+source.citation+"] "+source.title+"\n"+source.text.slice(0,2200)).join("\n\n")},
       ],MODEL,true);
       visualization=validateVisual(JSON.parse(raw));
       if(visualization) pipeline.push("Created a source-bounded visual summary");
     }catch{/* Keep the text answer when structured visualization is unavailable. */}
   }
   return NextResponse.json({
-    answer,sources:pages.map(({title,url})=>({title,url})),pipeline,model:MODEL,
+    answer,sources:sources.map(({title,url,citation,type})=>({title,url,citation,type})),pipeline,model:MODEL,
     visualization,followUps,fileNotes,
   },{headers:{"Cache-Control":"no-store, max-age=0","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin"}});
 }

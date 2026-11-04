@@ -42,9 +42,15 @@ async function groq(key: string, messages: Array<{role: string; content: unknown
     headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
     body: JSON.stringify({ model, messages, temperature, reasoning_effort: model === VISION_MODEL ? "none" : "low", max_tokens: json ? 600 : (/\bminor(?:s)?\b/i.test(String(messages[1]?.content || "")) ? 2200 : 900),
       ...(json ? { response_format: { type: "json_object" } } : {}) }),
-    signal: AbortSignal.timeout(7500), cache: "no-store",
+    signal: AbortSignal.timeout(20000), cache: "no-store",
   });
-  if (!response.ok) throw new Error("The configured model provider returned HTTP " + response.status + ".");
+  if (!response.ok) {
+    console.error("[VU Academic Advisor] Groq request failed", {
+      model,
+      status: response.status,
+    });
+    throw new Error("The configured model provider returned HTTP " + response.status + ".");
+  }
   const data = await response.json() as {choices?: Array<{message?: {content?: string}} >};
   return data.choices?.[0]?.message?.content?.trim() ?? "";
 }
@@ -1095,7 +1101,15 @@ export async function POST(request: Request) {
     if(!key) return NextResponse.json({error:"Advisor service is not configured: the server-side GROQ_API_KEY is missing."},{status:503});
     try{
       answer=await groq(key,[{role:"system",content:system},{role:"user",content:prompt}],MODEL);
-    }catch(error){return NextResponse.json({error:"Answer generation failed: "+(error instanceof Error?error.message:"provider error")},{status:502});}
+    }catch(error){
+      const detail = error instanceof Error ? error.message : "provider error";
+      console.error("[VU Academic Advisor] Answer generation failed", {
+        model: MODEL,
+        errorName: error instanceof Error ? error.name : "UnknownError",
+        detail,
+      });
+      return NextResponse.json({error:"Answer generation failed: "+detail},{status:502});
+    }
     if(!answer) answer="I could not generate an answer. Please rephrase the question or check the official VU sources.";
     pipeline.push("Generated answer with one configured model: "+MODEL);
   }

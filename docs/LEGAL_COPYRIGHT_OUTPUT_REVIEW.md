@@ -1,35 +1,42 @@
 # Legal and Copyright Review of Three Advisor Outputs
 
-This is an evaluation worksheet for generated academic-advisor responses, not legal advice. Complete it using three actual saved outputs; do not invent response samples or claim they were evaluated if they were not.
+**Status: NOT COMPLETE — three actual saved advisor-output transcripts were not present in the repository or supplied for this review.** No sample answer, source citation or evaluation result has been invented.
 
-For each sample, record:
-1. Question and date/model
-2. Exact generated response and source citations
-3. Whether quoted/reproduced content is limited to necessary factual excerpts
-4. Whether university-provided material is attributed and its license/permission status known
-5. Whether the answer makes a legal, policy, or eligibility conclusion beyond its cited evidence
-6. Risk (low/medium/high), corrective rewrite, and evaluator initials
+## Why the output evaluation remains pending
 
-## Sample 1
-- Output reference:
-- Source attribution/copyright concern:
-- Legal/policy accuracy concern:
-- Risk and correction:
+The Streamlit chat keeps its messages in session state and does not create a durable output archive. The Next.js route returns a response to the browser but does not store user chat history. The repository therefore has no three attributable verbatim outputs with their original questions, timestamps, model identifiers and citations. Evaluating fabricated samples would misrepresent the assignment evidence.
 
-## Sample 2
-- Output reference:
-- Source attribution/copyright concern:
-- Legal/policy accuracy concern:
-- Risk and correction:
+## Sample 1 — pending actual transcript
 
-## Sample 3
-- Output reference:
-- Source attribution/copyright concern:
-- Legal/policy accuracy concern:
-- Risk and correction:
+- Redacted question and exact answer: **Not supplied**
+- Date/model and actual cited source URLs: **Not available**
+- Copyright / attribution review: **Cannot assess without the source and exact response**
+- Academic-policy accuracy / official-authority overclaim: **Cannot assess without the exact response**
+- Risk rating and corrective rewrite: **Pending evidence**
 
-## General checks
-- Prefer short quotations and summaries over reproducing entire documents.
-- Include source title/link for claims based on university material.
-- Do not imply generated text is an official university determination.
-- Verify permissions for course documents and other protected material used in the knowledge base.
+## Sample 2 — pending actual transcript
+
+- Redacted question and exact answer: **Not supplied**
+- Date/model and actual cited source URLs: **Not available**
+- Copyright / attribution review: **Cannot assess without the source and exact response**
+- Academic-policy accuracy / official-authority overclaim: **Cannot assess without the exact response**
+- Risk rating and corrective rewrite: **Pending evidence**
+
+## Sample 3 — pending actual transcript
+
+- Redacted question and exact answer: **Not supplied**
+- Date/model and actual cited source URLs: **Not available**
+- Copyright / attribution review: **Cannot assess without the source and exact response**
+- Academic-policy accuracy / official-authority overclaim: **Cannot assess without the exact response**
+- Risk rating and corrective rewrite: **Pending evidence**
+
+## Evaluation method once actual outputs are captured
+
+1. Preserve a redacted transcript with the exact question, exact answer, date/model and the citations shown in that same chat turn. Remove names, student IDs, contact details and other personal information before adding evidence to the assignment.
+2. Verify each factual statement against the cited VU source and confirm that the page supports the claim.
+3. Check that the output does not reproduce substantial protected text, tables, images or handbook material where a short quotation or accurate summary would suffice.
+4. Attribute quoted or summarized university material and verify the relevant copyright, licence or permission status. Public availability alone does not establish permission to reproduce.
+5. Identify claims that imply official authority or determine a student's enrolment, eligibility, credit transfer, grades, exceptions or approvals without written university confirmation.
+6. Record a reasoned low/medium/high risk rating and a corrective rewrite based on that exact response.
+
+This file is an evaluation record and method, not legal advice or evidence that three output evaluations have been completed.

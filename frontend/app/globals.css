@@ -101,3 +101,9 @@ button:disabled{cursor:not-allowed}
   .chip{font-size:13px;padding:9px 14px}
 }
 @media (prefers-reduced-motion:reduce){.ring,.dot,.sidebar,.toggle,.typing i{transition:none;animation:none}}
+
+/* Advisor response accessibility and visual media */
+.speak{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin:6px 0 0;border:0;border-radius:50%;background:var(--pale);color:var(--blue);cursor:pointer}
+.speak:hover{background:#cbd7f3}
+.answer-text{white-space:pre-wrap;overflow-wrap:anywhere}
+.answer-image{display:block;max-width:100%;height:auto;max-height:420px;object-fit:contain;border-radius:12px;margin:12px 0}

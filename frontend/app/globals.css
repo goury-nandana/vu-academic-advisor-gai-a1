@@ -109,3 +109,32 @@ button:disabled{cursor:not-allowed}
 .answer-image{display:block;max-width:100%;height:auto;max-height:420px;object-fit:contain;border-radius:12px;margin:12px 0}
 
 .profile-help{margin:-4px 0 2px;font-size:12px;line-height:1.45;color:#3B3B4B}
+
+
+/* Grounded citations, assistant visuals and the auditable response pipeline */
+.inline-citation{display:inline-block;color:var(--blue);font-weight:700;text-decoration:underline;text-underline-offset:2px;padding:0 2px}
+.visual-card{margin:14px 0 8px;padding:14px 16px;border:1px solid #dce3f4;border-radius:16px;background:#f8faff}
+.visual-card h3{margin:0 0 12px;color:var(--blue);font-size:14px;font-weight:700}
+.visual-item{margin:0 0 12px}
+.visual-item:last-of-type{margin-bottom:4px}
+.visual-item-heading{display:flex;justify-content:space-between;gap:12px;align-items:baseline;font-size:13px}
+.visual-item-heading strong{font-weight:650}
+.visual-item-heading span{color:var(--blue);font-weight:700;font-variant-numeric:tabular-nums}
+.visual-item p{margin:4px 0 0;color:#42465a;font-size:12px;line-height:1.45}
+.visual-track{height:9px;margin-top:6px;overflow:hidden;border-radius:99px;background:#e5eaf7}
+.visual-track span{display:block;height:100%;border-radius:99px;background:var(--blue)}
+.visual-item.steps{padding-left:12px;border-left:3px solid #aebbe0}
+.visual-item.steps .visual-item-heading:before{content:"";width:7px;height:7px;flex:none;border-radius:50%;background:var(--red);margin-left:-17px}
+.visual-note{margin:10px 0 0!important;padding-top:8px;border-top:1px solid #e4e9f5;color:#62677a!important;font-size:11px!important}
+.pipeline{margin-top:12px;padding-top:8px;border-top:1px solid #edf0f7;color:#575e75;font-size:12px}
+.pipeline summary{cursor:pointer;color:var(--blue);font-weight:650}
+.pipeline ol{margin:8px 0;padding-left:20px}
+.pipeline li{padding:2px 0}
+.pipeline p{margin:8px 0 0;font-size:11px;line-height:1.45}
+.file-notes{margin-top:8px;padding-top:6px;border-top:1px solid #edf0f7;color:#60677b;font-size:11px}
+.file-notes p{margin:3px 0}
+.follow-ups{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.follow-ups button{border:1px solid #cad4ed;border-radius:999px;padding:7px 12px;background:#fff;color:var(--blue);font-size:12px;font-weight:600}
+.follow-ups button:hover:not(:disabled){background:var(--pale)}
+.follow-ups button:disabled{opacity:.55}
+.profile-help{color:#343b55}

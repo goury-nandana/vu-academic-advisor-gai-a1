@@ -134,13 +134,34 @@ function retrieveAcademic(question: string): AcademicDocument[] {
 
   const selected: AcademicDocument[] = [];
   const seen = new Set<string>();
-  for (const item of scored) {
-    const d = item.document;
-    const key = [d.source || "", d.page ?? d.sheet ?? "", d.section || "", d.text.slice(0, 100)].join("|");
-    if (seen.has(key)) continue;
+  const addDocument = (document?: AcademicDocument) => {
+    if (!document) return;
+    const key = [document.source || "", document.page ?? document.sheet ?? "", document.section || "", document.text.slice(0, 100)].join("|");
+    if (seen.has(key)) return;
     seen.add(key);
-    selected.push(d);
-    if (selected.length >= (attendanceIntent ? 7 : 5)) break;
+    selected.push(document);
+  };
+
+  if (attendanceIntent) {
+    // Include the complete linked Handbook/SOP attendance rules, not only the highest scoring excerpt.
+    const handbook = (pattern: RegExp) => scored.find(({document}) =>
+      /Student Handbook/i.test(document.source || "") && pattern.test(document.text || "")
+    )?.document;
+    const sop = (pattern: RegExp) => scored.find(({document}) =>
+      /SOP STUDENT/i.test(document.source || "") && pattern.test(document.text || "")
+    )?.document;
+    addDocument(handbook(/seventy five percent|75\s*%/i));
+    addDocument(handbook(/sixty five percent|65\s*%/i));
+    addDocument(handbook(/shall not be permitted to appear for the End Term/i));
+    addDocument(handbook(/Government Regulatory Bodies/i));
+    addDocument(sop(/attendance report will be shared|attendance recorded on Digii/i));
+    addDocument(sop(/medical leave request on Digii/i));
+    addDocument(sop(/sixty five percent|65\s*%/i));
+  }
+
+  for (const item of scored) {
+    addDocument(item.document);
+    if (selected.length >= (attendanceIntent ? 12 : 5)) break;
   }
 
   if (courseCodes.length) {
@@ -170,7 +191,7 @@ function attendancePolicyAnswer(documents: AcademicDocument[]): string | undefin
   if (!handbookMinimum) return undefined;
 
   const handbookRelaxation = find(/Student Handbook/i, /sixty five percent|65\s*%/i);
-  const handbookShortage = find(/Student Handbook/i, /FA['’]? Grade|shall not be permitted to appear for the End Term/i);
+  const handbookShortage = find(/Student Handbook/i, /shall not be permitted to appear for the End Term/i);
   const handbookRegulatory = find(/Student Handbook/i, /Government Regulatory Bodies/i);
   const sopDigii = find(/SOP STUDENT/i, /attendance report will be shared|attendance recorded on Digii/i);
   const sopMedical = find(/SOP STUDENT/i, /medical leave request on Digii|hospitalization, trauma or contagious disease/i);

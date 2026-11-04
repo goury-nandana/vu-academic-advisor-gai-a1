@@ -448,7 +448,7 @@ export async function POST(request: Request) {
   const programmeSpecific=/\b(minor|major|speciali[sz]ation|elective|programme options|program options|course code|prerequisite|curriculum|syllabus|semester|credit structure|course credits)\b/i.test(combinedQuestion);
   const semesterSpecific=/\b(semester|term|this sem|next sem|current sem)\b/i.test(combinedQuestion);
   const followUps:string[]=[];
-  if(!deterministicAttendance){
+  if(!deterministicAttendance&&!minorBatchClarification){
     if(programmeSpecific&&!profile.program) followUps.push("Which programme are you enrolled in?");
     else if(semesterSpecific&&!profile.semester) followUps.push("Which semester are you currently in?");
     if(followUps.length&&!answer.toLowerCase().includes(followUps[0].toLowerCase().replace("?",""))) {

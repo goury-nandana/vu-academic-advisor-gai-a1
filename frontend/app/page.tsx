@@ -173,7 +173,7 @@ export default function Home() {
         </button>
         <div className="side-body">
           <img className="logo" src="/logo.png" alt="Vidyashilp University" />
-          <h2>Student profile</h2>
+          <h2>Student profile</h2>\n          <p className="profile-help">Profile details are optional. If a question needs your programme or semester, the advisor may ask you to clarify.</p>
           <label className="field">
             <span>Program</span>
             <select value={program} onChange={(e) => setProgram(e.target.value)}>

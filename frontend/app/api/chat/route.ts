@@ -104,12 +104,16 @@ function queryWords(value: string) {
 function retrieveAcademic(question: string): AcademicDocument[] {
   const query = queryWords(question);
   const attendanceIntent = /\b(attendance|attend|absen(?:ce|t)?|condonation|shortage|present|minimum attendance)\b/i.test(question);
-  const expanded = new Set(query);
-  if (attendanceIntent) {
-    ["attendance","attend","absence","absent","condonation","shortage","present","minimum","percentage","required","classes","class"].forEach((word) => expanded.add(word));
-  }
   const courseCodes = (question.match(/\b[A-Za-z]{2,6}[\s-]?\d{3,4}[A-Za-z]?\b/g) ?? [])
     .map((code) => code.replace(/[\s-]/g, "").toUpperCase());
+  const academicIntent = attendanceIntent || courseCodes.length > 0 ||
+    /\b(credit|course|prerequisite|curriculum|syllabus|semester|grading|grade|assessment|exam|examination|academic regulation|progression|registration|minor|speciali[sz]ation|elective|leave policy|medical leave|attendance policy)\b/i.test(question);
+  if (!academicIntent) return [];
+
+  const expanded = new Set(query);
+  if (attendanceIntent) {
+    ["attendance","attend","absence","absent","condonation","shortage","present","minimum","percentage","required","classes","class","medical","hospitalization","trauma","contagious"].forEach((word) => expanded.add(word));
+  }
   const scored = ACADEMIC_KNOWLEDGE.documents.map((document) => {
     const body = String(document.text || "");
     const searchable = (String(document.source || "") + " " + String(document.title || "") + " " + String(document.section || "") + " " + body).toLowerCase();
@@ -121,11 +125,10 @@ function retrieveAcademic(question: string): AcademicDocument[] {
       if (/\battendance\b/i.test(body)) score += 9;
       if (/\b(?:minimum|at least|required|mandatory)\b.{0,55}\b(?:attendance|present|classes)\b|\b(?:attendance|present|classes)\b.{0,55}\b(?:minimum|percentage|required|mandatory)\b/i.test(body)) score += 5;
       if (/\b\d{1,3}\s?%/.test(body)) score += 2;
-      if (/\b(?:condonation|shortage|absence|medical leave)\b/i.test(body)) score += 3;
+      if (/\b(?:condonation|shortage|absence|medical leave|hospitalization|trauma|contagious)\b/i.test(body)) score += 3;
       if (/Student Handbook/i.test(document.source || "")) score += 4;
       if (/SOP STUDENT/i.test(document.source || "")) score += 3;
     }
-    if (courseCodes.some((code) => searchable.replace(/[\s-]/g, "").includes(code))) score += 15;
     return { document, score };
   }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score);
 
@@ -139,9 +142,27 @@ function retrieveAcademic(question: string): AcademicDocument[] {
     selected.push(d);
     if (selected.length >= (attendanceIntent ? 7 : 5)) break;
   }
+
+  if (courseCodes.length) {
+    const exactRecords = ACADEMIC_KNOWLEDGE.courseRecords.filter((record) =>
+      courseCodes.includes(String(record.course_code || "").replace(/[\s-]/g, "").toUpperCase())
+    );
+    const structured = exactRecords.map((record) => ({
+      source: "VU_Semester_Data_Split.zip",
+      title: String(record.course_code || "") + " — " + String(record.course_title || ""),
+      section: String(record.source || "semester-spread workbook") + "; admission batch " + String(record.batch || "unknown") +
+        "; semester " + String(record.semester || "unknown") +
+        "; source cells " + JSON.stringify(record.cells || {}),
+      text: String(record.text || [
+        record.course_code, record.course_title, "B.Tech admission batch " + record.batch,
+        "semester " + record.semester, "credits " + record.credits,
+        "prerequisite " + (record.prerequisite || "not specified"),
+      ].join("; ")),
+    }));
+    return [...structured, ...selected].slice(0, 12);
+  }
   return selected;
 }
-
 function academicSourceUrl(source: string, page?: number | string) {
   const path = source.split("/").map((part) => encodeURIComponent(part)).join("/");
   const pageNumber = Number(page);

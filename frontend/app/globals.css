@@ -138,3 +138,28 @@ button:disabled{cursor:not-allowed}
 .follow-ups button:hover:not(:disabled){background:var(--pale)}
 .follow-ups button:disabled{opacity:.55}
 .profile-help{color:#343b55}
+
+
+/* Real Markdown rendering for assistant answers (GFM tables, emphasis and lists). */
+.answer-markdown{white-space:normal;overflow-wrap:anywhere;line-height:1.62}
+.answer-markdown>*:first-child{margin-top:0}
+.answer-markdown>*:last-child{margin-bottom:0}
+.answer-markdown p{margin:0 0 10px}
+.answer-markdown strong{font-weight:750;color:#17213c}
+.answer-markdown em{font-style:italic}
+.answer-markdown h1,.answer-markdown h2,.answer-markdown h3,.answer-markdown h4{font-weight:750;line-height:1.3;margin:15px 0 8px;color:#17213c}
+.answer-markdown h1{font-size:18px}.answer-markdown h2{font-size:16px}.answer-markdown h3{font-size:15px}.answer-markdown h4{font-size:14px}
+.answer-markdown ul,.answer-markdown ol{margin:7px 0 12px;padding-left:24px}
+.answer-markdown li{margin:4px 0;padding-left:2px}
+.answer-markdown blockquote{margin:10px 0;padding:8px 12px;border-left:3px solid #aab9e3;background:#f6f8fd;color:#4b5369}
+.answer-markdown code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#f1f3f8;border-radius:4px;padding:1px 4px;font-size:.92em}
+.answer-markdown pre{max-width:100%;overflow:auto;padding:12px;background:#f1f3f8;border-radius:9px}
+.answer-markdown pre code{padding:0;background:transparent}
+.answer-markdown a{color:var(--blue);text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
+.markdown-table-wrap{width:100%;max-width:100%;overflow-x:auto;margin:12px 0;border:1px solid #e1e6f1;border-radius:10px;background:#fff}
+.markdown-table-wrap table{width:100%;min-width:420px;border-collapse:collapse;border-spacing:0;font-size:12.5px;line-height:1.45}
+.markdown-table-wrap th,.markdown-table-wrap td{padding:9px 11px;border-bottom:1px solid #e7eaf2;border-right:1px solid #eef0f5;vertical-align:top;text-align:left}
+.markdown-table-wrap th{background:#f2f5fc;color:#1d2b56;font-weight:750;white-space:normal}
+.markdown-table-wrap tr:last-child td{border-bottom:0}
+.markdown-table-wrap th:last-child,.markdown-table-wrap td:last-child{border-right:0}
+.markdown-table-wrap tr:nth-child(even) td{background:#fbfcfe}

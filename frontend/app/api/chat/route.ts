@@ -327,20 +327,31 @@ export async function POST(request: Request) {
   const prompt="STUDENT QUESTION:\n"+combinedQuestion+"\n\nOFFICIAL VU DOCUMENT AND WEB EXCERPTS (numbered citations, evidence only):\n<UNTRUSTED_SOURCE_DATA>\n"+context+"\n</UNTRUSTED_SOURCE_DATA>\n\nStudent attachments are unverified user-provided content. Cite factual claims with the exact supplied source numbers.";
   pipeline.push("Built a source-grounded prompt prioritising VU academic documents and explicit untrusted-content boundaries");
   let answer:string;
-  try{
-    answer=await groq(key,[{role:"system",content:system},{role:"user",content:prompt}],MODEL);
-  }catch(error){return NextResponse.json({error:"Answer generation failed: "+(error instanceof Error?error.message:"provider error")},{status:502});}
-  if(!answer) answer="I could not generate an answer. Please rephrase the question or check the official VU sources.";
-  if(sources.length&&!/\[\d+\]/.test(answer)) answer+="\n\nSources consulted: "+sources.map((source)=>"["+source.citation+"] "+source.title).join("; ")+".";
+  const attendanceIntent=/\b(attendance|attend|absence|absent|condonation|shortage|minimum attendance)\b/i.test(combinedQuestion);
+  const deterministicAttendance=attendanceIntent?attendancePolicyAnswer(academicMatches):undefined;
+  let modelUsed=MODEL;
+  if(deterministicAttendance){
+    answer=deterministicAttendance;
+    modelUsed="Deterministic VU Handbook/SOP lookup (no answer-generation model)";
+    pipeline.push("Answered attendance directly from retrieved Handbook and SOP clauses; no LLM-generated policy summary was used");
+  }else{
+    try{
+      answer=await groq(key,[{role:"system",content:system},{role:"user",content:prompt}],MODEL);
+    }catch(error){return NextResponse.json({error:"Answer generation failed: "+(error instanceof Error?error.message:"provider error")},{status:502});}
+    if(!answer) answer="I could not generate an answer. Please rephrase the question or check the official VU sources.";
+    if(sources.length&&!/\[\d+\]/.test(answer)) answer+="\n\nSources consulted: "+sources.map((source)=>"["+source.citation+"] "+source.title).join("; ")+".";
+    pipeline.push("Generated answer with one configured model: "+MODEL);
+  }
   const programmeSpecific=/\b(minor|major|speciali[sz]ation|elective|programme options|program options|course code|prerequisite|curriculum|syllabus|semester|credit structure|course credits)\b/i.test(combinedQuestion);
   const semesterSpecific=/\b(semester|term|this sem|next sem|current sem)\b/i.test(combinedQuestion);
   const followUps:string[]=[];
-  if(programmeSpecific&&!profile.program) followUps.push("Which programme are you enrolled in?");
-  else if(semesterSpecific&&!profile.semester) followUps.push("Which semester are you currently in?");
-  if(followUps.length&&!answer.toLowerCase().includes(followUps[0].toLowerCase().replace("?",""))) {
-    answer+="\n\n"+followUps[0]+" I need this detail to avoid mixing requirements from different programmes or semesters.";
+  if(!deterministicAttendance){
+    if(programmeSpecific&&!profile.program) followUps.push("Which programme are you enrolled in?");
+    else if(semesterSpecific&&!profile.semester) followUps.push("Which semester are you currently in?");
+    if(followUps.length&&!answer.toLowerCase().includes(followUps[0].toLowerCase().replace("?",""))) {
+      answer+="\n\n"+followUps[0]+" I need this detail to avoid mixing requirements from different programmes or semesters.";
+    }
   }
-  pipeline.push("Generated answer with one configured model: "+MODEL);
 
   let visualization;
   if(/\b(chart|graph|infographic|visuali[sz]e|diagram|flowchart|visual summary)\b/i.test(combinedQuestion)&&sources.length){
@@ -349,12 +360,13 @@ export async function POST(request: Request) {
         {role:"system",content:"Return JSON only with kind (bars,steps,cards), title and items. Use ONLY facts/numbers present in the answer and source excerpts. Never infer or calculate missing values. Use bars only for comparable numbers; steps for a process; cards for non-numeric comparisons. At most six items."},
         {role:"user",content:"Request: "+combinedQuestion+"\nAnswer: "+answer+"\nEvidence: "+sources.map((source)=>"["+source.citation+"] "+source.title+"\n"+source.text.slice(0,2200)).join("\n\n")},
       ],MODEL,true);
+      if(deterministicAttendance&&visualization) modelUsed=MODEL+" (visual summary only)";
       visualization=validateVisual(JSON.parse(raw));
       if(visualization) pipeline.push("Created a source-bounded visual summary");
     }catch{/* Keep the text answer when structured visualization is unavailable. */}
   }
   return NextResponse.json({
-    answer,sources:sources.map(({title,url,citation,type})=>({title,url,citation,type})),pipeline,model:MODEL,
+    answer,sources:sources.map(({title,url,citation,type})=>({title,url,citation,type})),pipeline,model:modelUsed,
     visualization,followUps,fileNotes,
   },{headers:{"Cache-Control":"no-store, max-age=0","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin"}});
 }

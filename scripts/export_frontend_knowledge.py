@@ -11,10 +11,12 @@ import base64
 import json
 import re
 import zlib
+import sys
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 APP_FILE = ROOT / "app.py"
 OUTPUT = ROOT / "frontend" / "data" / "vu-academic-knowledge.json"
 ALLOWED_SOURCES = {

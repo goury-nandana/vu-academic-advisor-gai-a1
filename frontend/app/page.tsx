@@ -9,6 +9,57 @@ import { askAdvisor, type Source, type Visualization } from "./advisor";
 type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[]; pipeline?: string[]; model?: string; visualization?: Visualization; followUps?: string[]; fileNotes?: string[] };
 type Presence = "off" | "typing" | "recent";
 
+function splitPipeCells(value: string) {
+  return value.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+}
+
+function repairFlattenedMarkdownTables(value: string) {
+  const lines = value.split("\n");
+  for (let dividerLine = 0; dividerLine < lines.length; dividerLine += 1) {
+    const divider = /(?:\|\s*:?-{3,}:?\s*){2,}\|?/.exec(lines[dividerLine]);
+    if (!divider) continue;
+
+    let headerStart = dividerLine;
+    while (headerStart > 0 && lines[headerStart - 1].trim() && lines[headerStart - 1].includes("|")) {
+      headerStart -= 1;
+    }
+    const headerText = lines.slice(headerStart, dividerLine).join(" ") + " " + lines[dividerLine].slice(0, divider.index);
+    const headers = headerText.split("|").map((cell) => cell.trim()).filter(Boolean);
+    const columnCount = (divider[0].match(/:?-{3,}:?/g) || []).length;
+    if (columnCount < 2 || headers.length !== columnCount) continue;
+
+    const bodyParts = [lines[dividerLine].slice(divider.index + divider[0].length)];
+    let bodyEnd = dividerLine + 1;
+    while (bodyEnd < lines.length && lines[bodyEnd].trim() && lines[bodyEnd].includes("|")) {
+      bodyParts.push(lines[bodyEnd]);
+      bodyEnd += 1;
+    }
+    const body = bodyParts.join(" ").trim();
+    if (!body.startsWith("|") || !/\|\s*\|\s*\|/.test(body)) continue;
+
+    const flattenedRows = body.split(/\|\s*\|\s*\|/);
+    const rows: string[][] = [];
+    let valid = true;
+    for (let rowIndex = 0; rowIndex < flattenedRows.length; rowIndex += 1) {
+      const fragment = flattenedRows[rowIndex].trim();
+      if (!fragment) continue;
+      const cells = splitPipeCells(fragment);
+      if (cells.length === columnCount - 1 && rowIndex > 0) cells.unshift("");
+      if (cells.length !== columnCount) { valid = false; break; }
+      rows.push(cells);
+    }
+    if (!valid || rows.length === 0) continue;
+
+    const table = [
+      "| " + headers.join(" | ") + " |",
+      "| " + headers.map(() => "---").join(" | ") + " |",
+      ...rows.map((cells) => "| " + cells.join(" | ") + " |"),
+    ].join("\n");
+    return [...lines.slice(0, headerStart), table, ...lines.slice(bodyEnd)].join("\n");
+  }
+  return value;
+}
+
 function normalizeAnswerMarkdown(input: string, sources: Source[] = []) {
   let markdown = String(input || "")
     .replace(/\r\n?/g, "\n")
@@ -18,24 +69,21 @@ function normalizeAnswerMarkdown(input: string, sources: Source[] = []) {
     .replace(/\\\|/g, "|")
     .replace(/\\?<br\s*\/?>/gi, " / ")
     .replace(/<br\s*\/?>/gi, " / ")
-    // Move an inline table header onto its own block when the model appends it to a heading.
-    .replace(/([^\n])\s+(?=\|[^|\n]+\|[^|\n]+\|\s+\|?\s*[-:]{3,})/g, "$1\n\n")
-    // Arbitrary model-supplied image URLs and the chat logo are not answer content.
-    .replace(/!\[[^\]]*\]\(https?:\/\/[^\s)]+\)/g, "")
+    .replace(/^\s*Sources consulted\s*:\s*.*$/gim, "")
+    .replace(/!\[[^\]]*\]\(\s*https?:\/\/[^)]*\)/gi, "")
+    .replace(/\[(?:image|svg)\]\(\s*https?:\/\/[^)]*\)/gi, "")
+    .replace(/\[[^\]]*\]\(\s*https?:\/\/[^\s)]*\.(?:png|jpe?g|gif|webp|svg)(?:[?#][^)]*)?\)/gi, "")
     .replace(/^\s*svg\s*$/gim, "")
-    // Repair common one-line Markdown tables: "| header | |---|---| | row | row |".
-    .replace(/\|\s+\|(?=\s*(?:[-:]|\w))/g, "|\n|")
-    .replace(/\[(\d+)\s*†\s*L[\d,–-]+\]/gi, "[$1]")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
+  markdown = repairFlattenedMarkdownTables(markdown);
   markdown = markdown.replace(/\[(\d+)\](?!\()/g, (marker: string, number: string) => {
     const source = sources[Number(number) - 1];
     return source?.url ? "[" + marker + "](" + source.url + ")" : marker;
   });
   return markdown;
 }
-
 function renderAnswer(text: string, sources: Source[] = []) {
   return (
     <div className="answer-markdown">
@@ -345,11 +393,7 @@ export default function Home() {
                     {renderVisualization(m.visualization)}
                     {m.fileNotes && m.fileNotes.length > 0 && <div className="file-notes">{m.fileNotes.map((note, i) => <p key={i}>{note}</p>)}</div>}
                     {m.followUps && m.followUps.length > 0 && <div className="follow-ups">{m.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => send(followUp)} disabled={busy}>{followUp}</button>)}</div>}
-                    {m.pipeline && m.pipeline.length > 0 && <details className="pipeline">
-                      <summary>How this answer was prepared</summary>
-                      <ol>{m.pipeline.map((step, i) => <li key={`${step}-${i}`}>{step}</li>)}</ol>
-                      <p>Model used: <strong>{m.model || "Not reported"}</strong>. This answer used one configured model; no live multi-model comparison was performed.</p>
-                    </details>}
+
                     <button type="button" className="speak" onClick={() => toggleSpeech(m.id, m.text)} aria-label={speakingId === m.id ? "Stop speaking" : "Read answer aloud"} title={speakingId === m.id ? "Stop speaking" : "Read answer aloud"}>
                       {speakingId === m.id ? <VolumeX size={16} /> : <Volume2 size={16} />}
                     </button>

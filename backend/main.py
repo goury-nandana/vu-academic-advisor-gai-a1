@@ -581,7 +581,11 @@ async def chat(req:Request):
     upload_warning=("Note: I could not successfully read or transcribe these attachment(s): "+", ".join(upload_errors)+". Mention this limitation clearly if relevant. " if upload_errors else "")
     prompt=f"{upload_instruction}{upload_warning}Explicit student details: {prof}\nPrevious chat: {hist}\nEvidence:\n{ctx or 'No matching evidence.'}\nQuestion: {question}\nAnswer grounded in the evidence."
     answer=""
-    for model in [os.getenv("GROQ_MODEL","llama-3.3-70b-versatile"),"openai/gpt-oss-20b","openai/gpt-oss-120b"]:
+    # Llama 3.3 70B was deprecated on Groq for developer/free usage (Aug 2026).
+    # Prefer Groq-recommended GPT-OSS 120B, with Qwen 3.8 and GPT-OSS 20B fallbacks.
+    configured_model=os.getenv("GROQ_MODEL","openai/gpt-oss-120b").strip()
+    model_candidates=list(dict.fromkeys([configured_model,"openai/gpt-oss-120b","qwen/qwen3.8-27b","openai/gpt-oss-20b"]))
+    for model in model_candidates:
         try:
             out=client.chat.completions.create(model=model,messages=[{"role":"system","content":SYS},{"role":"user","content":prompt}],temperature=.1,max_tokens=500)
             answer=out.choices[0].message.content.strip();break

@@ -31,6 +31,13 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install knowledge exporter dependency
+        run: pip install openpyxl
+      - name: Export VU academic knowledge for the web API
+        run: python ../scripts/export_frontend_knowledge.py
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -49,11 +56,11 @@ jobs:
       - name: Build Next.js frontend
         run: npm run build
 
-      - name: Commit verified dependency lockfile
+      - name: Commit generated academic data and verified dependency lockfile
         if: success() && github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          git -C .. add frontend/package-lock.json
+          git -C .. add frontend/package-lock.json frontend/data/vu-academic-knowledge.json
           if ! git -C .. diff --cached --quiet; then
-            git -C .. -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "Update frontend lockfile with patched dependencies"
+            git -C .. -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "Export VU academic knowledge for web advisor"
             git -C .. push origin HEAD:main
           fi

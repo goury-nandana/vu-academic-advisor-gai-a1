@@ -147,7 +147,25 @@ export default function Home() {
     }
   }
 
-  function toggleSpeech(id: number, text: string) {\n    if (typeof window === "undefined" || !("speechSynthesis" in window)) {\n      setNotice("Text-to-speech is not supported in this browser.");\n      return;\n    }\n    if (speakingId === id) {\n      window.speechSynthesis.cancel();\n      setSpeakingId(null);\n      return;\n    }\n    window.speechSynthesis.cancel();\n    const utterance = new SpeechSynthesisUtterance(text);\n    utterance.onend = () => setSpeakingId(null);\n    utterance.onerror = () => setSpeakingId(null);\n    setSpeakingId(id);\n    window.speechSynthesis.speak(utterance);\n  }\n\n  function clearChat() {\n    if ("speechSynthesis" in window) window.speechSynthesis.cancel();\n    setSpeakingId(null);
+  function toggleSpeech(id: number, text: string) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      setNotice("Text-to-speech is not supported in this browser.");
+      return;
+    }
+    if (speakingId === id) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = () => setSpeakingId(null);
+    setSpeakingId(id);
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function clearChat() {\n    if ("speechSynthesis" in window) window.speechSynthesis.cancel();\n    setSpeakingId(null);
     if (idleTimer.current) clearTimeout(idleTimer.current);
     setPresence("off");
     setMessages([{ id: idRef.current++, role: "bot", text: GREETING }]);
@@ -238,7 +256,10 @@ export default function Home() {
                     <span className={`dot ${live && m.id === lastBotId ? "on" : ""}`} />
                   </span>
                   <div className="bubble bot">
-                    {m.text}
+                    <div className="answer-text">{renderAnswer(m.text)}</div>
+                    <button type="button" className="speak" onClick={() => toggleSpeech(m.id, m.text)} aria-label={speakingId === m.id ? "Stop speaking" : "Read answer aloud"} title={speakingId === m.id ? "Stop speaking" : "Read answer aloud"}>
+                      {speakingId === m.id ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                    </button>
                     {m.sources && m.sources.length > 0 && (
                       <div className="sources">
                         {m.sources.map((s, i) =>

@@ -187,7 +187,7 @@ function isBtechMinorQuestion(question: string): boolean {
 }
 
 function getBtechMinorBatches(question: string): string[] {
-  if (!isBtechMinorQuestion(question)) return [];
+  if (!isMinorQuestion(question)) return [];
   return [...new Set(question.match(/\b20\d{2}\b/g) || [])];
 }
 

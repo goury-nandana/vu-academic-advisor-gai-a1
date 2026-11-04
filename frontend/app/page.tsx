@@ -2,18 +2,50 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Camera, FileText, Mic, Square, X, Volume2, VolumeX } from "lucide-react";
-import { askAdvisor, type Source } from "./advisor";
+import { askAdvisor, type Source, type Visualization } from "./advisor";
 
-type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[] };
+type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[]; pipeline?: string[]; model?: string; visualization?: Visualization; followUps?: string[]; fileNotes?: string[] };
 type Presence = "off" | "typing" | "recent";
 
-function renderAnswer(text: string) {
-  // Render explicit Markdown image links from advisor output; ordinary text remains React-escaped.
-  const parts = text.split(/(!\[[^\]]*\]\(https?:\/\/[^\s)]+\))/g);
+function renderAnswer(text: string, sources: Source[] = []) {
+  // Render HTTPS image links and turn [n] markers into the exact source links for this response.
+  const parts = text.split(/(!\[[^\]]*\]\(https?:\/\/[^\s)]+\)|\[\d+\])/g);
   return parts.map((part, index) => {
-    const match = part.match(/^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/);
-    return match ? <img key={index} className="answer-image" src={match[2]} alt={match[1] || "Advisor visual"} loading="lazy" /> : <span key={index}>{part}</span>;
+    const imageMatch = part.match(/^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/);
+    const citeMatch = part.match(/^\[(\d+)\]$/);
+    if (imageMatch) return <img key={index} className="answer-image" src={imageMatch[2]} alt={imageMatch[1] || "Advisor visual"} loading="lazy" />;
+    if (citeMatch) {
+      const source = sources[Number(citeMatch[1]) - 1];
+      if (source?.url) return <a key={index} className="inline-citation" href={source.url} target="_blank" rel="noreferrer">[{citeMatch[1]}]</a>;
+    }
+    return <span key={index}>{part}</span>;
   });
+}
+
+function renderVisualization(visual?: Visualization) {
+  if (!visual) return null;
+  const max = Math.max(1, ...visual.items.map((item) => item.value ?? 0));
+  return (
+    <section className="visual-card" aria-label={\`Visual summary: \${visual.title}\`}>
+      <h3>{visual.title}</h3>
+      {visual.items.map((item, index) => (
+        <div className={\`visual-item \${visual.kind}\`} key={\`\${item.label}-\${index}\`}>
+          <div className="visual-item-heading">
+            <strong>{item.label}</strong>
+            {item.valueLabel && <span>{item.valueLabel}</span>}
+            {item.value !== undefined && !item.valueLabel && <span>{item.value.toLocaleString()}</span>}
+          </div>
+          {visual.kind === "bars" && item.value !== undefined && (
+            <div className="visual-track" aria-hidden="true">
+              <span style={{ width: \`\${Math.max(0, Math.min(100, item.value / max * 100))}%\` }} />
+            </div>
+          )}
+          {item.detail && <p>{item.detail}</p>}
+        </div>
+      ))}
+      <p className="visual-note">Visual summary generated from the cited response. Verify the underlying source before relying on it.</p>
+    </section>
+  );
 }
 
 const GREETING =
@@ -24,7 +56,7 @@ const SEMESTERS = [
   "Not specified", "1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester",
   "6th Semester", "7th Semester", "8th Semester", "9th Semester", "10th Semester",
 ];
-const MAX_MB = 15;
+const MAX_MB = 4;
 const IDLE_MS = 5000; // green ring / dot disappear after 5 seconds of inactivity
 
 function fmt(s: number) {
@@ -39,7 +71,8 @@ export default function Home() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [notice, setNotice] = useState("");
   const [recording, setRecording] = useState(false);
-  const [seconds, setSeconds] = useState(0);\n  const [speakingId, setSpeakingId] = useState<number | null>(null);
+  const [seconds, setSeconds] = useState(0);
+  const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [program, setProgram] = useState("Not specified");
   const [semester, setSemester] = useState("Not specified");
   const [credits, setCredits] = useState("");
@@ -59,6 +92,7 @@ export default function Home() {
     return () => {
       if (idleTimer.current) clearTimeout(idleTimer.current);
       if (tickRef.current) clearInterval(tickRef.current);
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     };
   }, []);
 
@@ -83,7 +117,15 @@ export default function Home() {
       if (f.size > MAX_MB * 1024 * 1024) setNotice(`${f.name} is larger than ${MAX_MB} MB and was not attached.`);
       else ok.push(f);
     });
-    if (ok.length) setAttachments((a) => [...a, ...ok]);
+    if (ok.length) setAttachments((a) => {
+      const combined = [...a, ...ok];
+      const total = combined.reduce((sum, file) => sum + file.size, 0);
+      if (total > MAX_MB * 1024 * 1024) {
+        setNotice(`Attachments exceed the ${MAX_MB} MB total web limit. Remove a file and try again.`);
+        return a;
+      }
+      return combined;
+    });
   }
 
   async function toggleMic() {
@@ -135,7 +177,7 @@ export default function Home() {
         profile: { program, semester, completedCredits: credits, cgpa },
         files,
       });
-      setMessages((m) => [...m, { id: idRef.current++, role: "bot", text: r.answer, sources: r.sources }]);
+      setMessages((m) => [...m, { id: idRef.current++, role: "bot", text: r.answer, ...r }]);
     } catch {
       setMessages((m) => [
         ...m,
@@ -193,7 +235,8 @@ export default function Home() {
         </button>
         <div className="side-body">
           <img className="logo" src="/logo.png" alt="Vidyashilp University" />
-          <h2>Student profile</h2>\n          <p className="profile-help">Profile details are optional. If a question needs your programme or semester, the advisor may ask you to clarify.</p>
+          <h2>Student profile</h2>
+          <p className="profile-help">Profile details are optional. Blank values remain unknown; the advisor asks one clarification when programme information is needed.</p>
           <label className="field">
             <span>Program</span>
             <select value={program} onChange={(e) => setProgram(e.target.value)}>
@@ -258,7 +301,15 @@ export default function Home() {
                     <span className={`dot ${live && m.id === lastBotId ? "on" : ""}`} />
                   </span>
                   <div className="bubble bot">
-                    <div className="answer-text">{renderAnswer(m.text)}</div>
+                    <div className="answer-text">{renderAnswer(m.text, m.sources)}</div>
+                    {renderVisualization(m.visualization)}
+                    {m.fileNotes && m.fileNotes.length > 0 && <div className="file-notes">{m.fileNotes.map((note, i) => <p key={i}>{note}</p>)}</div>}
+                    {m.followUps && m.followUps.length > 0 && <div className="follow-ups">{m.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => send(followUp)} disabled={busy}>{followUp}</button>)}</div>}
+                    {m.pipeline && m.pipeline.length > 0 && <details className="pipeline">
+                      <summary>How this answer was prepared</summary>
+                      <ol>{m.pipeline.map((step, i) => <li key={`${step}-${i}`}>{step}</li>)}</ol>
+                      <p>Model used: <strong>{m.model || "Not reported"}</strong>. This answer used one configured model; no live multi-model comparison was performed.</p>
+                    </details>}
                     <button type="button" className="speak" onClick={() => toggleSpeech(m.id, m.text)} aria-label={speakingId === m.id ? "Stop speaking" : "Read answer aloud"} title={speakingId === m.id ? "Stop speaking" : "Read answer aloud"}>
                       {speakingId === m.id ? <VolumeX size={16} /> : <Volume2 size={16} />}
                     </button>
@@ -335,7 +386,7 @@ export default function Home() {
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           </form>
           <div className="disclaimer">
-            AI-generated academic guidance may be incomplete or outdated. Verify course codes, credits, prerequisites, eligibility, deadlines and university policies against the latest official VU documents before making academic decisions.
+            Academic information only. This AI is not the Registrar and cannot confirm enrolment, eligibility, credit transfer, grades, fees, deadlines, exceptions or approvals. Rules can change; verify course codes, credits and requirements against the current VU Handbook, Digicampus and the responsible university office. Written confirmation from VU is authoritative.
           </div>
         </div>
       </main>

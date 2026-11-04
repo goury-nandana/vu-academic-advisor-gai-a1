@@ -33,6 +33,17 @@ class CourseDataFidelityTests(unittest.TestCase):
             self.assertEqual(str(row["prerequisite"]).casefold(), prereq.casefold())
             self.assertEqual((row["L"], row["T"], row["P"]), (l_val, t_val, p_val))
 
+    def test_machine_learning_title_is_preserved_and_has_batch_specific_data(self):
+        rows = [r for r in self.records if r["course_code"] == "DATA301"]
+        self.assertEqual({str(r["batch"]) for r in rows}, {"2022", "2023", "2025", "2026"})
+        self.assertTrue(all(r["course_title"].casefold() == "machine learning" for r in rows))
+        self.assertTrue(all(r["semester"] == 5 for r in rows))
+        self.assertTrue(all(r["credits"] == 4 for r in rows))
+        self.assertEqual(
+            {str(r["prerequisite"]) for r in rows},
+            {"DATA202,MATH301", "DATA206,MATH301"},
+        )
+
     def test_exact_course_code_lookup_retrieves_lt_p_for_t002_wording(self):
         rows = course_records_for_question(
             "What is the L-T-P structure for UCOR205?", self.records

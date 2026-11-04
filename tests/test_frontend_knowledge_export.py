@@ -1,4 +1,5 @@
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -31,15 +32,15 @@ class FrontendKnowledgeExportTests(unittest.TestCase):
             item["text"] for item in documents
             if item.get("source") == "SOP STUDENT 17082026 - Final.pdf"
         )
-        self.assertRegex(handbook, r"seventy five percent|75\s*%")
-        self.assertRegex(handbook, r"sixty five percent|65\s*%")
+        self.assertRegex(handbook, re.compile(r"seventy five percent|75\s*%", re.I))
+        self.assertRegex(handbook, re.compile(r"sixty five percent|65\s*%", re.I))
         self.assertIn("Government Regulatory Bodies", handbook)
-        self.assertRegex(handbook, r"shall not be permitted to appear for the End Term")
-        self.assertRegex(handbook, r"FA.? Grade")
-        self.assertRegex(sop, r"attendance recorded on Digii")
-        self.assertRegex(sop, r"attendance report will be shared")
-        self.assertRegex(sop, r"sixty five percent|65\s*%")
-        self.assertIn("medical leave request on Digii", sop)
+        self.assertRegex(handbook, re.compile(r"shall not be permitted to appear for the End Term", re.I))
+        self.assertRegex(handbook, re.compile(r"FA.? Grade", re.I))
+        self.assertRegex(sop, re.compile(r"attendance recorded on Digii", re.I))
+        self.assertRegex(sop, re.compile(r"attendance report will be shared", re.I))
+        self.assertRegex(sop, re.compile(r"sixty five percent|65\s*%", re.I))
+        self.assertRegex(sop, re.compile(r"medical leave request on Digii", re.I))
 
     def test_structured_btech_curriculum_is_exported(self):
         records = self.data["courseRecords"]

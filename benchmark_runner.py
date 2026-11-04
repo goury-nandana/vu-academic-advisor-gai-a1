@@ -26,16 +26,9 @@ ROOT = Path(__file__).resolve().parent
 QUESTIONS_FILE = ROOT / "VU_LLM_Benchmark_Framework.xlsx"
 OUTPUT_FILE = ROOT / "benchmark_results.csv"
 CANDIDATE_MODELS = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
     "openai/gpt-oss-20b",
     "openai/gpt-oss-120b",
-    "qwen/qwen3-32b",
-    "deepseek-r1-distill-llama-70b",
-    "meta-llama/llama-4-scout-17b-16e-instruct",
-    "meta-llama/llama-4-maverick-17b-128e-instruct",
-    "moonshotai/kimi-k2-instruct",
-    "allam-2-7b",
+    "qwen/qwen3.8-27b",
 ]
 SYSTEM_PROMPT = """You are VU's academic advisor. Answer only from the supplied VU source context.
 Do not invent student details, policies, course codes, credits, prerequisites, semester,

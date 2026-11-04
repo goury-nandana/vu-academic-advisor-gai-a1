@@ -105,7 +105,8 @@ function validateVisual(input: unknown) {
     return [out];
   });
   if(items.length<2) return undefined;
-  return {kind:v.kind,title:v.title.slice(0,100),items};
+  const kind = v.kind as "bars" | "steps" | "cards";
+  return {kind,title:v.title.slice(0,100),items};
 }
 
 export async function POST(request: Request) {

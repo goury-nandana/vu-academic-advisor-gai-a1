@@ -163,6 +163,44 @@ function retrieveAcademic(question: string): AcademicDocument[] {
   }
   return selected;
 }
+function attendancePolicyAnswer(documents: AcademicDocument[]): string | undefined {
+  const find = (sourcePattern: RegExp, contentPattern: RegExp) =>
+    documents.find((document) => sourcePattern.test(document.source || "") && contentPattern.test(document.text || ""));
+  const handbookMinimum = find(/Student Handbook/i, /seventy five percent|75\s*%/i);
+  if (!handbookMinimum) return undefined;
+
+  const handbookRelaxation = find(/Student Handbook/i, /sixty five percent|65\s*%/i);
+  const handbookShortage = find(/Student Handbook/i, /FA['’]? Grade|shall not be permitted to appear for the End Term/i);
+  const handbookRegulatory = find(/Student Handbook/i, /Government Regulatory Bodies/i);
+  const sopDigii = find(/SOP STUDENT/i, /attendance report will be shared|attendance recorded on Digii/i);
+  const sopMedical = find(/SOP STUDENT/i, /medical leave request on Digii|hospitalization, trauma or contagious disease/i);
+
+  const cite = (document?: AcademicDocument) => {
+    if (!document) return "";
+    const index = documents.indexOf(document);
+    return index >= 0 ? " [" + (index + 1) + "]" : "";
+  };
+  let answer = "**VU attendance requirement**\n\n";
+  answer += "- **Minimum attendance:** At least **75% of the classes actually conducted in each registered course during the academic term** is required to appear for the end-semester examination. It is calculated course by course, not as one overall percentage across all subjects." + cite(handbookMinimum) + "\n\n";
+  if (handbookRelaxation) {
+    answer += "- **Limited relaxation:** The Handbook allows an approved relaxation for serious medical exigencies (hospitalisation, trauma or contagious disease) or qualifying State/National/International representation. The minimum cannot fall below **65%**. This is not automatic: the required recommendation, documents and Vice-Chancellor approval apply." + cite(handbookRelaxation) + "\n\n";
+  }
+  if (sopMedical) {
+    answer += "- **Medical documentation:** The SOP says to submit the supporting documents through the prescribed process, including a medical-leave request on Digii when applicable. It specifies that the medical certificate is considered for the entire day, not individual class-hours." + cite(sopMedical) + "\n\n";
+  }
+  if (handbookShortage) {
+    answer += "- **If attendance is short:** The student is not permitted to sit the End-Term Examination for the affected course and receives an **FA grade** for attendance shortage. The Handbook warns that this may result in loss of an academic year." + cite(handbookShortage) + "\n\n";
+  }
+  if (sopDigii) {
+    answer += "- **Where to check:** Course-wise attendance is available on Digii. The SOP says reports are shared with students and parents twice per semester, and the Digii record is treated as final for End-Term Examination purposes." + cite(sopDigii) + "\n\n";
+  }
+  if (handbookRegulatory) {
+    answer += "- **Programme-specific rules:** Programmes subject to additional Government Regulatory Body attendance requirements must also comply with those requirements." + cite(handbookRegulatory) + "\n\n";
+  }
+  answer += "For a shortage or discrepancy, contact the course faculty and your Faculty Advisor promptly. The 65% provision requires formal approval; do not assume that submitting a medical certificate automatically grants the relaxation.";
+  return answer;
+}
+
 function academicSourceUrl(source: string, page?: number | string) {
   const path = source.split("/").map((part) => encodeURIComponent(part)).join("/");
   const pageNumber = Number(page);

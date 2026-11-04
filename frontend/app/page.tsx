@@ -26,10 +26,10 @@ function renderVisualization(visual?: Visualization) {
   if (!visual) return null;
   const max = Math.max(1, ...visual.items.map((item) => item.value ?? 0));
   return (
-    <section className="visual-card" aria-label={\`Visual summary: \${visual.title}\`}>
+    <section className="visual-card" aria-label={"Visual summary: " + visual.title}>
       <h3>{visual.title}</h3>
       {visual.items.map((item, index) => (
-        <div className={\`visual-item \${visual.kind}\`} key={\`\${item.label}-\${index}\`}>
+        <div className={"visual-item " + visual.kind} key={item.label + "-" + index}>
           <div className="visual-item-heading">
             <strong>{item.label}</strong>
             {item.valueLabel && <span>{item.valueLabel}</span>}
@@ -37,7 +37,7 @@ function renderVisualization(visual?: Visualization) {
           </div>
           {visual.kind === "bars" && item.value !== undefined && (
             <div className="visual-track" aria-hidden="true">
-              <span style={{ width: \`\${Math.max(0, Math.min(100, item.value / max * 100))}%\` }} />
+              <span style={{ width: (Math.max(0, Math.min(100, item.value / max * 100))) + "%" }} />
             </div>
           )}
           {item.detail && <p>{item.detail}</p>}

@@ -90,6 +90,21 @@ type CourseRecord = {
   source?: string;
   cells?: Record<string, string>;
   text?: string;
+  L?: string | number | null;
+  T?: string | number | null;
+  P?: string | number | null;
+  basket?: { code?: string | null; name?: string | null } | null;
+};
+
+type StructuredCourseSearch = {
+  kind: "course" | "semester";
+  records: CourseRecord[];
+  documents: AcademicDocument[];
+  requestedTitle?: string;
+  requestedCodes: string[];
+  batch?: string;
+  semester?: number;
+  track?: "Data Science" | "AI/ML";
 };
 const ACADEMIC_KNOWLEDGE = academicKnowledgeJson as unknown as {
   schemaVersion: number;
@@ -193,6 +208,253 @@ function getBtechMinorBatches(question: string): string[] {
 
 function isMinorQuestion(question: string): boolean {
   return /\bminor(?:s)?\b/i.test(question);
+}
+
+function normalizeCourseSearchText(value: unknown): string {
+  return String(value || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
+}
+
+function extractCourseSemester(question: string): number | undefined {
+  const match = question.match(
+    /\b(10th|[1-8](?:st|nd|rd|th)?|first|second|third|fourth|fifth|sixth|seventh|eighth)\s*(?:semester|sem)\b|\b(?:semester|sem)\s*(10|[1-8])\b/i
+  );
+  const value = String(match?.[1] || match?.[2] || "").toLowerCase();
+  const words: Record<string, number> = {
+    first: 1, second: 2, third: 3, fourth: 4,
+    fifth: 5, sixth: 6, seventh: 7, eighth: 8,
+  };
+  if (words[value]) return words[value];
+  const numeric = Number(value.match(/\d+/)?.[0]);
+  return Number.isInteger(numeric) && numeric >= 1 && numeric <= 10 ? numeric : undefined;
+}
+
+function extractCourseBatch(question: string): string | undefined {
+  const match = question.match(
+    /\b(?:admission\s+)?batch\s*(20\d{2})\b|\b(20\d{2})\s+batch\b|\badmission\s+year\s*(20\d{2})\b/i
+  );
+  return match?.[1] || match?.[2] || match?.[3];
+}
+
+function extractCourseTrack(question: string): "Data Science" | "AI/ML" | undefined {
+  if (/\bdata[\s-]+science\b/i.test(question)) return "Data Science";
+  if (
+    /\bai\s*\/\s*ml\b|\bai[\s-]*ml\b|\bartificial intelligence(?:\s*(?:and|&)\s*machine learning)?\b/i.test(question)
+  ) return "AI/ML";
+  return undefined;
+}
+
+function courseRecordDocument(record: CourseRecord): AcademicDocument {
+  const batch = String(record.batch || "unknown");
+  const semester = String(record.semester || "unknown");
+  const track = record.track || "not specified in source";
+  const cells = JSON.stringify(record.cells || {});
+  const text = record.text || [
+    record.course_code + " — " + record.course_title,
+    "B.Tech admission batch " + batch,
+    "semester " + semester,
+    "credits " + (record.credits ?? "not specified"),
+    "prerequisite " + (record.prerequisite || "not specified"),
+    "L-T-P " + [record.L, record.T, record.P].map((value) => value ?? "not specified").join("-"),
+  ].join("; ");
+  return {
+    source: "VU_Semester_Data_Split.zip",
+    title: String(record.course_code || "") + " — " + String(record.course_title || ""),
+    section: String(record.source || "semester-spread workbook") +
+      "; B.Tech admission batch " + batch +
+      "; semester " + semester +
+      "; track " + track +
+      "; source cells " + cells,
+    text,
+  };
+}
+
+function findStructuredCourseSearch(
+  question: string,
+  programme?: unknown
+): StructuredCourseSearch | undefined {
+  if (!ACADEMIC_KNOWLEDGE.courseRecords.length || isMinorQuestion(question)) return undefined;
+
+  const normalizedQuestion = normalizeCourseSearchText(question);
+  const requestedCodes = [...new Set(
+    (question.match(/\b[A-Za-z]{2,6}[\s-]?\d{3,4}[A-Za-z]?\b/g) || [])
+      .map((code) => code.replace(/[\s-]/g, "").toUpperCase())
+  )];
+
+  const titleCandidates = [...new Set(
+    ACADEMIC_KNOWLEDGE.courseRecords
+      .map((record) => String(record.course_title || "").trim())
+      .filter((title) => normalizeCourseSearchText(title).length >= 6)
+  )];
+  const requestedTitles = titleCandidates
+    .filter((title) => normalizedQuestion.includes(normalizeCourseSearchText(title)))
+    .sort((a, b) => normalizeCourseSearchText(b).length - normalizeCourseSearchText(a).length);
+  const semester = extractCourseSemester(question);
+  const hasBtechContext = isBtechProgramme(programme) || isBtechProgramme(question);
+  const semesterListIntent = semester !== undefined &&
+    /\b(?:courses?|subjects?)\b/i.test(question) &&
+    hasBtechContext;
+  const courseDetailsIntent = requestedCodes.length > 0 ||
+    (requestedTitles.length > 0 &&
+      /\b(?:course|subject|code|prerequisite|pre-requisite|credits?|l[\s-]*t[\s-]*p|semester|details?)\b/i.test(question));
+
+  if (!courseDetailsIntent && !semesterListIntent) return undefined;
+
+  const batch = extractCourseBatch(question);
+  const track = extractCourseTrack(question);
+  let records = ACADEMIC_KNOWLEDGE.courseRecords.filter((record) =>
+    record.document_type === "semester_spread" &&
+    record.is_course_record !== false &&
+    String(record.programme || "").toLowerCase() === "b.tech"
+  );
+
+  if (requestedCodes.length) {
+    records = records.filter((record) =>
+      requestedCodes.includes(String(record.course_code || "").replace(/[\s-]/g, "").toUpperCase())
+    );
+  } else if (requestedTitles.length) {
+    const requestedTitleKeys = new Set(requestedTitles.map(normalizeCourseSearchText));
+    records = records.filter((record) =>
+      requestedTitleKeys.has(normalizeCourseSearchText(record.course_title))
+    );
+  }
+
+  if (batch) records = records.filter((record) => String(record.batch) === batch);
+  if (semester !== undefined) records = records.filter((record) => Number(record.semester) === semester);
+  if (track) {
+    records = records.filter((record) =>
+      normalizeCourseSearchText(record.track) === normalizeCourseSearchText(track)
+    );
+  }
+
+  const kind = semesterListIntent && requestedCodes.length === 0 && requestedTitles.length === 0
+    ? "semester"
+    : "course";
+  const documents = records.length
+    ? records.map(courseRecordDocument)
+    : [{
+        source: "VU_Semester_Data_Split.zip",
+        title: "B.Tech semester-spread workbook — no matching course row",
+        section: [
+          batch ? "admission batch " + batch : "",
+          semester !== undefined ? "semester " + semester : "",
+          track ? "track " + track : "",
+          requestedTitles[0] ? "course " + requestedTitles[0] : "",
+          requestedCodes.length ? "course code " + requestedCodes.join(", ") : "",
+        ].filter(Boolean).join("; ") || "Structured B.Tech curriculum lookup",
+        text: "The structured B.Tech semester-spread archive was checked. No row matched all of the requested course, batch, semester and track filters. This is a limitation of the supplied records and does not prove that the University does not offer the course.",
+      }];
+
+  return {
+    kind,
+    records,
+    documents,
+    requestedTitle: requestedTitles[0],
+    requestedCodes,
+    batch,
+    semester,
+    track,
+  };
+}
+
+function readableCourseTitle(value: string): string {
+  const known: Record<string, string> = {
+    MACHINELEARNING: "Machine Learning",
+    OPERATINGSYSTEMS: "Operating Systems",
+    NETWORKS: "Networks",
+    HUMANCENTRICAI: "Human-Centric AI",
+    MICROPROCESSORSANDCOMPUTERARCHITECTURE: "Microprocessors and Computer Architecture",
+    SUMMERTRAININGINTERNSHIP: "Summer Training/Internship",
+  };
+  return known[normalizeCourseSearchText(value).toUpperCase()] || value;
+}
+
+function structuredCourseAnswer(search: StructuredCourseSearch): string {
+  const records = [...search.records].sort((a, b) =>
+    Number(a.batch || 0) - Number(b.batch || 0) ||
+    Number(a.semester || 0) - Number(b.semester || 0) ||
+    String(a.course_code).localeCompare(String(b.course_code))
+  );
+  if (!records.length) {
+    const requested = search.requestedTitle || search.requestedCodes.join(", ") ||
+      (search.semester !== undefined ? "Semester " + search.semester + " courses" : "the requested course");
+    let answer = "**No matching B.Tech course row was found in the supplied semester-spread records.**\n\n";
+    answer += "I checked the available structured workbook for " + requested;
+    if (search.batch) answer += ", admission batch " + search.batch;
+    if (search.semester !== undefined && search.requestedTitle) answer += ", Semester " + search.semester;
+    if (search.track) answer += ", " + search.track;
+    answer += ". This means the current repository data does not contain a matching row; it does not establish that VU does not offer the course.";
+    if (search.track === "AI/ML") {
+      answer += " The 2022–2025 semester-spread records do not identify a specialisation, and the 2026 workbook identifies Data Science. The unlabelled rows cannot safely be presented as AI/ML-specific.";
+    } else if (search.track === "Data Science") {
+      answer += " The supplied archive only labels the 2026 semester-spread as Data Science; earlier batch records do not specify a track.";
+    }
+    return answer;
+  }
+
+  const sourceCitations = (record: CourseRecord) => {
+    const index = search.documents.findIndex((document) =>
+      document.section?.includes("B.Tech admission batch " + String(record.batch)) &&
+      document.section?.includes("semester " + String(record.semester)) &&
+      document.title?.startsWith(String(record.course_code) + " —")
+    );
+    return index >= 0 ? " [" + (index + 1) + "]" : "";
+  };
+  const prerequisite = (value: unknown) => {
+    const text = String(value || "").trim();
+    return !text || /^nil$/i.test(text) ? "None listed" : text;
+  };
+  const credits = (value: unknown) => value === undefined || value === null || value === "" ? "Not specified" : String(value);
+  const ltp = (record: CourseRecord) => [record.L, record.T, record.P].some((value) => value === undefined || value === null || value === "")
+    ? "Not specified"
+    : [record.L, record.T, record.P].join("-");
+
+  if (search.kind === "course") {
+    const courseName = readableCourseTitle(search.requestedTitle || records[0].course_title);
+    const codes = [...new Set(records.map((record) => record.course_code))];
+    let answer = "**" + courseName + " — course details**\n\n";
+    if (codes.length === 1) {
+      answer += "The course code in the available B.Tech semester-spread records is **" + codes[0] + "**.\n\n";
+    } else {
+      answer += "The matching records list these course codes: **" + codes.join(", ") + "**.\n\n";
+    }
+    answer += "| Admission batch | Course code | Semester | Credits | Prerequisite | Track in source |\n";
+    answer += "| --- | --- | ---: | ---: | --- | --- |\n";
+    for (const record of records) {
+      answer += "| " + String(record.batch || "Not specified") +
+        " | " + record.course_code +
+        " | " + String(record.semester ?? "Not specified") +
+        " | " + credits(record.credits) +
+        " | " + prerequisite(record.prerequisite) +
+        " | " + String(record.track || "Not specified") +
+        " |" + sourceCitations(record) + "\n";
+    }
+    answer += "\nThe source only identifies the 2026 records as Data Science. The 2022–2025 records do not specify a specialisation, so their track should not be inferred.";
+    return answer;
+  }
+
+  let answer = "**B.Tech — Semester " + search.semester + " course records**\n\n";
+  const groups = new Map<string, CourseRecord[]>();
+  for (const record of records) {
+    const label = String(record.batch || "Batch not specified") + " — " + String(record.track || "specialisation not specified");
+    groups.set(label, [...(groups.get(label) || []), record]);
+  }
+  for (const [label, group] of groups) {
+    answer += "**" + label + " (" + group.length + " courses)**\n";
+    for (const record of group) {
+      answer += "- **" + record.course_code + " — " + readableCourseTitle(record.course_title) + "** — " +
+        credits(record.credits) + " credits; prerequisite: " + prerequisite(record.prerequisite) +
+        "; L-T-P: " + ltp(record) + "." + sourceCitations(record) + "\n";
+    }
+    answer += "\n";
+  }
+  if (!search.batch && !search.track && records.some((record) => String(record.batch) === "2026")) {
+    answer += "The 2026 list is explicitly labelled Data Science. The 2022–2025 records do not identify a specialisation. No Semester 5 rows for the 2024 batch were present in the supplied archive.";
+  } else if (search.track === "Data Science") {
+    answer += "Only records explicitly labelled Data Science are included. Earlier batch records without a track label have not been treated as Data Science.";
+  } else if (search.track === "AI/ML") {
+    answer += "Only records explicitly labelled AI/ML are included. The supplied archive does not identify an AI/ML track in these semester records.";
+  }
+  return answer.trim();
 }
 
 function mergeDocumentChunks(documents: AcademicDocument[]): string {
@@ -358,7 +620,12 @@ function nonBtechMinorAnswer(programme: string, semester: string, documents: Aca
   return answer;
 }
 
-function retrieveAcademic(question: string, programme?: unknown): AcademicDocument[] {
+function retrieveAcademic(
+  question: string,
+  programme?: unknown,
+  structuredCourseSearch?: StructuredCourseSearch
+): AcademicDocument[] {
+  if (structuredCourseSearch) return structuredCourseSearch.documents;
   const query = queryWords(question);
   const attendanceIntent = /\b(attendance|attend|absen(?:ce|t)?|condonation|shortage|present|minimum attendance)\b/i.test(question);
   if (isBtechMinorQuestion(question) || (isMinorQuestion(question) && isBtechProgramme(programme))) {
@@ -547,8 +814,7 @@ function validateVisual(input: unknown) {
 }
 
 export async function POST(request: Request) {
-  const key=process.env.GROQ_API_KEY?.trim();
-  if(!key) return NextResponse.json({error:"Advisor service is not configured: the server-side GROQ_API_KEY is missing."},{status:503});
+  const key=process.env.GROQ_API_KEY?.trim() || "";
   let form:FormData;
   try { form=await request.formData(); } catch { return NextResponse.json({error:"Could not read the chat request."},{status:400}); }
   const question=String(form.get("question")??"").trim().slice(0,4000);
@@ -592,8 +858,9 @@ export async function POST(request: Request) {
   const isStudentMinorQuery=minorIntent&&!isBtechMinorQuery;
   const requestedMinorBatches=getBtechMinorBatches(effectiveQuestion);
   const isBatchSpecificBtechMinorQuery=requestedMinorBatches.length>0;
-  const academicMatches=retrieveAcademic(effectiveQuestion,profile.program);
-  const pages=(isBtechMinorQuery||isStudentMinorQuery)?[]:await retrieve(combinedQuestion);
+  const structuredCourseSearch=findStructuredCourseSearch(effectiveQuestion,profile.program);
+  const academicMatches=retrieveAcademic(effectiveQuestion,profile.program,structuredCourseSearch);
+  const pages=(isBtechMinorQuery||isStudentMinorQuery||structuredCourseSearch)?[]:await retrieve(combinedQuestion);
   pipeline.push("Searched the embedded VU Student Handbook, Student SOP, course plans and structured B.Tech semester-spread records");
   pipeline.push("Matched "+academicMatches.length+" relevant academic document passage(s) from "+new Set(academicMatches.map((item)=>item.source)).size+" repository source(s)");
   pipeline.push("Fetched "+pages.length+" reachable official VU webpage(s) from the allowlist");
@@ -634,6 +901,7 @@ export async function POST(request: Request) {
   const minorSemesterClarification=isStudentMinorQuery&&!programmeMissing&&asksNextSemester&&semesterMissing;
   const deterministicBtechMinor=isBtechMinorQuery&&isBatchSpecificBtechMinorQuery;
   const deterministicStudentMinor=isStudentMinorQuery&&!minorProgrammeClarification&&!minorSemesterClarification;
+  const deterministicStructuredCourse=structuredCourseSearch!==undefined;
   let modelUsed=MODEL;
   if(minorBatchClarification){
     answer="B.Tech minor options are batch-specific. Which admission year should I check (for example, 2023 or 2024)?";
@@ -655,11 +923,16 @@ export async function POST(request: Request) {
     answer=nonBtechMinorAnswer(profileProgramme,profileSemester,academicMatches);
     modelUsed="Deterministic VU Handbook and Course Plans lookup";
     pipeline.push("Answered the student-specific minor question using available Course Plans and Handbook clauses");
+  }else if(deterministicStructuredCourse){
+    answer=structuredCourseAnswer(structuredCourseSearch);
+    modelUsed="Deterministic VU B.Tech structured course lookup (no answer-generation model)";
+    pipeline.push("Matched course code/title and semester filters directly against structured batch-specific workbook rows");
   }else if(deterministicAttendance){
     answer=deterministicAttendance;
     modelUsed="Deterministic VU Handbook/SOP lookup (no answer-generation model)";
     pipeline.push("Answered attendance directly from retrieved Handbook and SOP clauses; no LLM-generated policy summary was used");
   }else{
+    if(!key) return NextResponse.json({error:"Advisor service is not configured: the server-side GROQ_API_KEY is missing."},{status:503});
     try{
       answer=await groq(key,[{role:"system",content:system},{role:"user",content:prompt}],MODEL);
     }catch(error){return NextResponse.json({error:"Answer generation failed: "+(error instanceof Error?error.message:"provider error")},{status:502});}
@@ -670,7 +943,7 @@ export async function POST(request: Request) {
   const semesterSpecific=/\b(semester|term|this sem|next sem|current sem)\b/i.test(effectiveQuestion);
   const followUps:string[]=[];
   const deterministicMinor=minorBatchClarification||minorProgrammeClarification||minorSemesterClarification||deterministicBtechMinor||deterministicStudentMinor;
-  if(!deterministicAttendance&&!deterministicMinor){
+  if(!deterministicAttendance&&!deterministicMinor&&!deterministicStructuredCourse){
     if(programmeSpecific&&programmeMissing) followUps.push("Which programme are you enrolled in?");
     else if(semesterSpecific&&semesterMissing) followUps.push("Which semester are you currently in?");
     if(followUps.length&&!answer.toLowerCase().includes(followUps[0].toLowerCase().replace("?",""))) {
@@ -678,7 +951,7 @@ export async function POST(request: Request) {
     }
   }
   let visualization;
-  if(/\b(chart|graph|infographic|visuali[sz]e|diagram|flowchart|visual summary)\b/i.test(combinedQuestion)&&sources.length){
+  if(key&&/\b(chart|graph|infographic|visuali[sz]e|diagram|flowchart|visual summary)\b/i.test(combinedQuestion)&&sources.length){
     try{
       const raw=await groq(key,[
         {role:"system",content:"Return JSON only with kind (bars,steps,cards), title and items. Use ONLY facts/numbers present in the answer and source excerpts. Never infer or calculate missing values. Use bars only for comparable numbers; steps for a process; cards for non-numeric comparisons. At most six items."},

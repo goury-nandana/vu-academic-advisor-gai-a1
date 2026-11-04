@@ -44,6 +44,8 @@ function renderAnswer(text: string, sources: Source[] = []) {
         components={{
           a: ({ href, children }) => {
             if (!href || !/^https?:\/\//i.test(href)) return <span>{children}</span>;
+            // Never render model-supplied links as avatar/infographic images.
+            if (/\.(?:png|jpe?g|gif|webp|svg)(?:[?#].*)?$/i.test(href)) return null;
             return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
           },
           img: () => null,

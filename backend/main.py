@@ -578,7 +578,10 @@ async def chat(req:Request):
         except Exception:continue
     if not answer:raise HTTPException(502,"Groq answer generation failed; check key, model access, and rate limits.")
     # Source links are rendered separately as clickable chips; strip redundant textual source lines.
-    answer=re.sub(r"(?im)^\s*(?:\*\*)?(?:sources?|references?)\s*:\s*.*(?:\*\*)?\s*$", "", answer).strip()
+    # Remove redundant source prose even when appended to an answer line; preserve Markdown table rows.
+    answer=re.sub(r"(?im)^(?!\s*\|)\s*(?:\*\*)?(?:sources?|references?)\s*:\s*.*(?:\*\*)?\s*$", "", answer)
+    answer=re.sub(r"(?im)(?<!\|)\s+(?:\*\*)?(?:source|sources|references?)\s*:\s*[^\n]+$", "", answer)
+    answer=re.sub(r"(?im)^\s*(?:\*\*)?(?:source|sources|references?)\s*:\s*[^\n]+$", "", answer).strip()
     sources=[];seen=set()
     for r in rows:
         source_name=str(r.get("source",""))

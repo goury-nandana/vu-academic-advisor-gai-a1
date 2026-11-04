@@ -98,6 +98,55 @@ const ACADEMIC_KNOWLEDGE = academicKnowledgeJson as unknown as {
 };
 
 const SEARCH_STOP_WORDS = new Set(["the","and","for","with","what","how","does","can","you","are","from","that","please","tell","about","this","what","which","where","when"]);
+type ChatHistoryItem = { role: "user" | "assistant"; text: string };
+
+function inferProgrammeAnswer(value: string): string | undefined {
+  const normalized = value.trim().toLowerCase().replace(/[.!?]+$/, "");
+  const choices: Array<[RegExp, string]> = [
+    [/^(?:bms|b\.m\.s\.?)$/, "BMS"],
+    [/^(?:b\.?tech|btech|engineering)$/, "B.Tech"],
+    [/^(?:ba\s*llb|b\.a\.?\s*ll\.?b\.?)$/, "BA LLB"],
+    [/^(?:bms\s*llb|b\.m\.s\.?\s*ll\.?b\.?)$/, "BMS LLB"],
+    [/^(?:b\.?a\.?\s*economics|economics)$/, "B.A. Economics"],
+    [/^(?:b\.?a\.?\s*psychology|psychology)$/, "B.A. Psychology"],
+    [/^(?:b\.?des|design)$/, "B.Des"],
+  ];
+  return choices.find(([pattern]) => pattern.test(normalized))?.[1];
+}
+
+function inferSemesterAnswer(value: string): string | undefined {
+  const match = value.match(/\b(10|[1-9])(?:st|nd|rd|th)?\s*(?:semester|sem)?\b|\b(?:semester|sem)\s*(10|[1-9])\b/i);
+  const semester = Number(match?.[1] || match?.[2]);
+  if (!Number.isInteger(semester) || semester < 1 || semester > 10) return undefined;
+  const suffix = semester === 1 ? "st" : semester === 2 ? "nd" : semester === 3 ? "rd" : "th";
+  return semester + suffix + " Semester";
+}
+
+function resolveStudentProfile(
+  profile: Record<string, unknown>,
+  history: ChatHistoryItem[],
+  currentQuestion: string
+): Record<string, unknown> {
+  const resolved = { ...profile };
+  const programMissing = !resolved.program || resolved.program === "Not specified";
+  const semesterMissing = !resolved.semester || resolved.semester === "Not specified";
+  const previousAssistant = history.length ? history[history.length - 1] : undefined;
+
+  if (programMissing && previousAssistant?.role === "assistant" && /which programme are you enrolled in/i.test(previousAssistant.text)) {
+    const inferred = inferProgrammeAnswer(currentQuestion);
+    if (inferred) resolved.program = inferred;
+  }
+  if (semesterMissing && previousAssistant?.role === "assistant" && /which semester are you currently in/i.test(previousAssistant.text)) {
+    const inferred = inferSemesterAnswer(currentQuestion);
+    if (inferred) resolved.semester = inferred;
+  }
+  return resolved;
+}
+
+function isBtechProgramme(value: unknown): boolean {
+  return /\b(?:b\.?\s*tech|btech|engineering)\b/i.test(String(value || ""));
+}
+
 function queryWords(value: string) {
   return (value.toLowerCase().match(/[a-z0-9]{3,}/g) ?? []).filter((word) => !SEARCH_STOP_WORDS.has(word));
 }
@@ -106,9 +155,13 @@ function isBtechMinorQuestion(question: string): boolean {
   return /\bminor(?:s)?\b/i.test(question) && /\b(?:b\.?\s*tech|btech|engineering)\b/i.test(question);
 }
 
-function getBtechMinorBatch(question: string): string | undefined {
-  if (!isBtechMinorQuestion(question)) return undefined;
-  return question.match(/\b(20\d{2})\b/)?.[1];
+function getBtechMinorBatches(question: string): string[] {
+  if (!isBtechMinorQuestion(question)) return [];
+  return [...new Set(question.match(/\b20\d{2}\b/g) || [])];
+}
+
+function isMinorQuestion(question: string): boolean {
+  return /\bminor(?:s)?\b/i.test(question);
 }
 
 function mergeDocumentChunks(documents: AcademicDocument[]): string {
@@ -173,13 +226,114 @@ function retrieveBtechMinorBatch(batch: string): AcademicDocument[] {
   return results;
 }
 
-function retrieveAcademic(question: string): AcademicDocument[] {
+function retrieveBtechMinorBatches(batches: string[]): AcademicDocument[] {
+  const results = batches.flatMap((batch) => retrieveBtechMinorBatch(batch));
+  if (results.length) return results;
+  const workbookReference = ACADEMIC_KNOWLEDGE.documents.find(
+    (document) => document.source === "Minor_Courses_for_BTech_Students.xlsx"
+  );
+  return workbookReference ? [{
+    ...workbookReference,
+    title: "Minor Courses for B.Tech Students — source workbook",
+    section: "Workbook checked for the requested admission batch",
+  }] : [];
+}
+
+function retrieveNonBtechMinorContext(): AcademicDocument[] {
+  return ACADEMIC_KNOWLEDGE.documents.filter((document) =>
+    (
+      /Student Handbook/i.test(document.source || "") &&
+      (
+        /Pre-Registration \(Specialization \/ Minor/i.test(document.text || "") ||
+        /minimum of ten \(10\) students register/i.test(document.text || "")
+      )
+    ) ||
+    (
+      /Course_Plans\.txt/i.test(document.source || "") &&
+      /Minor programme \(Data Science minor\)/i.test(document.text || "")
+    )
+  );
+}
+
+function btechMinorSummaryAnswer(batches: string[], documents: AcademicDocument[]): string {
+  const workbook = ACADEMIC_KNOWLEDGE.documents.filter(
+    (document) => document.source === "Minor_Courses_for_BTech_Students.xlsx" && document.sheet
+  );
+  const bySheet = new Map<string, AcademicDocument[]>();
+  for (const document of workbook) {
+    const sheet = String(document.sheet);
+    bySheet.set(sheet, [...(bySheet.get(sheet) || []), document]);
+  }
+
+  const lines = ["**B.Tech minor options recorded by admission batch**", ""];
+  for (const batch of batches) {
+    const matching = documents.filter((document) =>
+      (document.section || "").includes("admission batch " + batch)
+    );
+    const names = [...new Set(matching.map((document) => String(document.sheet || "")).filter(Boolean))]
+      .map((sheet) => sheet.replace(/\s+Minor$/i, ""));
+    if (names.length) {
+      lines.push("- **" + batch + " batch:** " + names.join(", ") + ".");
+    } else {
+      lines.push("- **" + batch + " batch:** The available Minor Courses workbook does not contain a course list for this admission batch. I cannot confirm its minor options from the repository records.");
+    }
+
+    const emptySheets: string[] = [];
+    for (const [sheet, sheetDocuments] of bySheet.entries()) {
+      const fullText = mergeDocumentChunks(sheetDocuments);
+      const heading = new RegExp("\\b" + batch + "\\s+Batch\\b", "i").exec(fullText);
+      if (!heading) continue;
+      const tail = fullText.slice(heading.index + heading[0].length);
+      const next = /\b20\d{2}\s+Batch\b|\bTBD\b/i.exec(tail);
+      const content = tail.slice(0, next ? next.index : undefined);
+      if (/No Students/i.test(content)) emptySheets.push(sheet.replace(/\s+Minor$/i, ""));
+    }
+    if (emptySheets.length) {
+      lines.push("  The workbook marks " + emptySheets.join(", ") + " as “No Students” for this batch, rather than listing course options.");
+    }
+  }
+
+  lines.push("");
+  lines.push("**Important:** A minor appearing in the workbook does not guarantee that it will run in a particular semester. The Student Handbook says minor courses are offered when at least 10 students register, although the Programme Chair may permit an exception.");
+  return lines.join("\n");
+}
+
+function nonBtechMinorAnswer(programme: string, semester: string, documents: AcademicDocument[]): string {
+  const coursePlan = documents.find((document) =>
+    /Course_Plans\.txt/i.test(document.source || "") && /Predictive Analytics \(DATA204\)/i.test(document.text || "")
+  );
+  const handbookPrereq = documents.find((document) =>
+    /Student Handbook/i.test(document.source || "") && /Pre-Registration \(Specialization \/ Minor/i.test(document.text || "")
+  );
+  const handbookMinimum = documents.find((document) =>
+    /Student Handbook/i.test(document.source || "") && /minimum of ten \(10\) students register/i.test(document.text || "")
+  );
+
+  let answer = "**Minor options for " + programme + "**\n\n";
+  answer += "I cannot confirm which minors are open to " + programme + " students in the next semester from the academic records currently available to this advisor. The repository does not contain a complete programme-specific minor offering list or the next-semester registration schedule.";
+  if (coursePlan) {
+    answer += "\n\nThe available Course Plans file contains one plan for **Predictive Analytics (DATA204)**, labelled “Data Science minor”: Semester V, 4 credits, with “Exploring Data Science” as its prerequisite. That plan does not state that it is open to " + programme + " students or that it will run next semester.";
+  }
+  if (handbookPrereq) {
+    answer += "\n\nThe Handbook requires students registering for a higher semester to complete pre-registration for applicable minor/specialisation courses in advance, after consulting their Faculty Advisor.";
+  }
+  if (handbookMinimum) {
+    answer += " It also says a minor course is offered when at least 10 students register, although the Programme Chair may permit an exception.";
+  }
+  answer += "\n\nFor the actual next-semester choices, check the current Digii pre-registration list or confirm with your Faculty Advisor/Programme Chair.";
+  if (semester && semester !== "Not specified") {
+    answer = answer.replace("in the next semester", "after your " + semester + " (next semester)");
+  }
+  return answer;
+}
+
+function retrieveAcademic(question: string, programme?: unknown): AcademicDocument[] {
   const query = queryWords(question);
   const attendanceIntent = /\b(attendance|attend|absen(?:ce|t)?|condonation|shortage|present|minimum attendance)\b/i.test(question);
-  if (isBtechMinorQuestion(question)) {
-    const requestedMinorBatch = getBtechMinorBatch(question);
-    return requestedMinorBatch ? retrieveBtechMinorBatch(requestedMinorBatch) : [];
+  if (isBtechMinorQuestion(question) || (isMinorQuestion(question) && isBtechProgramme(programme))) {
+    return retrieveBtechMinorBatches(getBtechMinorBatches(question));
   }
+  if (isMinorQuestion(question)) return retrieveNonBtechMinorContext();
   const courseCodes = (question.match(/\b[A-Za-z]{2,6}[\s-]?\d{3,4}[A-Za-z]?\b/g) ?? [])
     .map((code) => code.replace(/[\s-]/g, "").toUpperCase());
   const academicIntent = attendanceIntent || courseCodes.length > 0 ||

@@ -45,11 +45,45 @@ async function groq(key: string, messages: Array<{role: string; content: unknown
     signal: AbortSignal.timeout(20000), cache: "no-store",
   });
   if (!response.ok) {
+    let providerMessage = "";
+    let providerCode = "";
+    try {
+      const payload = await response.clone().json() as {
+        error?: { message?: unknown; code?: unknown; type?: unknown };
+      };
+      if (typeof payload.error?.message === "string") providerMessage = payload.error.message.slice(0, 500);
+      if (typeof payload.error?.code === "string") providerCode = payload.error.code.slice(0, 120);
+      else if (typeof payload.error?.type === "string") providerCode = payload.error.type.slice(0, 120);
+    } catch {
+      // Keep the HTTP status and rate-limit headers even if the provider body is not JSON.
+    }
+    const retryAfter = response.headers.get("retry-after");
+    const rateLimit = {
+      limitRequests: response.headers.get("x-ratelimit-limit-requests"),
+      remainingRequests: response.headers.get("x-ratelimit-remaining-requests"),
+      resetRequests: response.headers.get("x-ratelimit-reset-requests"),
+      limitTokens: response.headers.get("x-ratelimit-limit-tokens"),
+      remainingTokens: response.headers.get("x-ratelimit-remaining-tokens"),
+      resetTokens: response.headers.get("x-ratelimit-reset-tokens"),
+    };
     console.error("[VU Academic Advisor] Groq request failed", {
       model,
       status: response.status,
+      providerCode,
+      providerMessage,
+      retryAfter,
+      rateLimit,
     });
-    throw new Error("The configured model provider returned HTTP " + response.status + ".");
+    const detail = response.status === 429
+      ? "Groq rate limit (HTTP 429)." +
+        (providerMessage ? " " + providerMessage : "") +
+        (retryAfter ? " Retry after " + retryAfter + " seconds." : "")
+      : "The configured model provider returned HTTP " + response.status +
+        (providerMessage ? ": " + providerMessage : ".");
+    const error = new Error(detail) as Error & { statusCode?: number; retryAfter?: string };
+    error.statusCode = response.status;
+    if (retryAfter) error.retryAfter = retryAfter;
+    throw error;
   }
   const data = await response.json() as {choices?: Array<{message?: {content?: string}} >};
   return data.choices?.[0]?.message?.content?.trim() ?? "";
@@ -1103,12 +1137,22 @@ export async function POST(request: Request) {
       answer=await groq(key,[{role:"system",content:system},{role:"user",content:prompt}],MODEL);
     }catch(error){
       const detail = error instanceof Error ? error.message : "provider error";
+      const providerError = error as Error & { statusCode?: number; retryAfter?: string };
+      const responseStatus = providerError.statusCode === 429 ? 429 : 502;
       console.error("[VU Academic Advisor] Answer generation failed", {
         model: MODEL,
         errorName: error instanceof Error ? error.name : "UnknownError",
+        statusCode: providerError.statusCode,
+        retryAfter: providerError.retryAfter,
         detail,
       });
-      return NextResponse.json({error:"Answer generation failed: "+detail},{status:502});
+      return NextResponse.json(
+        {error:"Answer generation failed: "+detail},
+        {
+          status: responseStatus,
+          headers: providerError.retryAfter ? {"Retry-After": providerError.retryAfter} : undefined,
+        }
+      );
     }
     if(!answer) answer="I could not generate an answer. Please rephrase the question or check the official VU sources.";
     pipeline.push("Generated answer with one configured model: "+MODEL);

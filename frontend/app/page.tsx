@@ -9,9 +9,9 @@ type Presence = "off" | "typing" | "recent";
 
 function renderAnswer(text: string) {
   // Render explicit Markdown image links from advisor output; ordinary text remains React-escaped.
-  const parts = text.split(/(!\\[[^\\]]*\\]\\(https?:\\/\\/[^\\s)]+\\))/g);
+  const parts = text.split(/(!\[[^\]]*\]\(https?:\/\/[^\s)]+\))/g);
   return parts.map((part, index) => {
-    const match = part.match(/^!\\[([^\\]]*)\\]\\((https?:\\/\\/[^\\s)]+)\\)$/);
+    const match = part.match(/^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/);
     return match ? <img key={index} className="answer-image" src={match[2]} alt={match[1] || "Advisor visual"} loading="lazy" /> : <span key={index}>{part}</span>;
   });
 }

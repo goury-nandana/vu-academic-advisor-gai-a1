@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import academicKnowledgeJson from "../../../data/vu-academic-knowledge.json";
+import websiteKnowledgeJson from "../../../data/vu-website-knowledge.json";
 
 export const runtime = "nodejs";
 const MODEL = "openai/gpt-oss-120b";
@@ -114,6 +115,31 @@ const ACADEMIC_KNOWLEDGE = academicKnowledgeJson as unknown as {
   courseRecords: CourseRecord[];
 };
 
+type WebsiteChunk = {
+  chunk_id: string;
+  page_id: string;
+  section: string;
+  page_title: string;
+  page_url: string;
+  heading: string;
+  text: string;
+  keywords?: string[];
+};
+
+type WebsiteSearchHit = {
+  title: string;
+  url: string;
+  text: string;
+  pageId?: string;
+  heading?: string;
+  score: number;
+};
+
+const WEBSITE_KNOWLEDGE = websiteKnowledgeJson as unknown as {
+  pages: Array<{ id: string; section: string; title: string; url: string; status: string }>;
+  chunks: WebsiteChunk[];
+};
+
 const SEARCH_STOP_WORDS = new Set(["the","and","for","with","what","how","does","can","you","are","from","that","please","tell","about","this","what","which","where","when"]);
 type ChatHistoryItem = { role: "user" | "assistant"; text: string };
 
@@ -139,7 +165,38 @@ function inferSemesterAnswer(value: string): string | undefined {
   return semester + suffix + " Semester";
 }
 
-function getPendingMinorQuestion(history: ChatHistoryItem[]): string | undefined {
+function getPendingMinorQuestion(history: ChatHistoryItem[]): string | undefined {function getPendingBtechCourseQuestion(
+  history: ChatHistoryItem[],
+  currentQuestion: string
+): string | undefined {
+  if (!history.length || !/\b(?:what about|how about|and for|for the)\b/i.test(currentQuestion)) return undefined;
+  const batch = extractCourseBatch(currentQuestion) || currentQuestion.match(/\b20\d{2}\b/)?.[0];
+  if (!batch) return undefined;
+
+  const latest = history[history.length - 1];
+  const previousUser = history[history.length - 2];
+  if (!latest || latest.role !== "assistant" || !previousUser || previousUser.role !== "user") return undefined;
+
+  const previousQuestion = previousUser.text;
+  if (
+    isMinorQuestion(previousQuestion) ||
+    !isBtechProgramme(previousQuestion) ||
+    !/\b(?:courses?|subjects?)\b/i.test(previousQuestion) ||
+    extractCourseSemester(previousQuestion) === undefined
+  ) return undefined;
+
+  let continued = previousQuestion;
+  if (/\b20\d{2}\s+batch\b/i.test(continued)) {
+    continued = continued.replace(/\b20\d{2}(?=\s+batch\b)/i, batch);
+  } else if (/\bbatch\s*20\d{2}\b/i.test(continued)) {
+    continued = continued.replace(/(\bbatch\s*)20\d{2}\b/i, "$1" + batch);
+  } else {
+    continued += " admission batch " + batch;
+  }
+  return continued;
+}
+
+
   if (!history.length) return undefined;
   const latest = history[history.length - 1];
   if (
@@ -212,7 +269,18 @@ function isMinorQuestion(question: string): boolean {
   return /\bminor(?:s)?\b/i.test(question);
 }
 
-function normalizeCourseSearchText(value: unknown): string {
+function normalizeCourseSearchText(value: unknown): string {function getSimpleSocialAnswer(question: string): string | undefined {
+  const normalized = question.trim().toLowerCase().replace(/[.!?]+$/g, "");
+  if (/^(?:hi+|hello+|hey+|hii+|good morning|good afternoon|good evening|namaste)(?: there)?$/.test(normalized)) {
+    return "Hello. I’m the VU Academic Advisor. You can ask me about Vidyashilp University programmes, courses, prerequisites, credits, semesters and admissions.";
+  }
+  if (/\b(?:i am|i'm|im|feeling|feel)\b.{0,50}\b(?:sad|upset|low|down|lonely|stressed|overwhelmed)\b|\b(?:sad|upset|low|down|lonely|stressed|overwhelmed)\b.{0,50}\b(?:today|right now|lately|because)\b/i.test(normalized)) {
+    return "I’m sorry you’re feeling this way. You can tell me what’s been happening, or just talk it through one step at a time. I’ll listen without judging.";
+  }
+  return undefined;
+}
+
+
   return String(value || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
 }
 
@@ -778,7 +846,72 @@ function formatAcademicSource(document: AcademicDocument, index: number) {
   };
 }
 
-async function retrieve(question: string) {
+async function retrieve(question: string) {function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
+  const terms = queryWords(question);
+  if (!terms.length) return [];
+  const query = question.toLowerCase();
+  const scored = WEBSITE_KNOWLEDGE.chunks.map((chunk) => {
+    const title = String(chunk.page_title || "");
+    const heading = String(chunk.heading || "");
+    const keywords = (chunk.keywords || []).map((item) => String(item).toLowerCase());
+    const searchable = (title + " " + heading + " " + chunk.section + " " + keywords.join(" ") + " " + chunk.text).toLowerCase();
+    let score = 0;
+    for (const term of terms) {
+      if (searchable.includes(term)) score += term.length >= 7 ? 3 : 1;
+      if (keywords.some((keyword) => keyword === term)) score += 3;
+    }
+    if (/\b(?:apply|application|admission|admissions)\b/i.test(query) && chunk.page_id === "admissions") score += 8;
+    if (/\b(?:scholarship|scholarships|fee waiver|financial aid)\b/i.test(query) && chunk.page_id === "scholarships") score += 8;
+    if (/\b(?:contact|phone|email|address)\b/i.test(query) && chunk.page_id === "contact") score += 8;
+    if (/\b(?:bms|management studies|digital business)\b/i.test(query) && chunk.page_id === "programme_bms") score += 8;
+    if (/\b(?:data science|b\.?tech)\b/i.test(query) && chunk.page_id === "programme_btech_ds") score += 5;
+    if (/\b(?:artificial intelligence|ai.?ml|machine learning)\b/i.test(query) && chunk.page_id === "programme_btech_aiml") score += 6;
+    return { chunk, score };
+  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score);
+
+  const selected: WebsiteSearchHit[] = [];
+  for (const item of scored) {
+    const chunk = item.chunk;
+    const countOnPage = selected.filter((hit) => hit.pageId === chunk.page_id).length;
+    if (countOnPage >= 4) continue;
+    selected.push({
+      title: String(chunk.page_title || "Vidyashilp University") + " — " + String(chunk.heading || chunk.section || ""),
+      url: String(chunk.page_url || "https://vidyashilp.edu.in/"),
+      text: String(chunk.text || ""),
+      pageId: chunk.page_id,
+      heading: chunk.heading,
+      score: item.score,
+    });
+    if (selected.length >= 6) break;
+  }
+  return selected;
+}
+
+function deterministicAdmissionsAnswer(
+  question: string,
+  pages: WebsiteSearchHit[],
+  citationOffset: number
+): string | undefined {
+  if (!/\b(?:how|where|steps?|process)\b.{0,40}\b(?:apply|application|admission)\b|\b(?:apply|application)\b.{0,40}\b(?:to|at|for)\b.{0,30}\b(?:vu|vidyashilp|university)\b/i.test(question)) return undefined;
+  const application = pages.find((page) => page.pageId === "admissions" && /how to apply/i.test(page.heading || ""));
+  const selection = pages.find((page) => page.pageId === "admissions" && /selection/i.test(page.heading || ""));
+  if (!application) return undefined;
+  const applicationCitation = "[" + (citationOffset + pages.indexOf(application) + 1) + "]";
+  const selectionCitation = selection
+    ? " [" + (citationOffset + pages.indexOf(selection) + 1) + "]"
+    : "";
+  let answer = "**How to apply to Vidyashilp University**\n\n";
+  answer += "Start through the [official VU Admissions page](" + application.url + "). The published application journey is:\n";
+  answer += "1. Start an application and register your details.\n";
+  answer += "2. Complete and submit the application.\n";
+  answer += "3. Complete any programme-specific assessment or selection round.\n";
+  answer += "4. Attend a faculty interaction or interview where required.\n";
+  answer += "5. Wait for the university’s admission decision by email. " + applicationCitation + "\n\n";
+  answer += "Selection criteria differ by programme. Check the current intake page for the exact eligibility requirements, deadlines and any additional rounds before applying." + selectionCitation;
+  return answer;
+}
+
+
   const q = question.toLowerCase();
   const preferred: string[] = [];
   if (/\bbms\b|digital business|management studies/i.test(q)) preferred.push("BMS Digital Business");
@@ -838,7 +971,10 @@ export async function POST(request: Request) {
     return NextResponse.json({error:"The web chat attachment limit is four files and 4 MB combined."},{status:413});
 
   let combinedQuestion=question||"Explain the academic information in my attachment.";
-  const effectiveQuestion=getPendingMinorQuestion(history)||combinedQuestion;
+  const pendingMinorQuestion = getPendingMinorQuestion(history);
+  const pendingCourseQuestion = getPendingBtechCourseQuestion(history, combinedQuestion);
+  const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || combinedQuestion;
+  const socialAnswer = getSimpleSocialAnswer(effectiveQuestion);
   const attachments:string[]=[];
   const fileNotes:string[]=[];
   for(const file of files){
@@ -868,7 +1004,10 @@ export async function POST(request: Request) {
   const isBatchSpecificBtechMinorQuery=requestedMinorBatches.length>0;
   const structuredCourseSearch=findStructuredCourseSearch(effectiveQuestion,profile.program);
   const academicMatches=retrieveAcademic(effectiveQuestion,profile.program,structuredCourseSearch);
-  const pages=(isBtechMinorQuery||isStudentMinorQuery||structuredCourseSearch)?[]:await retrieve(combinedQuestion);
+  const localWebsiteMatches = socialAnswer ? [] : retrieveWebsiteKnowledge(effectiveQuestion);
+  const pages = (isBtechMinorQuery||isStudentMinorQuery||structuredCourseSearch||socialAnswer)
+    ? []
+    : localWebsiteMatches.length ? localWebsiteMatches : await retrieve(combinedQuestion);
   pipeline.push("Searched the embedded VU Student Handbook, Student SOP, course plans and structured B.Tech semester-spread records");
   pipeline.push("Matched "+academicMatches.length+" relevant academic document passage(s) from "+new Set(academicMatches.map((item)=>item.source)).size+" repository source(s)");
   pipeline.push("Fetched "+pages.length+" reachable official VU webpage(s) from the allowlist");
@@ -877,6 +1016,11 @@ export async function POST(request: Request) {
     title:page.title,url:page.url,text:page.text,citation:academicSources.length+index+1,type:"website",
   }));
   const sources=[...academicSources,...webSources];
+  const admissionsAnswer = deterministicAdmissionsAnswer(
+    effectiveQuestion,
+    pages as WebsiteSearchHit[],
+    academicSources.length
+  );
   const profileText=["Programme: "+(profile.program&&profile.program!=="Not specified"?profile.program:"unknown"),"Semester: "+(profile.semester&&profile.semester!=="Not specified"?profile.semester:"unknown"),"Credits: "+(profile.completedCredits||"unknown"),"CGPA: "+(profile.cgpa||"unknown")].join("\n");
   const context=safeData(JSON.stringify({
     officialVUAcademicDocuments:sources.filter((source)=>source.type==="academic").map((source)=>({citation:source.citation,title:source.title,url:source.url,excerpt:source.text.slice(0,4500)})),
@@ -911,7 +1055,11 @@ export async function POST(request: Request) {
   const deterministicStudentMinor=isStudentMinorQuery&&!minorProgrammeClarification&&!minorSemesterClarification;
   const deterministicStructuredCourse=structuredCourseSearch!==undefined;
   let modelUsed=MODEL;
-  if(minorBatchClarification){
+  if(socialAnswer){
+    answer=socialAnswer;
+    modelUsed="Deterministic conversational response";
+    pipeline.push("Handled a greeting or supportive social message without requiring an external model");
+  }else if(minorBatchClarification){
     answer="B.Tech minor options are batch-specific. Which admission year should I check (for example, 2023 or 2024)?";
     modelUsed="Deterministic admission-batch clarification";
     pipeline.push("Asked for the B.Tech admission batch before retrieving minor-course options");
@@ -931,6 +1079,10 @@ export async function POST(request: Request) {
     answer=nonBtechMinorAnswer(profileProgramme,profileSemester,academicMatches);
     modelUsed="Deterministic VU Handbook and Course Plans lookup";
     pipeline.push("Answered the student-specific minor question using available Course Plans and Handbook clauses");
+  }else if(admissionsAnswer){
+    answer=admissionsAnswer;
+    modelUsed="Deterministic official VU Admissions page lookup";
+    pipeline.push("Answered the application process from the uploaded official VU website knowledge chunks");
   }else if(deterministicStructuredCourse){
     answer=structuredCourseAnswer(structuredCourseSearch);
     modelUsed="Deterministic VU B.Tech structured course lookup (no answer-generation model)";

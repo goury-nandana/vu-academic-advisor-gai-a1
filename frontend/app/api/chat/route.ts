@@ -309,12 +309,27 @@ function isMinorQuestion(question: string): boolean {
   return /\bminor(?:s)?\b/i.test(question);
 }
 
-function getSimpleSocialAnswer(question: string): string | undefined {
+function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []): string | undefined {
   const normalized = question.trim().toLowerCase().replace(/[.!?]+$/g, "").replace(/\s+/g, " ");
 
   // Crisis language bypasses academic scope filtering and never depends on Groq availability.
   if (/\b(?:i(?:'m| am)?\s+)?(?:going to|about to|planning to|want to|wish to|thinking about)\s+(?:commit\s+)?suicide\b|\b(?:i(?:'m| am)?\s+)?(?:want to|going to|might|may|plan to)\s+(?:kill|hurt)\s+myself\b|\b(?:i want to die|i don't want to live|i do not want to live|end my life|take my own life|i'm suicidal|i am suicidal)\b/i.test(normalized)) {
     return "I’m really sorry you’re feeling this way. Your safety comes first. If you might act on this now or have already hurt yourself, call India’s emergency number **112** or go to the nearest emergency department now. Move away from anything you could use to hurt yourself and get physically near someone you trust—a friend, family member, roommate, hostel warden or campus staff member. In India, you can also call **Tele-MANAS 14416**, a free 24/7 mental-health helpline. Are you in immediate danger right now, or have you already taken any steps to hurt yourself?";
+  }
+
+  const latestAssistant = [...history].reverse().find((item) => item.role === "assistant");
+  if (
+    /^(?:can i|may i|could i|can i talk|can i share|can i tell you)$/.test(normalized) &&
+    latestAssistant &&
+    /you can talk about it here too|you can tell me what has been happening|you can tell me what happened/i.test(latestAssistant.text)
+  ) {
+    return "Yes. You can tell me what happened, including what you mean by your cat being involved. I’ll listen without judging. Share only what you feel comfortable sharing.";
+  }
+  if (/^(?:wtf|what the fuck|what the hell)$/.test(normalized)) {
+    return "I may have misunderstood you. Tell me what felt wrong or what you were trying to ask, and I’ll respond to that instead of repeating the same message.";
+  }
+  if (/^(?:how can i trust you|why should i trust you|can i trust you|how do i know you are accurate|how do i know you are telling the truth)$/.test(normalized)) {
+    return "You should not rely on me blindly. VU-specific answers should be grounded in official university documents or webpages, with sources shown where available. I can still make mistakes or miss recent changes, so verify important decisions with the university. I provide guidance; I do not make official university decisions.";
   }
 
   if (/^(?:hi+|hello+|h+e+y+|heylo+|hii+|good morning|good afternoon|good evening|good night|namaste|namaskaram+|vanakkam|bonjour|hola)(?: there)?$/.test(normalized)) {
@@ -1053,7 +1068,7 @@ export async function POST(request: Request) {
   const pendingMinorQuestion = getPendingMinorQuestion(history);
   const pendingCourseQuestion = getPendingBtechCourseQuestion(history, combinedQuestion);
   const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || combinedQuestion;
-  const socialAnswer = getSimpleSocialAnswer(effectiveQuestion) || getDeterministicScopeAnswer(effectiveQuestion);
+  const socialAnswer = getSimpleSocialAnswer(effectiveQuestion, history) || getDeterministicScopeAnswer(effectiveQuestion);
   const attachments:string[]=[];
   const fileNotes:string[]=[];
   for(const file of files){

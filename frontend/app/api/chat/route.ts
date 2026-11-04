@@ -312,6 +312,11 @@ function isMinorQuestion(question: string): boolean {
 function getSimpleSocialAnswer(question: string): string | undefined {
   const normalized = question.trim().toLowerCase().replace(/[.!?]+$/g, "").replace(/\s+/g, " ");
 
+  // Crisis language bypasses academic scope filtering and never depends on Groq availability.
+  if (/\b(?:i(?:'m| am)?\s+)?(?:going to|about to|planning to|want to|wish to|thinking about)\s+(?:commit\s+)?suicide\b|\b(?:i(?:'m| am)?\s+)?(?:want to|going to|might|may|plan to)\s+(?:kill|hurt)\s+myself\b|\b(?:i want to die|i don't want to live|i do not want to live|end my life|take my own life|i'm suicidal|i am suicidal)\b/i.test(normalized)) {
+    return "I’m really sorry you’re feeling this way. Your safety comes first. If you might act on this now or have already hurt yourself, call India’s emergency number **112** or go to the nearest emergency department now. Move away from anything you could use to hurt yourself and get physically near someone you trust—a friend, family member, roommate, hostel warden or campus staff member. In India, you can also call **Tele-MANAS 14416**, a free 24/7 mental-health helpline. Are you in immediate danger right now, or have you already taken any steps to hurt yourself?";
+  }
+
   if (/^(?:hi+|hello+|h+e+y+|heylo+|hii+|good morning|good afternoon|good evening|good night|namaste|namaskaram+|vanakkam|bonjour|hola)(?: there)?$/.test(normalized)) {
     return "Hello. I’m the VU Academic Advisor. You can ask me about Vidyashilp University programmes, courses, prerequisites, credits, semesters and admissions.";
   }
@@ -330,7 +335,7 @@ function getSimpleSocialAnswer(question: string): string | undefined {
   if (/^(?:cat|cats)$/.test(normalized)) {
     return "Do you mean the CAT entrance examination, a cat as an animal, or something else? Please clarify what you want to know.";
   }
-  if (/\\b(?:my|our)\\s+(?:dog|cat|pet|friend|family member|someone)\\s+(?:died|dies|passed away)\\b|\\b(?:my dog|my cat|my pet)\\s+(?:passed away|has died|died|dies)\\b/i.test(normalized)) {
+  if (/\b(?:my|our)\s+(?:dog|cat|pet|friend|family member|someone)\s+(?:died|dies|passed away)\b|\b(?:my dog|my cat|my pet)\s+(?:passed away|has died|died|dies)\b/i.test(normalized)) {
     return "I’m sorry for your loss. Losing a pet or someone close can be painful. Take the time you need, and consider talking with someone you trust. You can talk about it here too.";
   }
   if (/\b(?:i am|i'm|im|feeling|feel|been feeling)\b.{0,60}\b(?:sad|upset|low|down|lonely|stressed|overwhelmed|depressed|in depression|anxious|anxiety|hopeless)\b|\b(?:sad|upset|low|down|lonely|stressed|overwhelmed|depressed|anxious|anxiety)\b.{0,60}\b(?:today|right now|lately|because)\b/i.test(normalized)) {

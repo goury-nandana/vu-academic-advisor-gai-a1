@@ -310,12 +310,46 @@ function isMinorQuestion(question: string): boolean {
 }
 
 function getSimpleSocialAnswer(question: string): string | undefined {
-  const normalized = question.trim().toLowerCase().replace(/[.!?]+$/g, "");
-  if (/^(?:hi+|hello+|hey+|hii+|good morning|good afternoon|good evening|namaste)(?: there)?$/.test(normalized)) {
+  const normalized = question.trim().toLowerCase().replace(/[.!?]+$/g, "").replace(/\s+/g, " ");
+
+  if (/^(?:hi+|hello+|h+e+y+|heylo+|hii+|good morning|good afternoon|good evening|good night|namaste|namaskaram+|vanakkam|bonjour|hola)(?: there)?$/.test(normalized)) {
     return "Hello. I’m the VU Academic Advisor. You can ask me about Vidyashilp University programmes, courses, prerequisites, credits, semesters and admissions.";
   }
-  if (/\b(?:i am|i'm|im|feeling|feel)\b.{0,50}\b(?:sad|upset|low|down|lonely|stressed|overwhelmed)\b|\b(?:sad|upset|low|down|lonely|stressed|overwhelmed)\b.{0,50}\b(?:today|right now|lately|because)\b/i.test(normalized)) {
-    return "I’m sorry you’re feeling this way. You can tell me what’s been happening, or just talk it through one step at a time. I’ll listen without judging.";
+  if (/^(?:how are you|how are u|how're you|how r u)$/.test(normalized)) {
+    return "I’m working and ready to help with your Vidyashilp University questions.";
+  }
+  if (/^(?:bye|goodbye|good bye|see you|see ya|take care|talk later)$/.test(normalized)) {
+    return "Goodbye. You can return whenever you need help with Vidyashilp University information.";
+  }
+  if (/^(?:thanks|thank you|thank u|thx|ty|thanks a lot)$/.test(normalized)) {
+    return "You’re welcome. Let me know when you need help with a VU-related question.";
+  }
+  if (/^(?:can i get a hug|could i get a hug|i need a hug)$/.test(normalized)) {
+    return "Sending a virtual hug. You do not need to explain anything unless you feel like talking.";
+  }
+  if (/^(?:cat|cats)$/.test(normalized)) {
+    return "Do you mean the CAT entrance examination, a cat as an animal, or something else? Please clarify what you want to know.";
+  }
+  if (/\b(?:my|our)\s+(?:dog|cat|pet|friend|family member|someone)\s+died\b|\b(?:my dog|my cat|my pet)\s+(?:passed away|has died)\b/i.test(normalized)) {
+    return "I’m sorry for your loss. Losing a pet or someone close can be painful. Take the time you need, and consider talking with someone you trust. You can talk about it here too.";
+  }
+  if (/\b(?:i am|i'm|im|feeling|feel|been feeling)\b.{0,60}\b(?:sad|upset|low|down|lonely|stressed|overwhelmed|depressed|in depression|anxious|anxiety|hopeless)\b|\b(?:sad|upset|low|down|lonely|stressed|overwhelmed|depressed|anxious|anxiety)\b.{0,60}\b(?:today|right now|lately|because)\b/i.test(normalized)) {
+    return "I’m sorry you’re feeling this way. You can tell me what has been happening, or talk it through one step at a time. Consider reaching out to someone you trust or a qualified mental-health professional. If you feel in immediate danger or may hurt yourself, contact local emergency services or go to the nearest emergency department.";
+  }
+  if (/^(?:who is your boyfriend|do you have a boyfriend|who is your girlfriend|do you have a girlfriend)$/.test(normalized)) {
+    return "I don’t have personal relationships. I’m here to help with Vidyashilp University information.";
+  }
+  return undefined;
+}
+
+function getDeterministicScopeAnswer(question: string): string | undefined {
+  const normalized = question.trim().toLowerCase();
+  if (/\bweather\b|\btemperature\b|\bforecast\b/.test(normalized)) {
+    return "I can help with Vidyashilp University academic information, but I do not have live weather data for the campus. Please check a weather service for current conditions.";
+  }
+  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|program|course|subject|curriculum|syllabus|semester|credit|attendance|exam|examination|assessment|marks|grade|faculty|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minor|major|elective|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question);
+  if (!hasVuAcademicContext) {
+    return "I’m the VU Academic Advisor. I can help with Vidyashilp University programmes, courses, curriculum, academic policies, admissions and student support. I can’t answer general-knowledge or unrelated questions.";
   }
   return undefined;
 }
@@ -1014,7 +1048,7 @@ export async function POST(request: Request) {
   const pendingMinorQuestion = getPendingMinorQuestion(history);
   const pendingCourseQuestion = getPendingBtechCourseQuestion(history, combinedQuestion);
   const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || combinedQuestion;
-  const socialAnswer = getSimpleSocialAnswer(effectiveQuestion);
+  const socialAnswer = getSimpleSocialAnswer(effectiveQuestion) || getDeterministicScopeAnswer(effectiveQuestion);
   const attachments:string[]=[];
   const fileNotes:string[]=[];
   for(const file of files){
@@ -1062,11 +1096,15 @@ export async function POST(request: Request) {
     academicSources.length
   );
   const profileText=["Programme: "+(profile.program&&profile.program!=="Not specified"?profile.program:"unknown"),"Semester: "+(profile.semester&&profile.semester!=="Not specified"?profile.semester:"unknown"),"Credits: "+(profile.completedCredits||"unknown"),"CGPA: "+(profile.cgpa||"unknown")].join("\n");
+  // Keep the model prompt comfortably inside Groq's 8,000-token-per-minute allowance.
+  // The full source list remains visible in the UI; only the most relevant excerpts go to the model.
+  const contextAcademicSources = sources.filter((source)=>source.type==="academic").slice(0,2);
+  const contextWebsiteSources = sources.filter((source)=>source.type==="website").slice(0,2);
   const context=safeData(JSON.stringify({
-    officialVUAcademicDocuments:sources.filter((source)=>source.type==="academic").map((source)=>({citation:source.citation,title:source.title,url:source.url,excerpt:source.text.slice(0,4500)})),
-    officialVUWebPages:sources.filter((source)=>source.type==="website").map((source)=>({citation:source.citation,title:source.title,url:source.url,excerpt:source.text.slice(0,4500)})),
-    studentAttachments:attachments,
-    recentConversation:history.map((item)=>({role:item.role,text:item.text.slice(0,2000)})),
+    officialVUAcademicDocuments:contextAcademicSources.map((source)=>({citation:source.citation,title:source.title,url:source.url,excerpt:source.text.slice(0,1000)})),
+    officialVUWebPages:contextWebsiteSources.map((source)=>({citation:source.citation,title:source.title,url:source.url,excerpt:source.text.slice(0,1000)})),
+    studentAttachments:attachments.slice(0,2).map((attachment)=>attachment.slice(0,600)),
+    recentConversation:history.slice(-3).map((item)=>({role:item.role,text:item.text.slice(-350)})),
   }));
   const system="You are the VU Academic Advisor, an academic information assistant for Vidyashilp University, Bengaluru.\n"+
     "Optional student profile (blank means unknown):\n"+profileText+"\n\n"+
@@ -1098,7 +1136,7 @@ export async function POST(request: Request) {
   if(socialAnswer){
     answer=socialAnswer;
     modelUsed="Deterministic conversational response";
-    pipeline.push("Handled a greeting or supportive social message without requiring an external model");
+    pipeline.push("Handled a conversational, wellbeing or out-of-scope message without requiring an external model");
   }else if(minorBatchClarification){
     answer="B.Tech minor options are batch-specific. Which admission year should I check (for example, 2023 or 2024)?";
     modelUsed="Deterministic admission-batch clarification";

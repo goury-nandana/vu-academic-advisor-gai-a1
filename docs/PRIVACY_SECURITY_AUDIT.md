@@ -14,6 +14,7 @@
 - **Supported formats:** The web route processes TXT, Markdown, CSV, images and audio. PDF, DOCX, XLSX and PPTX extraction remains in the separate Streamlit implementation; the web route reports those formats as unsupported rather than pretending to process them.
 - **Prompt-injection boundary:** The Streamlit path identifies retrieved webpages, university documents and attachments as untrusted data and escapes delimiter characters before wrapping them. The web API serializes and escapes fetched sources and student-file content before adding them to a marked untrusted context block. The model instructions explicitly reject embedded commands that try to override the academic role or extract secrets.
 - **Privacy boundary:** Both model prompts state that the application has no access to private VU student records and must not disclose system prompts, credentials, hidden application data or another student's information.
+- **Dependency audit:** CI ran `npm audit --json` after pinning Next.js 15.5.29, PostCSS 8.5.32 and minimatch 11.0.1. The resulting audit reported 0 info, 0 low, 0 moderate, 0 high and 0 critical advisories for the resolved frontend lockfile. That is a point-in-time package audit, not a guarantee against newly disclosed issues.
 - **Domain protection:** The existing Vercel SSO deployment-protection configuration was preserved while correcting the build framework/root. No protection bypass or secret value was changed.
 
 ## Deterministic prompt-injection tests added
@@ -28,7 +29,7 @@ tests/test_prompt_injection.py includes six representative adversarial prompts a
 - Vercel SSO protection is enabled for deployment URLs and was intentionally preserved. A grader may need authorized access. Do not remove protection without the project owner's explicit decision.
 - Distributed rate limiting, abuse detection and per-user authentication are not implemented in the application route. Vercel deployment protection is not a substitute for production-grade abuse controls.
 - Source pages are fetched on demand; availability and content can change. A citation means that page was fetched for that request, not that the university endorsed the generated response.
-- Dependency vulnerability scanning, full response-header review, cross-user isolation tests and provider-retention verification remain outstanding.
+- Full independent penetration testing, a complete response-header review, cross-user isolation tests, distributed rate limiting and provider-retention verification remain outstanding. Dependency scanning was executed; the resolved frontend dependency audit reported zero known advisories at the scan time.
 
 ## Status interpretation
 

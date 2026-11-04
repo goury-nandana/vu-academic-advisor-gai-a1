@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-const MODEL = "llama-3.3-70b-versatile";
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const MODEL = "openai/gpt-oss-120b";
+const VISION_MODEL = "qwen/qwen3.8-27b";
 const MAX_BYTES = 4 * 1024 * 1024;
 
 const PAGES = [
@@ -34,11 +34,11 @@ function parse<T>(value: FormDataEntryValue | null, fallback: T): T {
   if (typeof value !== "string") return fallback;
   try { return JSON.parse(value) as T; } catch { return fallback; }
 }
-async function groq(key: string, messages: Array<{role: string; content: unknown}>, model = MODEL, json = false) {
+async function groq(key: string, messages: Array<{role: string; content: unknown}>, model = MODEL, json = false, temperature = 0.1) {
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, messages, temperature: 0.1, max_tokens: json ? 600 : 900,
+    body: JSON.stringify({ model, messages, temperature, reasoning_effort: model === VISION_MODEL ? "none" : "low", max_tokens: json ? 600 : 900,
       ...(json ? { response_format: { type: "json_object" } } : {}) }),
     signal: AbortSignal.timeout(7500), cache: "no-store",
   });

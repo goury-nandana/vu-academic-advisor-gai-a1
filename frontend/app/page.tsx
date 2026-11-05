@@ -378,7 +378,7 @@ export default function Home() {
     const question = typed || "Please look at my attachment.";
     const normalizedQuestion = question.toLowerCase();
     const identityQuestion = /\b(who am i|what is my name|my name|my user id|who is logged in|which profile)\b/.test(normalizedQuestion);
-    const marksheetQuestion = /\b(marksheet|mark sheet)\b/.test(normalizedQuestion) && /\b(download|get|generate|give|show|need|want|provide)\b/.test(normalizedQuestion);
+    const marksheetQuestion = /\\b(marksheet|mark sheet|transcript)\\b/.test(normalizedQuestion) && /\\b(download|get|generate|give|show|need|want|provide|my)\\b/.test(normalizedQuestion);
     if (identityQuestion && authStudent) {
       setMessages((current) => [...current, { id: idRef.current++, role: "user", text: question }, { id: idRef.current++, role: "bot", text: "You are **" + authStudent.name + "**. Your User ID is **" + authStudent.username + "** (synthetic profile: " + authStudent.synthetic_student_id + ")." }]);
       if (draftRef.current) { draftRef.current.value = ""; draftRef.current.style.height = ""; }
@@ -615,8 +615,6 @@ export default function Home() {
             setCgpa("");
             setSyntheticStudentId("");
           }}>Log out</button>
-          <h2>Academic Features</h2>
-          <p className="profile-help">B.Tech academic support.</p>
           <button className="clear" onClick={clearChat}>Clear Chat</button>
         </div>
       </aside>
@@ -713,15 +711,7 @@ export default function Home() {
             {CHIPS.map((c) => (
               <button key={c} className="chip" onClick={() => send(c)} disabled={busy}>{c}</button>
             ))}
-            {syntheticStudentId && (
-              <button
-                className="chip"
-                onClick={() => send("Can I take COMP302? Check prerequisites and calculate my completed credits.")}
-                disabled={busy}
-              >
-                Run synthetic eligibility demo
-              </button>
-            )}
+
           </div>
           {attachments.length > 0 && (
             <div className="attached">

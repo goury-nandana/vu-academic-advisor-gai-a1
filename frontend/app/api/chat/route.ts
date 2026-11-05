@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import academicKnowledgeJson from "../../../data/vu-academic-knowledge.json";
 import websiteKnowledgeJson from "../../../data/vu-website-knowledge.json";
 import { getSyntheticStudent, runAcademicAdvisorAgentWorkflow, type AgentWorkflowResult } from "../../../academic-agents";
+import { getAuthenticatedStudent } from "../../../lib/demo-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -1467,7 +1468,19 @@ export async function POST(request: Request) {
   let form:FormData;
   try { form=await request.formData(); } catch { return NextResponse.json({error:"Could not read the chat request."},{status:400}); }
   const question=String(form.get("question")??"").trim().slice(0,4000);
-  const rawProfile=parse<Record<string,unknown>>(form.get("profile"),{});
+  const authenticatedStudent=getAuthenticatedStudent(request);
+  if(!authenticatedStudent) return NextResponse.json({error:"Please log in with a synthetic student account before chatting."},{status:401});
+  // Identity and profile context are server-derived from the signed HttpOnly session.
+  const rawProfile:Record<string,unknown>={
+    program:authenticatedStudent.programme,
+    semester:authenticatedStudent.current_semester===null?"Graduated":String(authenticatedStudent.current_semester),
+    completedCredits:"",
+    cgpa:authenticatedStudent.synthetic_cgpa===null?"":String(authenticatedStudent.synthetic_cgpa),
+    syntheticStudentId:authenticatedStudent.id,
+    studentName:authenticatedStudent.name,
+    admissionBatch:authenticatedStudent.admission_batch,
+    academicStatus:authenticatedStudent.academic_status
+  };
   const history=parse<ChatHistoryItem[]>(form.get("history"),[]).filter(
     (item): item is ChatHistoryItem =>
       Boolean(item) && (item.role === "user" || item.role === "assistant") && typeof item.text === "string"

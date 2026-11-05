@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { demoSessionCookieName } from "../../../lib/demo-auth";
+import { demoSessionCookieName } from "../../../../lib/demo-auth";
 
 export const runtime = "nodejs";
 export async function POST() {

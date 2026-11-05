@@ -78,7 +78,7 @@ The deterministic workflow in `frontend/academic-agents.ts` runs six specialist 
 - Student profile fields are optional and are provided by the person using the chat.
 - Questions, profile details and uploaded files are sent to Groq for the requested inference. Do not enter passwords, student IDs or sensitive personal records.
 - The prototype does not save chat history in a VU student database or its own permanent server-side chat database. Clear Chat clears the current browser conversation only; it cannot undo data already processed by the provider.
-- Users can explicitly export an answer's question, answer, model identifier, processing steps and displayed citations as a local JSON evidence file. Redact personal details before sharing it.
+- A downloadable response-evidence JSON export is not currently implemented. If you capture a response for the report, manually redact any synthetic account details before sharing it.
 - Chat and transcription routes reject mismatched browser Origin hosts and check declared request sizes. These are useful safeguards, not user authentication or distributed abuse protection.
 - Retrieved documents and webpages are treated as untrusted evidence, not instructions.
 - Vercel SSO deployment protection is preserved. It is not a substitute for institutional student authentication.

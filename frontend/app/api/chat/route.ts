@@ -221,6 +221,13 @@ async function readImages(key: string, files: File[], question: string): Promise
         userSummary:"I could not identify the contents of this image clearly.",
       };
     });
+    const missingIndices=analyses.flatMap((item,index)=>
+      !item.visualDescription && !item.visibleText && !item.academicInformation ? [index] : []
+    );
+    const retries=await Promise.allSettled(missingIndices.map((index)=>analyzeSingleImage(key,files[index],question)));
+    retries.forEach((result,retryIndex)=>{
+      if(result.status==="fulfilled") analyses[missingIndices[retryIndex]]=result.value;
+    });
   } catch {
     // A multi-image provider response may fail as a whole. Retry each image separately
     // so one corrupt or unsupported image does not hide the remaining successful images.

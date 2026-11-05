@@ -43,9 +43,8 @@ class SyntheticAccountTests(unittest.TestCase):
         self.assertEqual(CREDENTIALS["algorithm"], "PBKDF2-SHA256")
         iterations = CREDENTIALS["iterations"]
         self.assertGreaterEqual(iterations, 120000)
-        for account in self.accounts:
-            ordinal = int(account["profileId"].split("-")[-1])
-            password = f"DemoPass!{ordinal:03d}".encode("utf-8")
+        for index, account in enumerate(self.accounts, start=1):
+            password = f"DemoPass!{index:03d}".encode("utf-8")
             actual = hashlib.pbkdf2_hmac("sha256", password, bytes.fromhex(account["salt"]), iterations)
             with self.subTest(username=account["username"]):
                 self.assertEqual(actual.hex(), account["hash"])

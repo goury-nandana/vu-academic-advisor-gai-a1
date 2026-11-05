@@ -103,6 +103,34 @@ class SyntheticAgentWorkflowTests(unittest.TestCase):
             matching = [row for row in COURSE_DATA["courseRecords"] if str(row.get("batch")) == str(student["admission_batch"]) and row.get("document_type") == "semester_spread" and row.get("is_course_record") is not False and str(row.get("programme", "")).lower() == "b.tech"]
             self.assertTrue(matching, student["id"])
 
+    def test_all_ten_account_credit_totals_and_mtsc211_prerequisite_results(self):
+        records_by_batch = {}
+        for row in COURSE_DATA["courseRecords"]:
+            if row.get("document_type") == "semester_spread" and row.get("is_course_record") is not False and str(row.get("programme", "")).lower() == "b.tech":
+                records_by_batch.setdefault(str(row.get("batch")), {})[row["course_code"]] = row
+        expected = {
+            "SYN-101": (0, "insufficient information"), "SYN-102": (21, "met"),
+            "SYN-103": (42, "met"), "SYN-104": (62, "met"),
+            "SYN-105": (88, "met"), "SYN-106": (84, "met"),
+            "SYN-107": (117, "met"), "SYN-108": (121, "met"),
+            "SYN-109": (141, "met"), "SYN-110": (93, "met"),
+        }
+        for student_id, (expected_credits, expected_status) in expected.items():
+            student = self.students[student_id]
+            rows = records_by_batch[str(student["admission_batch"])]
+            total = sum(int(rows[code]["credits"]) for code in set(student["completed_course_codes"]) if code in rows)
+            course = rows["MTSC211"]
+            prerequisite = str(course.get("prerequisite", "")).strip()
+            if prerequisite in student["completed_course_codes"]:
+                status = "met"
+            elif prerequisite in student["failed_course_codes"]:
+                status = "failed"
+            else:
+                status = "insufficient information"
+            with self.subTest(student=student_id):
+                self.assertEqual(total, expected_credits)
+                self.assertEqual(status, expected_status)
+
     def test_agentic_workflow_trace_and_rag_comparison_are_visible(self):
         self.assertIn('pipeline.push(...syntheticAgentWorkflow.stages)', ROUTE_SOURCE)
         self.assertIn('Orchestrated six deterministic specialist stages', ROUTE_SOURCE)

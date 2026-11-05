@@ -349,21 +349,26 @@ export default function Home() {
       if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
         throw new Error("This browser does not support copying images directly. You can right-click the preview and choose Copy image.");
       }
-      const bitmap = await createImageBitmap(image.file);
-      const canvas = document.createElement("canvas");
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      const context = canvas.getContext("2d");
-      if (!context) {
-        bitmap.close();
-        throw new Error("The image could not be prepared for copying.");
-      }
-      context.drawImage(bitmap, 0, 0);
-      bitmap.close();
-      const png = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("The image could not be converted for copying.")), "image/png");
-      });
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+      // Call clipboard.write during the click gesture; resolve the image conversion as promised data.
+      const pngPromise: Promise<Blob> = image.file.type === "image/png"
+        ? Promise.resolve(image.file)
+        : (async () => {
+            const bitmap = await createImageBitmap(image.file);
+            const canvas = document.createElement("canvas");
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            const context = canvas.getContext("2d");
+            if (!context) {
+              bitmap.close();
+              throw new Error("The image could not be prepared for copying.");
+            }
+            context.drawImage(bitmap, 0, 0);
+            bitmap.close();
+            return new Promise<Blob>((resolve, reject) => {
+              canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("The image could not be converted for copying.")), "image/png");
+            });
+          })();
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": pngPromise })]);
       setCopiedImageKey(imageKey);
       setNotice("");
     } catch (error) {

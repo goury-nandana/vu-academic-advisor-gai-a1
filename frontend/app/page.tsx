@@ -80,6 +80,39 @@ function normalizeAnswerMarkdown(input: string) {
   markdown = repairFlattenedMarkdownTables(markdown);
   return markdown;
 }
+function compactSources(sources: Source[]): Source[] {
+  const groups = new Map<string, { title: string; url: string; pages: Set<number> }>();
+  for (const source of sources) {
+    const url = String(source.url || "");
+    const canonicalUrl = url.replace(/#.*$/, "");
+    const key = canonicalUrl || source.title;
+    const pageMatch = source.title.match(/·\\s*p\\.\\s*(\\d+)/i);
+    const pageNumber = pageMatch ? Number(pageMatch[1]) : undefined;
+    const baseTitle = source.title
+      .replace(/\\s*·\\s*p\\.\\s*\\d+/i, "")
+      .replace(/\\s*·\\s*[^·]+$/, "")
+      .replace(/\\s+—\\s+.+$/, "")
+      .trim();
+    const existing = groups.get(key);
+    if (existing) {
+      if (pageNumber) existing.pages.add(pageNumber);
+    } else {
+      groups.set(key, {
+        title: baseTitle || source.title,
+        url,
+        pages: new Set(pageNumber ? [pageNumber] : []),
+      });
+    }
+  }
+  return Array.from(groups.values()).slice(0, 5).map((group) => {
+    const pages = Array.from(group.pages).sort((a, b) => a - b);
+    return {
+      title: group.title + (pages.length ? " · pp. " + pages.join(", ") : ""),
+      url: group.url,
+    };
+  });
+}
+
 function renderAnswer(text: string) {
   return (
     <div className="answer-markdown">
@@ -410,17 +443,13 @@ export default function Home() {
                     </button>
                     {m.sources && m.sources.length > 0 && (
                       <div className="sources">
-                        {m.sources
-                          .filter((source, index, all) =>
-                            all.findIndex((item) => (item.url || item.title) === (source.url || source.title)) === index
-                          )
-                          .map((s, i) =>
-                            s.url ? (
-                              <a key={s.url} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>
-                            ) : (
-                              <span key={s.title + "-" + i}>{s.title}</span>
-                            ),
-                          )}
+                        {compactSources(m.sources).map((s, i) =>
+                          s.url ? (
+                            <a key={s.url} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>
+                          ) : (
+                            <span key={s.title + "-" + i}>{s.title}</span>
+                          ),
+                        )}
                       </div>
                     )}
                   </div>

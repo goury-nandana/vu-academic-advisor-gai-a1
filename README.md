@@ -43,23 +43,30 @@ The web chat supports:
 
 The web API limit is four files and 4 MB combined. Extraction is in memory. Scanned or encrypted files may not yield readable text; the app should disclose this rather than guess.
 
-## Specialist workflow demonstration for Assignment 2
+## Synthetic B.Tech student accounts (Assignment 2 demo)
 
-The sidebar contains an optional **Demo profile (synthetic only)** selector:
+The app now requires a pre-provisioned synthetic student login. Account data and PBKDF2-SHA256 password hashes are server-side; the browser receives an HttpOnly, SameSite=Strict session cookie. Student identity and academic context used by /api/chat are derived from that signed session, not from a profile ID submitted by the browser.
 
-- SYN-001 — prerequisites met.
-- SYN-002 — failed prerequisite.
-- SYN-003 — incomplete information.
+Demo credentials (fictional accounts only):
 
-These are invented fixtures stored in frontend/data/synthetic-students.json. They are not VU students and do not contain real personal information.
+| Username | Password | Demonstration case |
+|---|---|---|
+| demo-sem1 | DemoPass!001 | Semester 1, high-performing starting profile |
+| demo-sem2 | DemoPass!002 | Semester 2, clean progression |
+| demo-sem3 | DemoPass!003 | Semester 3, backlog |
+| demo-sem4 | DemoPass!004 | Semester 4, missing result data |
+| demo-sem5 | DemoPass!005 | Semester 5, strong progression |
+| demo-sem6 | DemoPass!006 | Semester 6, failed prerequisite |
+| demo-sem7 | DemoPass!007 | Semester 7, repeated course |
+| demo-sem8 | DemoPass!008 | Semester 8, pending final-semester data |
+| demo-grad | DemoPass!009 | Graduated student |
+| demo-complex | DemoPass!010 | Mixed backlog and unknown result |
 
-Select a fixture and ask:
+These are public classroom-demo credentials and must not be reused for real accounts. Self-service signup is not enabled: this deployment has no persistent account database. All ten fictional female student profiles are in frontend/data/synthetic-students.json. Academic course codes, titles, semesters, credits and batch are selected from the existing structured B.Tech dataset; grades, CGPAs and result statuses are synthetic.
 
-**“Can I take COMP302? Check prerequisites and calculate my completed credits.”**
+After login, try “What is my name?”, “What courses did I have in Semester 1?”, “Which courses did I fail?”, or “Can I take COMP302?”. A graduated profile should be treated as completed rather than as a current registration candidate.
 
-The deterministic workflow in frontend/academic-agents.ts runs six specialist stages: synthetic student profile, course retrieval, credit calculation, direct prerequisite check, source verification and limited recommendation. The source-backed COMP302 2025 prerequisite scenarios are tested in tests/test_synthetic_advising.py.
-
-This is a controlled specialist-stage workflow, not six independent autonomous LLM agents. It does not connect to student records, register a course, approve eligibility or replace a Faculty Advisor/Registrar.
+The deterministic workflow in frontend/academic-agents.ts runs six specialist stages: synthetic student profile, course retrieval, credit calculation, direct prerequisite check, source verification and limited recommendation. This is a controlled specialist-stage workflow, not six independent autonomous LLM agents. It does not connect to real student records, register a course, approve eligibility or replace a Faculty Advisor/Registrar.
 
 ## Privacy and security
 

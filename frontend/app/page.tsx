@@ -386,7 +386,7 @@ export default function Home() {
       return;
     }
     if (marksheetQuestion) {
-      setMessages((current) => [...current, { id: idRef.current++, role: "user", text: question }, { id: idRef.current++, role: "bot", text: "Your synthetic marksheet PDF is ready: [Download marksheet](/api/marksheet)." }]);
+      setMessages((current) => [...current, { id: idRef.current++, role: "user", text: question }, { id: idRef.current++, role: "bot", text: "Your synthetic academic record PDF is ready: [Download Synthetic Marksheet PDF](/api/marksheet)." }]);
       if (draftRef.current) { draftRef.current.value = ""; draftRef.current.style.height = ""; }
       setNotice("");
       return;

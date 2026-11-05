@@ -92,12 +92,11 @@ class SyntheticAgentWorkflowTests(unittest.TestCase):
         self.assertIn("syntheticStudent&&requestedSyntheticCourseCode&&asksSyntheticDecision", ROUTE_SOURCE)
         self.assertIn("synthetic demonstration", ROUTE_SOURCE.lower())
 
-    def test_privacy_notice_and_evidence_export_are_visible_in_frontend(self):
+    def test_privacy_notice_is_visible_in_frontend(self):
         self.assertIn("your question, relevant profile/course context, and any file or image you choose to upload may be sent to Groq", PAGE_SOURCE)
         self.assertIn("Never enter:</strong> real student IDs, passwords, Digiicampus credentials, private student records", PAGE_SOURCE)
-        self.assertIn("function exportEvidence", PAGE_SOURCE)
-        self.assertIn("message.sources || []", PAGE_SOURCE)
-        self.assertIn("message.model ||", PAGE_SOURCE)
+        self.assertIn("Privacy & Security", PAGE_SOURCE)
+        self.assertIn("Clear Chat removes the current conversation", PAGE_SOURCE)
 
     def test_chat_and_transcription_apis_check_origin_and_declared_body_size(self):
         transcription = (ROOT / "frontend/app/api/transcribe/route.ts").read_text(encoding="utf-8")

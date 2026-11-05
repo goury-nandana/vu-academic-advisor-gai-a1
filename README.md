@@ -43,31 +43,34 @@ The web chat supports:
 
 The web API limit is four files and 4 MB combined. Extraction is in memory. Scanned or encrypted files may not yield readable text; the app should disclose this rather than guess.
 
-## Synthetic B.Tech student accounts (Assignment 2 demo)
+## Synthetic B.Tech demo accounts and signup (Assignment 2)
 
-The app now requires a pre-provisioned synthetic student login. Account data and PBKDF2-SHA256 password hashes are server-side; the browser receives an HttpOnly, SameSite=Strict session cookie. Student identity and academic context used by /api/chat are derived from that signed session, not from a profile ID submitted by the browser.
+The account screen supports **Log in** and **Sign up** modes. The user ID is the student's name. The shared classroom-demo password is `1234` for all ten pre-provisioned profiles.
 
-Demo credentials (fictional accounts only):
-
-| Username | Password | Demonstration case |
+| User ID / Student name | Password | Scenario |
 |---|---|---|
-| demo-sem1 | DemoPass!001 | Semester 1, high-performing starting profile |
-| demo-sem2 | DemoPass!002 | Semester 2, clean progression |
-| demo-sem3 | DemoPass!003 | Semester 3, backlog |
-| demo-sem4 | DemoPass!004 | Semester 4, missing result data |
-| demo-sem5 | DemoPass!005 | Semester 5, strong progression |
-| demo-sem6 | DemoPass!006 | Semester 6, failed prerequisite |
-| demo-sem7 | DemoPass!007 | Semester 7, repeated course |
-| demo-sem8 | DemoPass!008 | Semester 8, pending final-semester data |
-| demo-grad | DemoPass!009 | Graduated student |
-| demo-complex | DemoPass!010 | Mixed backlog and unknown result |
+| Aarohi Menon | `1234` | Semester 1 — first-semester, in-progress courses |
+| Ananya Rao | `1234` | Semester 2 — clean progression |
+| Meera Nair | `1234` | Semester 3 — backlog in DATA103 |
+| Kavya Iyer | `1234` | Semester 4 — incomplete/unknown result data |
+| Diya Sharma | `1234` | Semester 5 — high CGPA, strong progression |
+| Isha Kulkarni | `1234` | Semester 6 — failed course affecting prerequisite |
+| Nandita Bose | `1234` | Semester 7 — repeated course |
+| Rhea Pillai | `1234` | Semester 8 — pending course and backlog |
+| Saanvi Krishnan | `1234` | Graduated profile — completed record |
+| Tara Desai | `1234` | Semester 6 — multiple backlogs / complex progression |
 
-These are public classroom-demo credentials and must not be reused for real accounts. Self-service signup is not enabled: this deployment has no persistent account database. All ten fictional female student profiles are in frontend/data/synthetic-students.json. Academic course codes, titles, semesters, credits and batch are selected from the existing structured B.Tech dataset; grades, CGPAs and result statuses are synthetic.
+**Signup behavior:** signup lets the evaluator choose one pre-provisioned scenario and activate its session. It does not create a permanent custom account or persist a new student profile; the repository has no durable account database. The demo password is intentionally shared and public; never use these demo accounts for real data.
 
-After login, try “What is my name?”, “What courses did I have in Semester 1?”, “Which courses did I fail?”, or “Can I take COMP302?”. A graduated profile should be treated as completed rather than as a current registration candidate.
+Account hashes remain server-side (PBKDF2-SHA256). Session identity and academic context for `/api/chat` and the marksheet endpoint are derived from the signed HttpOnly, SameSite=Strict session cookie, not a browser-submitted profile ID. Logout clears the cookie.
 
-The deterministic workflow in frontend/academic-agents.ts runs six specialist stages: synthetic student profile, course retrieval, credit calculation, direct prerequisite check, source verification and limited recommendation. This is a controlled specialist-stage workflow, not six independent autonomous LLM agents. It does not connect to real student records, register a course, approve eligibility or replace a Faculty Advisor/Registrar.
+Each authenticated profile can download a **synthetic marksheet PDF** from the Student Account sidebar. It contains semester-wise fictional course rows, synthetic grades/statuses, CGPA and credit totals, and is clearly labelled as a fictional Assignment 2 artifact — not an official university marksheet. The PDF endpoint returns 401 when no authenticated session is present.
 
+All ten profiles are in `frontend/data/synthetic-students.json`. Curriculum course codes, titles, semesters, credits and admission batches are aligned to the repository's structured B.Tech dataset. Student names, grades, CGPAs and academic outcomes are fictional.
+
+After login, try “What is my name?”, “What courses did I have in Semester 1?”, “Which courses did I fail?”, “How many credits have I completed?”, or “Can I take COMP302?”. A graduated profile should be treated as completed rather than as a current registration candidate.
+
+The deterministic workflow in `frontend/academic-agents.ts` runs six specialist stages: synthetic student profile, course retrieval, credit calculation, direct prerequisite check, source verification and limited recommendation. This is a controlled specialist-stage workflow, not six independent autonomous LLM agents. It does not connect to real student records, register a course, approve eligibility or replace a Faculty Advisor/Registrar.
 ## Privacy and security
 
 - The prototype is not connected to Digiicampus or VU student records.

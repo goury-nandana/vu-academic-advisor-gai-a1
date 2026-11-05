@@ -45,3 +45,19 @@ export async function askAdvisor(input: {
     fileNotes: Array.isArray(data.fileNotes) ? data.fileNotes : [],
   };
 }
+
+
+export async function transcribeVoice(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  const response = await fetch("/api/transcribe", {
+    method: "POST",
+    body: form,
+    cache: "no-store",
+  });
+  const data = await response.json().catch(() => ({})) as { text?: string; error?: string };
+  if (!response.ok) {
+    throw new Error(data.error || "Voice transcription returned " + response.status + ".");
+  }
+  return String(data.text || "").trim();
+}

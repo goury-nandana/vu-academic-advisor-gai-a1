@@ -90,6 +90,10 @@ docs/LEGAL_COPYRIGHT_OUTPUT_REVIEW.md evaluates three actual saved advisor outpu
 
 The document is an educational risk review, not legal advice or blanket permission to reproduce university material. It also documents prospective copyright/consent safeguards for image, audio, and video generation; those media types are not among the three actual text outputs reviewed. The frontend does not currently provide a downloadable response-evidence export. VU approval is required before commercial use of university content, student data or third-party materials.
 
+## Agentic academic-advising workflow
+
+The authenticated synthetic-account chat includes a six-stage deterministic specialist workflow for course eligibility questions: student-profile retrieval, batch-matched course retrieval, completed-credit calculation, prerequisite checking, source verification and a limited recommendation. The UI exposes the executed stages and explains how this differs from the ordinary RAG-only answer path. The workflow is validated against all ten synthetic login profiles; it does not make official enrolment decisions. See [the workflow design, account scenarios and RAG-only comparison](docs/AGENT_PIPELINE_AND_MODEL_COMPARISON.md).
+
 ## Model benchmark status
 
 benchmark_runner.py supports a three-model comparison:

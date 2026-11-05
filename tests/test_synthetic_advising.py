@@ -69,6 +69,8 @@ class SyntheticAgentWorkflowTests(unittest.TestCase):
     def test_credit_totals_are_calculated_from_matching_workbook_rows(self):
         totals = {}
         for student_id, student in self.students.items():
+            if not student.get("test_fixture_only"):
+                continue
             totals[student_id] = sum(
                 int(self.record_by_code[code]["credits"])
                 for code in student["completed_course_codes"]

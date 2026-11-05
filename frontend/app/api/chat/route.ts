@@ -403,6 +403,22 @@ function getContextualBtechCourseLtpQuestion(
     ". Please provide only the L-T-P structure for that course, listing the values for each admission batch and citing the corresponding source rows.";
 }
 
+function getPendingBtechMinorBatchCorrection(
+  history: ChatHistoryItem[],
+  currentQuestion: string
+): string | undefined {
+  const clarification = /^(?:for\\s+)?(?:batch\\s*)?20\\d{2}(?:\\s+batch)?(?:\\s+(?:sry|sorry|i meant))?[.!?]*$/i.test(currentQuestion.trim());
+  if (!clarification || history.length < 2) return undefined;
+  const latest = history[history.length - 1];
+  if (latest.role !== "assistant" || !/b\\.?tech minor options recorded by admission batch/i.test(latest.text)) return undefined;
+  const previousUser = [...history.slice(0, -1)].reverse().find((item) => item.role === "user");
+  if (!previousUser || !isBtechMinorQuestion(previousUser.text)) return undefined;
+  const correctedBatch = currentQuestion.match(/\\b20\\d{2}\\b/)?.[0];
+  const originalBatch = getBtechMinorBatches(previousUser.text)[0];
+  if (!correctedBatch || !originalBatch || correctedBatch === originalBatch) return undefined;
+  return previousUser.text.replace(new RegExp("\\\\b" + originalBatch + "\\\\b"), correctedBatch);
+}
+
 function getPendingMinorQuestion(history: ChatHistoryItem[]): string | undefined {
   if (!history.length) return undefined;
   const latest = history[history.length - 1];
@@ -432,6 +448,9 @@ function resolveStudentProfile(
   const resolved = { ...profile };
   const programMissing = !resolved.program || resolved.program === "Not specified";
   const semesterMissing = !resolved.semester || resolved.semester === "Not specified";
+  if (programMissing && isMinorQuestion(currentQuestion) && /\\beconomics\\b/i.test(currentQuestion)) {
+    resolved.program = "B.A. Economics";
+  }
 
   if (programMissing) {
     for (let index = history.length - 1; index >= 0; index -= 1) {
@@ -570,7 +589,7 @@ function getDeterministicScopeAnswer(question: string): string | undefined {
   if (/\bweather\b|\btemperature\b|\bforecast\b/.test(normalized)) {
     return "I can help with Vidyashilp University academic information, but I do not have live weather data for the campus. Please check a weather service for current conditions.";
   }
-  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credit|attendance|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minor|major|elective|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question);
+  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credit|attendance|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question);
   if (!hasVuAcademicContext) {
     return "I’m the VU Academic Advisor. I can help with Vidyashilp University programmes, courses, curriculum, academic policies, admissions and student support. I can’t answer general-knowledge or unrelated questions.";
   }
@@ -990,6 +1009,11 @@ function btechMinorSummaryAnswer(batches: string[], documents: AcademicDocument[
 }
 
 function nonBtechMinorAnswer(programme: string, semester: string, documents: AcademicDocument[]): string {
+  if (/B\\.A\\. Economics/i.test(programme)) {
+    return "**Minor options for B.A. (Hons.) Economics**\\n\\n" +
+      "I cannot verify a 2025 batch-specific minor offering list for B.A. Economics from the academic records currently loaded. The repository contains a B.Tech minor workbook with an Economics sheet, but that is not evidence that those courses are available to B.A. Economics students.\\n\\n" +
+      "Please check the current Digii pre-registration options or confirm with your Faculty Advisor/Programme Chair. The general University pre-registration rules do not identify which minors are actually open to this programme.";
+  }
   const coursePlan = documents.find((document) =>
     /Course_Plans\.txt/i.test(document.source || "") && /Predictive Analytics \(DATA204\)/i.test(document.text || "")
   );
@@ -1474,10 +1498,11 @@ export async function POST(request: Request) {
     }
   }
   const pendingMinorQuestion = getPendingMinorQuestion(history);
+  const pendingBtechMinorCorrection = getPendingBtechMinorBatchCorrection(history, combinedQuestion);
   const pendingCourseQuestion = getPendingBtechCourseQuestion(history, combinedQuestion);
   const contextualCourseLtpQuestion = getContextualBtechCourseLtpQuestion(history, combinedQuestion);
   const contextualFacultyQuestion = getContextualFacultyFollowupQuestion(history, combinedQuestion);
-  const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || contextualCourseLtpQuestion || contextualFacultyQuestion || combinedQuestion;
+  const effectiveQuestion = pendingMinorQuestion || pendingBtechMinorCorrection || pendingCourseQuestion || contextualCourseLtpQuestion || contextualFacultyQuestion || combinedQuestion;
   const genericAttachmentInspection = files.length > 0 && /^(?:(?:please|can you|could you)\s+)?(?:look(?:\s+at)?|check|review|inspect|describe|summari[sz]e|take\s+a\s+look\s+at)\s+(?:(?:my|these|this|the)\s+)?(?:attachments?|files?|documents?)(?:\s+please)?[.!?]*$/i.test(question);
   const failedImageNames=unreadableAttachmentNames.filter((name)=>imageFiles.some((file)=>file.name===name));
   const readableImageCount=imageFiles.length-failedImageNames.length;

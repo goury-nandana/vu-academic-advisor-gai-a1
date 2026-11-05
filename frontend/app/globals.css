@@ -9,7 +9,7 @@ button:disabled{cursor:not-allowed}
 .bg{position:absolute;inset:0;background:url(/campus.jpg) center/cover no-repeat;opacity:.75;z-index:0}
 
 /* ---------- side panel: light frosted glass, collapsible ---------- */
-.sidebar{position:relative;z-index:3;flex:none;width:360px;padding:22px;display:flex;flex-direction:column;gap:12px;
+.sidebar{position:relative;z-index:3;flex:none;width:300px;padding:18px;display:flex;flex-direction:column;gap:12px;
   background:rgba(255,255,255,.4);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);overflow-y:auto;
   transition:width .25s ease,padding .25s ease}
 .sidebar.closed{width:76px;padding:22px 20px;overflow:hidden}
@@ -47,12 +47,12 @@ button:disabled{cursor:not-allowed}
 .pill-title{font-weight:700;font-size:16px;letter-spacing:.1em;color:var(--blue);white-space:nowrap}
 
 .chat{flex:1;min-height:0;overflow-y:auto;padding:18px 16px}
-.chat-inner{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.chat-inner{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
 .row{display:flex;gap:10px;align-items:flex-end}
 .row.user{justify-content:flex-end}
-.bubble{padding:14px 20px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.bubble{padding:12px 16px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
 .bubble.user{max-width:70%;background:var(--blue);color:#fff;font-weight:500;border-radius:24px 24px 6px 24px}
-.bubble.bot{max-width:78%;background:#fff;border-radius:24px 24px 24px 6px;box-shadow:0 2px 14px rgba(31,63,158,.14)}
+.bubble.bot{max-width:82%;background:#fff;border-radius:20px 20px 20px 6px;box-shadow:0 2px 10px rgba(31,63,158,.10)}
 .files{margin-top:6px;font-size:12px;opacity:.85}
 .user-image-previews{display:flex;flex-wrap:wrap;gap:9px;margin-top:10px}
 .user-image-preview{width:min(100%,340px);min-width:0;margin:0;padding:8px;border-radius:12px;background:rgba(255,255,255,.13)}
@@ -188,11 +188,6 @@ button:disabled{cursor:not-allowed}
 
 
 /* Privacy and transparent workflow/evidence metadata. */
-.privacy-disclaimer{margin:8px 0;padding:9px 12px;border:1px solid #d9e0ef;border-radius:12px;background:rgba(255,255,255,.86);color:#34394b;font-size:11px;line-height:1.5}
-.answer-meta{display:flex;flex-direction:column;gap:4px;margin-top:8px;color:#60677a;font-size:11px;line-height:1.4}
-.answer-meta details{margin-top:2px}
-.answer-meta summary{width:max-content;color:var(--blue);font-weight:650;cursor:pointer}
-.answer-meta ol{margin:5px 0 0 18px;padding:0;display:grid;gap:3px}
 
 /* Authenticated synthetic demo accounts */
 .account-meta{display:flex;flex-direction:column;gap:7px;padding:13px 14px;border:1px solid #d5def2;border-radius:14px;background:rgba(255,255,255,.92);color:#26345d;font-size:12px;line-height:1.45;overflow-wrap:anywhere}

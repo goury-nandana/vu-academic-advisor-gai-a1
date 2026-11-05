@@ -986,18 +986,18 @@ function syntheticAgentWorkflowAnswer(
     : result.eligibility==="prerequisite_failed"
       ? "**Direct prerequisite check: not met**"
       : "**Direct prerequisite check: insufficient information**";
-  let answer="**Synthetic student demonstration — "+result.student.id+"**\\n\\n";
-  answer+="- **Profile:** "+result.student.programme+", admission batch "+result.student.admission_batch+", semester "+result.student.current_semester+".\\n";
-  answer+="- **Course:** "+result.course.course_code+" — "+result.course.course_title+" ("+result.course.credits+" credits).\\n";
-  answer+="- **Required prerequisites:** "+(result.prerequisites.join(", ")||"None listed")+".\\n";
-  answer+="- **Profile check:** "+status+".\\n";
-  if(result.failedPrerequisites.length) answer+="- **Failed prerequisites recorded:** "+result.failedPrerequisites.join(", ")+".\\n";
-  if(result.unverifiedPrerequisites.length) answer+="- **Prerequisites not established by this profile:** "+result.unverifiedPrerequisites.join(", ")+".\\n";
+  let answer="**Synthetic student demonstration — "+result.student.id+"**\n\n";
+  answer+="- **Profile:** "+result.student.programme+", admission batch "+result.student.admission_batch+", semester "+result.student.current_semester+".\n";
+  answer+="- **Course:** "+result.course.course_code+" — "+result.course.course_title+" ("+result.course.credits+" credits).\n";
+  answer+="- **Required prerequisites:** "+(result.prerequisites.join(", ")||"None listed")+".\n";
+  answer+="- **Profile check:** "+status+".\n";
+  if(result.failedPrerequisites.length) answer+="- **Failed prerequisites recorded:** "+result.failedPrerequisites.join(", ")+".\n";
+  if(result.unverifiedPrerequisites.length) answer+="- **Prerequisites not established by this profile:** "+result.unverifiedPrerequisites.join(", ")+".\n";
   answer+="- **Calculated completed-course credits:** "+result.calculatedCredits+" credits across "+result.creditCourseCodes.length+" completed course rows with matching 2025 workbook records.";
   if(result.missingCreditRecords.length) answer+=" The following profile codes had no matching credit row and were excluded: "+result.missingCreditRecords.join(", ")+".";
-  answer+="\\n\\n**Recommendation:** "+result.recommendation;
-  answer+="\\n\\n**Important:** This uses invented demonstration data, not an actual VU student record. It checks only the listed direct prerequisites; it does not establish registration, timetable availability, minimum-credit rules or Registrar approval.";
-  if(citations) answer+="\\n\\n**Evidence:** "+citations;
+  answer+="\n\n**Recommendation:** "+result.recommendation;
+  answer+="\n\n**Important:** This uses invented demonstration data, not an actual VU student record. It checks only the listed direct prerequisites; it does not establish registration, timetable availability, minimum-credit rules or Registrar approval.";
+  if(citations) answer+="\n\n**Evidence:** "+citations;
   return answer;
 }
 

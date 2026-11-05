@@ -172,7 +172,7 @@ function renderVisualization(visual?: Visualization) {
 }
 
 const GREETING =
-  "Hi! I’m Vikki Talk by VU, your academic guide for B.Tech. Ask me about courses, prerequisites, credits, backlogs, eligibility or academic progression.";
+  "Hi! I’m **Vikki Talk** 👋\n\nYour academic assistant for B.Tech at Vidyashilp University. I can help you with courses, prerequisites, credits, backlogs, eligibility, and academic progression.";
 const CHIPS = ["What courses did I have in Semester 1?", "How many credits have I completed?", "Can I take COMP302?"];
 const MAX_MB = 4;
 const MAX_FILES = 4;

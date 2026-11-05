@@ -436,7 +436,11 @@ export default function Home() {
       return;
     }
     if (marksheetQuestion) {
-      setMessages((current) => [...current, { id: idRef.current++, role: "user", text: question }, { id: idRef.current++, role: "bot", text: "Your synthetic academic record PDF is ready: [Download Synthetic Marksheet PDF](/api/marksheet)." }]);
+      const semesterMatch = normalizedQuestion.match(/\b(?:semester|sem)\s*(\d{1,2})\b|\b(\d{1,2})(?:st|nd|rd|th)\s+semester\b/);
+      const semester = semesterMatch ? Number(semesterMatch[1] || semesterMatch[2]) : undefined;
+      const downloadUrl = semester && semester >= 1 && semester <= 10 ? "/api/marksheet?semester=" + semester : "/api/marksheet";
+      const label = semester ? "Download Semester " + semester + " Synthetic Marksheet PDF" : "Download Full Synthetic Marksheet PDF";
+      setMessages((current) => [...current, { id: idRef.current++, role: "user", text: question }, { id: idRef.current++, role: "bot", text: "Your synthetic academic record PDF is ready: [" + label + "](" + downloadUrl + ")." }]);
       if (draftRef.current) { draftRef.current.value = ""; draftRef.current.style.height = ""; }
       setNotice("");
       return;

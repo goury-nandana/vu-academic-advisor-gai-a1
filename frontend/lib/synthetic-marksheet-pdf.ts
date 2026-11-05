@@ -23,8 +23,10 @@ function makePage(lines: Array<{ text: string; size?: number; bold?: boolean }>)
   }
   return stream;
 }
-export function createSyntheticMarksheetPdf(student: SyntheticStudentProfile): Buffer {
-  const records = [...(student.academic_records || [])].sort((a, b) => a.semester - b.semester || a.course_code.localeCompare(b.course_code));
+export function createSyntheticMarksheetPdf(student: SyntheticStudentProfile, selectedSemester?: number): Buffer {
+  const records = [...(student.academic_records || [])]
+    .filter((record) => selectedSemester === undefined || Number(record.semester) === selectedSemester)
+    .sort((a, b) => a.semester - b.semester || a.course_code.localeCompare(b.course_code));
   const passedCredits = records.filter((record) => record.status === "Passed" || record.status === "Passed on repeat").reduce((sum, record) => sum + Number(record.credits || 0), 0);
   const attemptedCredits = records.reduce((sum, record) => sum + Number(record.credits || 0), 0);
   const generatedDate = new Date().toISOString().slice(0, 10);
@@ -54,7 +56,7 @@ export function createSyntheticMarksheetPdf(student: SyntheticStudentProfile): B
     { text: "Synthetic ID: " + student.synthetic_student_id + "    Programme: " + student.programme },
     { text: "Admission batch: " + student.admission_batch + "    Current semester: " + (student.current_semester === null ? "Graduated" : student.current_semester) },
     { text: "Academic status: " + (student.current_semester === null || /graduat/i.test(student.academic_status || "") ? "GRADUATED" : (student.academic_status || "Not provided")) + "    Synthetic CGPA: " + (student.synthetic_cgpa ?? "Not provided") },
-    { text: "Cumulative completed credits (passed course records): " + passedCredits + "    Credits across listed records: " + attemptedCredits },
+    { text: (selectedSemester === undefined ? "Cumulative completed credits" : "Semester " + selectedSemester + " completed credits") + " (passed course records): " + passedCredits + "    Credits across listed records: " + attemptedCredits },
     { text: "Semester credit totals: " + semesterTotalsLabel, size: 8 },
     { text: "Numeric marks not provided; synthetic grade values are displayed from the profile.", size: 8 },
     { text: "All grades, CGPA and outcomes shown here are fictional test data." },

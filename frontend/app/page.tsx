@@ -679,6 +679,7 @@ export default function Home() {
                   </span>
                   <div className="bubble bot">
                     <div className="answer-text">{renderAnswer(m.text)}</div>
+                    {m.pipeline?.some((step) => step.includes("Orchestrated six deterministic specialist stages")) && <details className="agent-workflow"><summary>Agent workflow — 6 specialist stages</summary><ol>{m.pipeline.filter((step) => /^(?:Student-profile|Course-retrieval|Credit-calculation|Eligibility|Verification|Recommendation) agent:/.test(step)).map((step) => <li key={step}>{step}</li>)}</ol><p>Deterministic workflow using this signed-in synthetic profile and batch-matched course records. It does not make official enrolment decisions.</p></details>}
                     {renderVisualization(m.visualization)}
                     {m.followUps && m.followUps.length > 0 && <div className="follow-ups">{m.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => send(followUp)} disabled={busy}>{followUp}</button>)}</div>}
 

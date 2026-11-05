@@ -227,7 +227,7 @@ export default function Home() {
   useEffect(() => {
     const urls = new Map<File, string>();
     attachments.forEach((file) => {
-      if (file.type.startsWith("image/") || /\\.(?:png|jpe?g|webp|bmp|tiff?)$/i.test(file.name)) urls.set(file, URL.createObjectURL(file));
+      if (file.type.startsWith("image/") || /\.(?:png|jpe?g|webp|bmp|tiff?)$/i.test(file.name)) urls.set(file, URL.createObjectURL(file));
     });
     setPendingImageUrls(urls);
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
@@ -639,7 +639,7 @@ export default function Home() {
             <button type="button" className="tool" onClick={() => fileInput.current?.click()} aria-label="Attach a file">
               <FileText size={22} />
             </button>
-            <button type="submit" className="send" aria-label="Send" disabled={busy || recording}>
+            <button type="submit" className="send" aria-label="Send" disabled={busy || recording || transcribing}>
               <ArrowUp size={22} />
             </button>
             <input ref={fileInput} type="file" hidden multiple

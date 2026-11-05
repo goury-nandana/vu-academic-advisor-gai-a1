@@ -10,7 +10,7 @@
 - The student signs in to one of ten pre-provisioned synthetic B.Tech demo accounts. The profile ID and academic context used by the chat API are derived server-side from the signed HttpOnly session cookie; browser-submitted profile identity is ignored. The prototype is not connected to VU's Digiicampus or student-information database.
 - Questions, uploaded content and optional profile fields may be transmitted to Groq for the requested inference. The prototype does not write chat history or uploaded content to a VU student database or its own permanent chat database.
 - The browser-side Clear Chat action clears the current conversation from the page state; it cannot recall a request already sent to the provider.
-- A user can explicitly export one answer's question, text, model identifier, processing steps and displayed citations to a local JSON file. Export is user-triggered and is not an automatic server archive.
+- No answer-evidence JSON export interface is present in the current Next.js frontend; do not describe this as an implemented user feature. The chat and displayed citations remain transient page-state content.
 
 ## Controls implemented in the repository
 

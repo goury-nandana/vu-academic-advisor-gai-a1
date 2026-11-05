@@ -46,6 +46,21 @@ async function transcribe(file: File, key: string): Promise<string> {
 }
 
 export async function POST(request: Request) {
+  const origin = request.headers.get("origin");
+  const requestHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  if (origin) {
+    try {
+      if (!requestHost || new URL(origin).host.toLowerCase() !== requestHost.toLowerCase()) {
+        return NextResponse.json({ error: "Cross-origin transcription requests are not accepted." }, { status: 403 });
+      }
+    } catch {
+      return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+    }
+  }
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BYTES + 512 * 1024) {
+    return NextResponse.json({ error: "The audio request is larger than the allowed upload limit." }, { status: 413 });
+  }
   const key = process.env.GROQ_API_KEY?.trim() || "";
   if (!key) {
     return NextResponse.json({ error: "Speech transcription is not configured on the server." }, { status: 503 });

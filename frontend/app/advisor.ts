@@ -1,6 +1,6 @@
 // All browser-to-backend traffic is handled here. The default endpoint is same-origin.
-export type Source = { title: string; url: string };
-export type Profile = { program: string; semester: string; completedCredits: string; cgpa: string };
+export type Source = { title: string; url: string; citation?: number; type?: string };
+export type Profile = { program: string; semester: string; completedCredits: string; cgpa: string; syntheticStudentId?: string };
 export type HistoryItem = { role: "user" | "assistant"; text: string };
 export type Visualization = {
   kind: "bars" | "steps" | "cards";

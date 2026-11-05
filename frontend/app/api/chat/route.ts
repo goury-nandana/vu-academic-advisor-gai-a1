@@ -1443,7 +1443,7 @@ export async function POST(request: Request) {
     ? imageBatch.answer+(failedImageNames.length?"\n\nI could not reliably read "+failedImageNames.join(", ")+". The answer uses only the images that could be analysed.":"")
     : undefined;
   // Uploaded files and transcribed speech must be processed before the general out-of-scope guard.
-  const socialAnswer = files.length ? undefined : (getSimpleSocialAnswer(effectiveQuestion, history) || getDeterministicScopeAnswer(effectiveQuestion));
+  const socialAnswer = (files.length || previousAttachmentContext.length > 0) ? undefined : (getSimpleSocialAnswer(effectiveQuestion, history) || getDeterministicScopeAnswer(effectiveQuestion));
 
   const pipeline=["Validated question, optional profile and attachment size","Processed supported text/image/audio attachments without storing chat history"];
   const minorIntent=isMinorQuestion(effectiveQuestion);

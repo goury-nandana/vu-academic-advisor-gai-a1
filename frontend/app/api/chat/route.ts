@@ -396,7 +396,7 @@ function getDeterministicScopeAnswer(question: string): string | undefined {
   if (/\bweather\b|\btemperature\b|\bforecast\b/.test(normalized)) {
     return "I can help with Vidyashilp University academic information, but I do not have live weather data for the campus. Please check a weather service for current conditions.";
   }
-  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|program|course|subject|curriculum|syllabus|semester|credit|attendance|exam|examination|assessment|marks|grade|faculty|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minor|major|elective|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question);
+  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|course|subject|curriculum|syllabus|semester|credit|attendance|exam|examination|assessment|marks|grade|faculty|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minor|major|elective|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question);
   if (!hasVuAcademicContext) {
     return "I’m the VU Academic Advisor. I can help with Vidyashilp University programmes, courses, curriculum, academic policies, admissions and student support. I can’t answer general-knowledge or unrelated questions.";
   }
@@ -1241,7 +1241,7 @@ export async function POST(request: Request) {
   const structuredCourseSearch=findStructuredCourseSearch(effectiveQuestion,profile.program);
   const programmeDirectoryIntent = isProgrammeDirectoryQuestion(effectiveQuestion);
   const academicMatches=programmeDirectoryIntent ? [] : retrieveAcademic(effectiveQuestion,profile.program,structuredCourseSearch);
-  const suppressWebsiteForAttendance = /\\b(attendance|attendance policy|absence|condonation|shortage|medical leave)\\b/i.test(effectiveQuestion);
+  const suppressWebsiteForAttendance = /\b(attendance|attendance policy|absence|condonation|shortage|medical leave)\b/i.test(effectiveQuestion);
   const localWebsiteMatches = socialAnswer || suppressWebsiteForAttendance
     ? []
     : programmeDirectoryIntent ? retrieveProgrammeDirectoryChunks() : retrieveWebsiteKnowledge(effectiveQuestion);

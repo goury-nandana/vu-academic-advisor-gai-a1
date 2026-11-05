@@ -190,6 +190,7 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [presence, setPresence] = useState<Presence>("off");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [pendingImageUrls, setPendingImageUrls] = useState<Map<File, string>>(new Map());
   const [notice, setNotice] = useState("");
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
@@ -223,6 +224,14 @@ export default function Home() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, busy]);
+  useEffect(() => {
+    const urls = new Map<File, string>();
+    attachments.forEach((file) => {
+      if (file.type.startsWith("image/") || /\\.(?:png|jpe?g|webp|bmp|tiff?)$/i.test(file.name)) urls.set(file, URL.createObjectURL(file));
+    });
+    setPendingImageUrls(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [attachments]);
 
   function startTyping() {
     if (idleTimer.current) clearTimeout(idleTimer.current);
@@ -234,22 +243,31 @@ export default function Home() {
     idleTimer.current = setTimeout(() => setPresence("off"), IDLE_MS);
   }
 
-  function addFiles(list: FileList | null) {
-    if (!list) return;
+  function addFileItems(incoming: File[]) {
     const ok: File[] = [];
-    Array.from(list).forEach((f) => {
-      if (f.size > MAX_MB * 1024 * 1024) setNotice(`${f.name} is larger than ${MAX_MB} MB and was not attached.`);
-      else ok.push(f);
-    });
-    if (ok.length) setAttachments((a) => {
-      const combined = [...a, ...ok];
-      const total = combined.reduce((sum, file) => sum + file.size, 0);
-      if (total > MAX_MB * 1024 * 1024) {
-        setNotice(`Attachments exceed the ${MAX_MB} MB total web limit. Remove a file and try again.`);
-        return a;
+    incoming.forEach((file) => {
+      if (file.size > MAX_MB * 1024 * 1024) {
+        setNotice(file.name + " is larger than 4 MB and was not attached.");
+      } else {
+        ok.push(file);
       }
-      return combined;
     });
+    if (ok.length) {
+      setAttachments((current) => {
+        const combined = [...current, ...ok];
+        const total = combined.reduce((sum, file) => sum + file.size, 0);
+        if (total > MAX_MB * 1024 * 1024) {
+          setNotice("Attachments exceed the 4 MB total limit. Remove a file and try again.");
+          return current;
+        }
+        setNotice("");
+        return combined;
+      });
+    }
+  }
+
+  function addFiles(list: FileList | null) {
+    if (list) addFileItems(Array.from(list));
   }
 
   async function toggleMic() {
@@ -578,22 +596,35 @@ export default function Home() {
           </div>
           {attachments.length > 0 && (
             <div className="attached">
-              {attachments.map((f, i) => (
-                <span key={i} className="file-chip">
-                  {f.name}
-                  <button aria-label={`Remove ${f.name}`} onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))}>
-                    <X size={13} />
-                  </button>
-                </span>
-              ))}
+              {attachments.map((file, index) => {
+                const preview = pendingImageUrls.get(file);
+                return (
+                  <div key={file.name + "-" + file.lastModified + "-" + index} className="attachment-draft">
+                    {preview && <img src={preview} alt={"Preview of " + file.name} />}
+                    <span className="file-chip">
+                      {file.name}
+                      <button type="button" aria-label={"Remove " + file.name} onClick={() => setAttachments((current) => current.filter((item) => item !== file))}>
+                        <X size={13} />
+                      </button>
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
           {notice && <div className="notice">{notice}</div>}
-          <form className="composer" onSubmit={(e) => { e.preventDefault(); send(); }}>
+          <form className="composer" onSubmit={(e) => { e.preventDefault(); send(); }} onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) e.preventDefault(); }} onDrop={(e) => { if (e.dataTransfer.files.length) { e.preventDefault(); addFiles(e.dataTransfer.files); } }}>
             <textarea
               ref={draftRef}
               rows={1}
               placeholder={recording ? "Recording… tap the square to stop" : transcribing ? "Transcribing audio…" : "Ask an academic question…"}
+              onPaste={(e) => {
+                const pastedImages = Array.from(e.clipboardData.items)
+                  .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+                  .map((item) => item.getAsFile())
+                  .filter((file): file is File => file !== null);
+                if (pastedImages.length) { e.preventDefault(); addFileItems(pastedImages); }
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
               }}

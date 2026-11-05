@@ -93,8 +93,8 @@ class SyntheticAgentWorkflowTests(unittest.TestCase):
         self.assertIn("synthetic demonstration", ROUTE_SOURCE.lower())
 
     def test_privacy_notice_and_evidence_export_are_visible_in_frontend(self):
-        self.assertIn("Questions, optional profile details and uploaded files are sent to Groq", PAGE_SOURCE)
-        self.assertIn("Do not enter passwords, student IDs or sensitive personal records", PAGE_SOURCE)
+        self.assertIn("your question, relevant profile/course context, and any file or image you choose to upload may be sent to Groq", PAGE_SOURCE)
+        self.assertIn("Never enter:</strong> real student IDs, passwords, Digiicampus credentials, private student records", PAGE_SOURCE)
         self.assertIn("function exportEvidence", PAGE_SOURCE)
         self.assertIn("message.sources || []", PAGE_SOURCE)
         self.assertIn("message.model ||", PAGE_SOURCE)

@@ -979,7 +979,7 @@ function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
   const contactIntent = /\b(?:contact|phone|email|address|reception)\b/i.test(query);
   const admissionsIntent = /\b(?:apply|application|admission|admissions)\b/i.test(query);
   const relevantChunks = WEBSITE_KNOWLEDGE.chunks.filter((chunk) => {
-    if (lawFacultyIntent) return chunk.page_id === "faculty" || chunk.page_id === "school_law";
+    if (lawFacultyIntent) return chunk.page_id === "faculty";
     if (contactIntent) return chunk.page_id === "contact";
     if (admissionsIntent && !/scholarship|financial aid|fee waiver/i.test(query)) return chunk.page_id === "admissions";
     return true;
@@ -1001,7 +1001,6 @@ function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
     if (/\b(?:data science|b\.?tech)\b/i.test(query) && chunk.page_id === "programme_btech_ds") score += 5;
     if (/\b(?:artificial intelligence|ai.?ml|machine learning)\b/i.test(query) && chunk.page_id === "programme_btech_aiml") score += 6;
     if (lawFacultyIntent && chunk.page_id === "faculty") score += 20;
-    if (lawFacultyIntent && chunk.page_id === "school_law") score += 5;
     return { chunk, score };
   }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score);
 
@@ -1078,7 +1077,7 @@ async function retrieve(question: string) {
   if (/contact|office|registrar|counsell?or/i.test(q)) preferred.push("VU Contact");
   if (/campus|hostel|facilit/i.test(q)) preferred.push("VU Campus");
   if (/\b(?:faculty|faculties|professors?|dean|teaching staff)\b/i.test(q) && /\b(?:law|legal|llb)\b/i.test(q)) {
-    preferred.push("VU Faculty", "VU School of Law");
+    preferred.push("VU Faculty");
   } else if (/\b(?:faculty|faculties|professors?|dean|teaching staff)\b/i.test(q)) {
     preferred.push("VU Faculty");
   }

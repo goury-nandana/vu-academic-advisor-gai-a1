@@ -25,8 +25,15 @@ function makePage(lines: Array<{ text: string; size?: number; bold?: boolean }>)
 }
 export function createSyntheticMarksheetPdf(student: SyntheticStudentProfile): Buffer {
   const records = [...(student.academic_records || [])].sort((a, b) => a.semester - b.semester || a.course_code.localeCompare(b.course_code));
-  const passedCredits = records.filter((record) => record.status === "Passed").reduce((sum, record) => sum + Number(record.credits || 0), 0);
+  const passedCredits = records.filter((record) => record.status === "Passed" || record.status === "Passed on repeat").reduce((sum, record) => sum + Number(record.credits || 0), 0);
   const attemptedCredits = records.reduce((sum, record) => sum + Number(record.credits || 0), 0);
+  const generatedDate = new Date().toISOString().slice(0, 10);
+  const semesterCreditTotals = records.reduce((totals, record) => {
+    const semester = String(record.semester);
+    totals[semester] = (totals[semester] || 0) + Number(record.credits || 0);
+    return totals;
+  }, {} as Record<string, number>);
+  const semesterTotalsLabel = Object.keys(semesterCreditTotals).sort((a, b) => Number(a) - Number(b)).map((semester) => semester + ": " + semesterCreditTotals[semester] + " credits").join(" | ");
   const tableHeader = "SEM  COURSE CODE  COURSE TITLE                              CR  GRADE      RESULT";
   const tableRows = records.map((record) => {
     const sem = String(record.semester).padStart(2, " ");
@@ -39,25 +46,29 @@ export function createSyntheticMarksheetPdf(student: SyntheticStudentProfile): B
   });
   const pages: Array<Array<{ text: string; size?: number; bold?: boolean }>> = [];
   const intro: Array<{ text: string; size?: number; bold?: boolean }> = [
-    { text: "VIDYASHILP UNIVERSITY - SYNTHETIC DEMO MARKSHEET", size: 15, bold: true },
-    { text: "Assignment 2 | Fictional student record - NOT an official marksheet", size: 9, bold: true },
+    { text: "VIDYASHILP UNIVERSITY", size: 15, bold: true },
+    { text: "SYNTHETIC DEMONSTRATION RECORD - NOT AN OFFICIAL MARKSHEET", size: 9, bold: true },
+    { text: "Assignment 2 | Fictional student record", size: 9, bold: true },
+    { text: "Generated date: " + generatedDate, size: 9 },
     { text: "User ID / Student name: " + student.name, size: 10, bold: true },
     { text: "Synthetic ID: " + student.synthetic_student_id + "    Programme: " + student.programme },
     { text: "Admission batch: " + student.admission_batch + "    Current semester: " + (student.current_semester === null ? "Graduated" : student.current_semester) },
     { text: "Academic status: " + student.academic_status + "    Synthetic CGPA: " + (student.synthetic_cgpa ?? "Not provided") },
-    { text: "Credits marked Passed: " + passedCredits + "    Credits across listed records: " + attemptedCredits },
+    { text: "Cumulative completed credits (passed course records): " + passedCredits + "    Credits across listed records: " + attemptedCredits },
+    { text: "Semester credit totals: " + semesterTotalsLabel, size: 8 },
+    { text: "Numeric marks not provided; synthetic grade values are displayed from the profile.", size: 8 },
     { text: "All grades, CGPA and outcomes shown here are fictional test data." },
     { text: tableHeader, size: 8, bold: true },
   ];
-  const firstPageRows = 42;
+  const firstPageRows = 36;
   pages.push([...intro, ...tableRows.slice(0, firstPageRows).map((text) => ({ text, size: 7 }))]);
-  for (let start = firstPageRows; start < tableRows.length; start += 48) {
+  for (let start = firstPageRows; start < tableRows.length; start += 42) {
     pages.push([
       { text: "SYNTHETIC DEMO MARKSHEET - CONTINUED", size: 13, bold: true },
       { text: "Student: " + student.name + "    Synthetic ID: " + student.synthetic_student_id, size: 9 },
       { text: "Fictional data only; not an official university record.", size: 9, bold: true },
       { text: tableHeader, size: 8, bold: true },
-      ...tableRows.slice(start, start + 48).map((text) => ({ text, size: 7 })),
+      ...tableRows.slice(start, start + 42).map((text) => ({ text, size: 7 })),
     ]);
   }
   if (records.length === 0) {

@@ -798,17 +798,17 @@ function structuredCourseAnswer(search: StructuredCourseSearch): string {
           " | " + tutorial +
           " | " + practical +
           " | " + ltp(record) +
-          " |" + sourceCitations(record) + " |\\n";
+          " |" + sourceCitations(record) + " |\n";
       }
       const structures = [...new Set(records.map(ltp))];
       if (structures.length === 1 && structures[0] !== "Not specified") {
-        answer += "\\nThe available records show **L-T-P: " + structures[0] + "** across all listed admission batches.";
+        answer += "\nThe available records show **L-T-P: " + structures[0] + "** across all listed admission batches.";
       } else if (structures.length > 1) {
-        answer += "\\nThe L-T-P structure differs between the listed records; use the row for the relevant admission batch.";
+        answer += "\nThe L-T-P structure differs between the listed records; use the row for the relevant admission batch.";
       }
       return answer;
     }
-    let answer = "**" + courseName + " — course details**\\n\\n";
+    let answer = "**" + courseName + " — course details**\n\n";
     if (codes.length === 1) {
       answer += "The course code in the available B.Tech semester-spread records is **" + codes[0] + "**.\n\n";
     } else {

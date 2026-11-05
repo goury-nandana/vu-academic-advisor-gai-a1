@@ -18,7 +18,7 @@ export type SyntheticStudent = {
   id: string;
   programme: string;
   admission_batch: string;
-  current_semester: number;
+  current_semester: number | null;
   completed_course_codes: string[];
   failed_course_codes: string[];
   declared_minor: string;
@@ -67,7 +67,7 @@ export function courseRetrievalAgent(
     String(record.batch || "") === student.admission_batch &&
     record.document_type === "semester_spread" &&
     record.is_course_record !== false &&
-    String(record.programme || "").toLowerCase() === student.programme.toLowerCase()
+    matchesProgramme(record.programme, student.programme)
   );
 }
 

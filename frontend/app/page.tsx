@@ -435,12 +435,16 @@ export default function Home() {
                     {m.fileNotes && m.fileNotes.length > 0 && <div className="file-notes">{m.fileNotes.map((note, i) => <p key={i}>{note}</p>)}</div>}
                     {m.followUps && m.followUps.length > 0 && <div className="follow-ups">{m.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => send(followUp)} disabled={busy}>{followUp}</button>)}</div>}
 
-                    <button type="button" className="speak" onClick={() => void copyAnswer(m.id, m.text)} aria-label={copiedId === m.id ? "Response copied" : "Copy response"} title={copiedId === m.id ? "Copied" : "Copy response"}>
-                      {copiedId === m.id ? <Check size={16} aria-hidden="true" focusable="false" /> : <Copy size={16} aria-hidden="true" focusable="false" />}
-                    </button>
-                    <button type="button" className="speak" onClick={() => toggleSpeech(m.id, m.text)} aria-label={speakingId === m.id ? "Stop speaking" : "Read answer aloud"} title={speakingId === m.id ? "Stop speaking" : "Read answer aloud"}>
-                      {speakingId === m.id ? <VolumeX size={16} aria-hidden="true" focusable="false" /> : <Volume2 size={16} aria-hidden="true" focusable="false" />}
-                    </button>
+                    <div className="answer-tools" role="group" aria-label="Answer actions">
+                      <button type="button" className="answer-tool" onClick={() => void copyAnswer(m.id, m.text)} aria-label={copiedId === m.id ? "Response copied" : "Copy response"} title={copiedId === m.id ? "Copied" : "Copy response"}>
+                        {copiedId === m.id ? <Check size={16} aria-hidden="true" focusable="false" /> : <Copy size={16} aria-hidden="true" focusable="false" />}
+                        <span>{copiedId === m.id ? "Copied" : "Copy"}</span>
+                      </button>
+                      <button type="button" className="answer-tool" onClick={() => toggleSpeech(m.id, m.text)} aria-label={speakingId === m.id ? "Stop speaking" : "Read answer aloud"} title={speakingId === m.id ? "Stop speaking" : "Read answer aloud"}>
+                        {speakingId === m.id ? <VolumeX size={16} aria-hidden="true" focusable="false" /> : <Volume2 size={16} aria-hidden="true" focusable="false" />}
+                        <span>{speakingId === m.id ? "Stop" : "Read aloud"}</span>
+                      </button>
+                    </div>
                     {m.sources && m.sources.length > 0 && (
                       <div className="sources">
                         {compactSources(m.sources).map((s, i) =>

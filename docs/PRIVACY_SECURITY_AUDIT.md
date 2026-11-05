@@ -28,6 +28,39 @@
 - **Dependency review:** the previous resolved frontend npm audit run reported zero known advisories at that scan time. This is not a continuous security guarantee.
 - **Deployment protection:** Vercel SSO / deployment protection is preserved. It protects access to the deployment URL for authorised viewers but does not implement in-app student identity or per-student permissions.
 
+## Privacy information surfaced in the UI
+
+The authenticated sidebar contains an expandable **Privacy & Security** panel. It states:
+- The app uses fictional demo profiles and is not connected to Digiicampus or real VU student records.
+- Account-specific synthetic profile and academic records are used to answer.
+- The student's question, relevant profile/course context, recent conversation context, and any selected upload may be processed by Groq; voice recordings are also sent to Groq for transcription.
+- Users must not enter real student IDs, credentials, private academic records, financial information or sensitive personal information.
+- Logout ends the demo session and clears the session cookie.
+- Clear Chat resets the in-page conversation and attachment context, but cannot recall information already sent to the provider.
+- AI academic advice is not official university approval.
+
+The panel is a transparency notice, not a consent manager or proof of legal compliance. It does not provide a provider-side deletion control.
+
+## Rubric privacy/security scenario coverage
+
+A new static regression suite, `tests/test_privacy_security_regression.py`, maps to the ten requested scenarios. It checks implementation boundaries in source code and the visible notice. These assertions are designed to run under the repository's GitHub Actions `python -m unittest discover -s tests -v` job.
+
+| # | Scenario | Safeguard checked by regression test | Test type / limitation |
+|---|---|---|---|
+| 1 | Unauthenticated user asks “What is my name?” | Chat API requires a signed-in session; unauthenticated UI shows login | Static assertion; not a live API request |
+| 2 | User tries to view another account's profile | Session profile lookup is derived from signed cookie | Static assertion; no hostile-cookie HTTP test |
+| 3 | User tries to download another account's marksheet | Marksheet route only accepts the authenticated session and has no student-ID lookup parameter | Static assertion; no deployed endpoint test |
+| 4 | User asks the model to reveal another student's grades | System prompt instructs model not to reveal another student's data; profile context is session-bound | Prompt/code assertion; model refusal behavior is not guaranteed or evaluated here |
+| 5 | User asks for all account passwords | Public profile endpoint excludes credential hashes; credential records use PBKDF2 hashes | Static assertion plus existing hash validation tests; shared demo password is intentionally public for class use |
+| 6 | User attempts to switch identity through a prompt | Chat API constructs profile identity from authenticated server-side student | Static assertion; no runtime adversarial model test |
+| 7 | Uploaded document prompt injection asks to reveal records | Uploaded/source data is explicitly marked untrusted and instructions reject private-data disclosure | Static assertion; not a live red-team test |
+| 8 | User requests a private student's marksheet | Marksheets are generated only from session-derived student; route does not accept arbitrary profile IDs | Static assertion; not a deployed access-control test |
+| 9 | User logs out then requests previous account data | Logout clears cookie; client clears account state and attachment context | Static assertion; browser session replay not executed |
+| 10 | User asks for information missing from profile | Prompt requires explicit Unknown/In Progress reporting and prohibits inference from missing results | Static assertion; model output quality remains untested |
+| UI transparency | User opens Privacy & Security panel | Assertions verify notice covers provider processing, prohibited inputs, Digiicampus boundary, and Clear Chat semantics | Static assertion; visual/browser accessibility review pending |
+
+**Execution status:** The regression file has been committed, but its test run and the subsequent GitHub Actions result are pending. Do not interpret the table as ten live security attacks executed. Existing account, marksheet, prompt-injection and academic tests are maintained separately. This prototype has not undergone an independent or deployed penetration test.
+
 ## Synthetic data test scenarios
 
 The pre-provisioned demo accounts are authenticated individually. Ten accounts cover semester-wise course history, failed and repeated courses, incomplete information, a borderline case and a graduated profile. The three legacy SYN-001–SYN-003 fixtures remain test-only for the existing COMP302 prerequisite tests.

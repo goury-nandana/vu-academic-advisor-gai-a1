@@ -17,38 +17,45 @@ This is a retrieval-augmented, sequential answer pipeline. It is not a swarm of 
 
 ## Assignment 2 specialist-workflow extension
 
-The repository now contains a controlled specialist-stage workflow in frontend/academic-agents.ts. It is explicitly selected from the sidebar and uses only the invented profiles in frontend/data/synthetic-students.json. It does not read or imitate a real student's VU account.
+The controlled specialist workflow in frontend/academic-agents.ts is integrated with the authenticated synthetic demo account. The server obtains the student ID from the signed HttpOnly session via getAuthenticatedStudent; it does not trust a student ID supplied in the chat request. The profile is loaded from frontend/data/synthetic-students.json. All ten login accounts (SYN-101 through SYN-110 / VU001 through VU010) can use the workflow. Three older SYN-001 through SYN-003 records remain isolated test fixtures and are not selectable login accounts.
 
-The six stages are:
+The six deterministic specialist stages are:
 
-1. **Student-profile stage:** load one explicitly selected synthetic fixture (SYN-001, SYN-002 or SYN-003).
-2. **Course-retrieval stage:** retrieve the requested B.Tech course row for the fixture's admission batch.
-3. **Credit-calculation stage:** sum credit values only for the fixture's listed completed courses that have matching rows in the same batch's structured source data.
-4. **Eligibility stage:** compare the course's direct prerequisites with the fixture's passed and failed course lists. Unknown prerequisites remain unknown.
-5. **Verification stage:** check that the target course and prerequisite rows exist in the matching batch's source workbook records and retain provenance.
-6. **Recommendation stage:** return a limited prerequisite-check recommendation, or refuse to recommend when the source evidence is incomplete.
+1. **Student-profile stage:** load the signed-in synthetic account's programme, admission batch, semester, completed courses and failed courses.
+2. **Course-retrieval stage:** retrieve the requested B.Tech course row for that account's exact admission batch. The matcher accepts the workbook degree label B.Tech for account programme labels such as B.Tech CSE; it does not equate unrelated degree programmes.
+3. **Credit-calculation stage:** sum credit values only for the account's listed completed courses that have matching semester-spread rows for the same batch and degree family. Missing rows are reported and excluded rather than guessed.
+4. **Eligibility stage:** compare the course's direct prerequisites with the profile's passed and failed course lists. Missing status remains unknown; a failed prerequisite is not treated as passed.
+5. **Verification stage:** check that the target course and every stated prerequisite row exist in the matching batch's source workbook records and retain source workbook/cell provenance.
+6. **Recommendation stage:** return a limited prerequisite-check recommendation, or refuse to recommend when source evidence is incomplete.
 
-The orchestration is deterministic code with specialist modules, not six independent LLM agents. It does not autonomously change student records, register courses, approve credit transfers or replace a Faculty Advisor/Registrar.
+The orchestration is deterministic code with six specialist modules, not six independent LLM agents. The LLM is not used to calculate the credit total or decide the prerequisite status. The chat response now exposes the six actual stages in a collapsible **Agent workflow — 6 specialist stages** panel. It does not autonomously change student records, register courses, approve credit transfers or replace a Faculty Advisor/Registrar.
 
-### Demonstration cases
+### Account-integrated demonstration
 
-The selected course is B.Tech 2025 COMP302 — Internet of Things (2 credits). Its source row lists direct prerequisites COMP132, COMP201, COMP206, COMP208 and COMP301.
+Use **MTSC211 — Sustainable Smart Materials** as the example. The matching semester-spread row lists MTSC111 as its direct prerequisite. The workflow checks each logged-in synthetic profile against the course row for that profile's admission batch.
 
-| Synthetic profile | Designed scenario | Direct prerequisite result | Completed-course credit sum |
-|---|---|---|---:|
-| SYN-001 | All five direct prerequisites are listed as completed | Prerequisites recorded as met | 29 |
-| SYN-002 | COMP206 is listed as failed | Prerequisite not met | 25 |
-| SYN-003 | COMP206 and COMP208 are neither completed nor listed as failed | Insufficient information | 21 |
+| Login ID | Synthetic profile | Admission batch | Direct prerequisite result | Completed-course credits calculated |
+|---|---|---:|---|---:|
+| VU001 | SYN-101 | 2026 | Insufficient information (MTSC111 is in progress) | 0 |
+| VU002 | SYN-102 | 2026 | Met | 21 |
+| VU003 | SYN-103 | 2025 | Met | 42 |
+| VU004 | SYN-104 | 2025 | Met | 62 |
+| VU005 | SYN-105 | 2024 | Met | 88 |
+| VU006 | SYN-106 | 2024 | Met | 84 |
+| VU007 | SYN-107 | 2023 | Met | 117 |
+| VU008 | SYN-108 | 2023 | Met | 121 |
+| VU009 | SYN-109 | 2022 | Met (graduated profile; not a registration recommendation) | 141 |
+| VU010 | SYN-110 | 2025 | Met | 93 |
 
-The credit sums are calculated from matching 2025 B.Tech semester-spread rows for the completed course codes in each artificial profile. These are fixture calculations, not real student credit totals. The direct check does not establish overall academic eligibility, timetable availability, credit-category compliance or official registration approval.
+The totals are deterministic sums of the synthetic profiles' completed course codes using matching batch-specific workbook rows. They are not actual student credit totals. The direct check covers only the listed prerequisite; it does not establish overall academic eligibility, timetable availability, credit-category compliance or official registration approval.
 
 ### How to demonstrate in the UI
 
-1. In the Student profile sidebar, select **SYN-001 — prerequisites met**.
-2. Ask: **“Can I take COMP302? Check prerequisites and calculate my completed credits.”**
-3. Repeat with SYN-002 and SYN-003. Compare the failed and unknown prerequisite outcomes.
-4. Point to the displayed model label and open **Processing steps** to show the stages used. The answer label says this is a deterministic specialist-agent workflow using a synthetic demonstration.
-5. Clear the synthetic profile selection before any ordinary student-facing question.
+1. Sign in with any of the ten demo accounts (VU001–VU010).
+2. Ask: **“Can I take MTSC211? Check prerequisites and calculate my completed credits.”**
+3. Inspect the answer for the direct prerequisite outcome, calculated credits, recommendation and cited course evidence.
+4. Expand **Agent workflow — 6 specialist stages** to show the profile, course retrieval, credit calculation, eligibility, verification and recommendation stages.
+5. Repeat with VU001 and VU002 to contrast unknown/in-progress with met. Use VU009 to demonstrate that a graduated profile is not an instruction to register for another course.
 
 ### Qualitative comparison with the RAG-only path
 

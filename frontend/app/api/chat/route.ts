@@ -407,16 +407,16 @@ function getPendingBtechMinorBatchCorrection(
   history: ChatHistoryItem[],
   currentQuestion: string
 ): string | undefined {
-  const clarification = /^(?:for\\s+)?(?:batch\\s*)?20\\d{2}(?:\\s+batch)?(?:\\s+(?:sry|sorry|i meant))?[.!?]*$/i.test(currentQuestion.trim());
+  const clarification = /^(?:for\s+)?(?:batch\s*)?20\d{2}(?:\s+batch)?(?:\s+(?:sry|sorry|i meant))?[.!?]*$/i.test(currentQuestion.trim());
   if (!clarification || history.length < 2) return undefined;
   const latest = history[history.length - 1];
-  if (latest.role !== "assistant" || !/b\\.?tech minor options recorded by admission batch/i.test(latest.text)) return undefined;
+  if (latest.role !== "assistant" || !/b\.?tech minor options recorded by admission batch/i.test(latest.text)) return undefined;
   const previousUser = [...history.slice(0, -1)].reverse().find((item) => item.role === "user");
   if (!previousUser || !isBtechMinorQuestion(previousUser.text)) return undefined;
-  const correctedBatch = currentQuestion.match(/\\b20\\d{2}\\b/)?.[0];
+  const correctedBatch = currentQuestion.match(/\b20\d{2}\b/)?.[0];
   const originalBatch = getBtechMinorBatches(previousUser.text)[0];
   if (!correctedBatch || !originalBatch || correctedBatch === originalBatch) return undefined;
-  return previousUser.text.replace(new RegExp("\\\\b" + originalBatch + "\\\\b"), correctedBatch);
+  return previousUser.text.replace(new RegExp("\\b" + originalBatch + "\\b"), correctedBatch);
 }
 
 function getPendingMinorQuestion(history: ChatHistoryItem[]): string | undefined {
@@ -448,7 +448,7 @@ function resolveStudentProfile(
   const resolved = { ...profile };
   const programMissing = !resolved.program || resolved.program === "Not specified";
   const semesterMissing = !resolved.semester || resolved.semester === "Not specified";
-  if (programMissing && isMinorQuestion(currentQuestion) && /\\beconomics\\b/i.test(currentQuestion)) {
+  if (programMissing && isMinorQuestion(currentQuestion) && /\beconomics\b/i.test(currentQuestion)) {
     resolved.program = "B.A. Economics";
   }
 
@@ -1009,9 +1009,9 @@ function btechMinorSummaryAnswer(batches: string[], documents: AcademicDocument[
 }
 
 function nonBtechMinorAnswer(programme: string, semester: string, documents: AcademicDocument[]): string {
-  if (/B\\.A\\. Economics/i.test(programme)) {
-    return "**Minor options for B.A. (Hons.) Economics**\\n\\n" +
-      "I cannot verify a 2025 batch-specific minor offering list for B.A. Economics from the academic records currently loaded. The repository contains a B.Tech minor workbook with an Economics sheet, but that is not evidence that those courses are available to B.A. Economics students.\\n\\n" +
+  if (/B\.A\. Economics/i.test(programme)) {
+    return "**Minor options for B.A. (Hons.) Economics**\n\n" +
+      "I cannot verify a 2025 batch-specific minor offering list for B.A. Economics from the academic records currently loaded. The repository contains a B.Tech minor workbook with an Economics sheet, but that is not evidence that those courses are available to B.A. Economics students.\n\n" +
       "Please check the current Digii pre-registration options or confirm with your Faculty Advisor/Programme Chair. The general University pre-registration rules do not identify which minors are actually open to this programme.";
   }
   const coursePlan = documents.find((document) =>

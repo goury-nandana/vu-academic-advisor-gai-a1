@@ -47,7 +47,7 @@ export function getSyntheticStudent(id: string): SyntheticStudent | undefined {
 }
 
 function normalizeCode(value: unknown): string {
-  return String(value || "").replace(/[\\s-]/g, "").toUpperCase();
+  return String(value || "").replace(/[\s-]/g, "").toUpperCase();
 }
 
 /** Agent 1: retrieves the synthetic student record selected for the demo. */

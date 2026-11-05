@@ -3,6 +3,7 @@ import academicKnowledgeJson from "../../../data/vu-academic-knowledge.json";
 import websiteKnowledgeJson from "../../../data/vu-website-knowledge.json";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 const MODEL = "openai/gpt-oss-120b";
 const VISION_MODEL = "qwen/qwen3.8-27b";
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -33,6 +34,33 @@ function cleanHtml(value: string) {
 }
 function safeData(value: string) {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function selectAttachmentExcerpt(content: string, question: string, limit = 5200): string {
+  const normalized = String(content || "").replace(/\r\n?/g, "\n").replace(/[ \t]+/g, " ").trim();
+  if (normalized.length <= limit) return normalized;
+  const stopWords = new Set(["what","when","where","which","who","why","how","does","do","is","are","the","a","an","and","or","to","of","in","on","for","with","this","that","these","those","please","look","at","my","attachment","uploaded","file","document","explain","tell","me","about"]);
+  const terms = [...new Set((question.toLowerCase().match(/[a-z0-9]{3,}/g) || []).filter((term) => !stopWords.has(term)))];
+  const paragraphs = normalized.split(/\n{2,}/).flatMap((paragraph) => {
+    if (paragraph.length <= 1400) return [paragraph];
+    const parts: string[] = [];
+    for (let offset = 0; offset < paragraph.length; offset += 1100) parts.push(paragraph.slice(offset, offset + 1100));
+    return parts;
+  });
+  if (!terms.length) return normalized.slice(0, limit);
+  const ranked = paragraphs.map((paragraph, index) => ({
+    paragraph, index,
+    score: terms.reduce((score, term) => score + (paragraph.toLowerCase().includes(term) ? 1 : 0), 0),
+  })).filter((item) => item.score > 0).sort((a, b) => b.score - a.score || a.index - b.index);
+  if (!ranked.length) return normalized.slice(0, limit);
+  const selected: typeof ranked = [];
+  let total = 0;
+  for (const item of ranked) {
+    const extra = item.paragraph.length + 2;
+    if (total + extra > limit) continue;
+    selected.push(item);
+    total += extra;
+  }
+  return selected.sort((a, b) => a.index - b.index).map((item) => item.paragraph).join("\n\n") || normalized.slice(0, limit);
 }
 function parse<T>(value: FormDataEntryValue | null, fallback: T): T {
   if (typeof value !== "string") return fallback;
@@ -105,7 +133,7 @@ async function readAudio(key: string, file: File) {
   body.append("response_format", "json");
   const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
     method:"POST",headers:{Authorization:"Bearer "+key},body,
-    signal:AbortSignal.timeout(6000),cache:"no-store",
+    signal:AbortSignal.timeout(20000),cache:"no-store",
   });
   if (!response.ok) throw new Error("Audio transcription returned HTTP " + response.status + ".");
   return ((await response.json()) as {text?:string}).text?.trim() ?? "";
@@ -1197,11 +1225,6 @@ export async function POST(request: Request) {
     return NextResponse.json({error:"The web chat attachment limit is four files and 4 MB combined."},{status:413});
 
   let combinedQuestion=question||"Explain the academic information in my attachment.";
-  const pendingMinorQuestion = getPendingMinorQuestion(history);
-  const pendingCourseQuestion = getPendingBtechCourseQuestion(history, combinedQuestion);
-  const contextualFacultyQuestion = getContextualFacultyFollowupQuestion(history, combinedQuestion);
-  const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || contextualFacultyQuestion || combinedQuestion;
-  const socialAnswer = getSimpleSocialAnswer(effectiveQuestion, history) || getDeterministicScopeAnswer(effectiveQuestion);
   const attachments:string[]=[];
   const fileNotes:string[]=[];
   const unreadableAttachmentNames:string[]=[];
@@ -1209,27 +1232,40 @@ export async function POST(request: Request) {
     const ext=file.name.split(".").pop()?.toLowerCase()??"";
     try{
       if(["txt","md","csv"].includes(ext)){
-        attachments.push("Student text attachment "+file.name+":\n"+(await file.text()).slice(0,10000));
-        fileNotes.push("Read "+file.name);
-      }else if(file.type.startsWith("image/")||["png","jpg","jpeg","webp"].includes(ext)){
+        const extracted=(await file.text()).slice(0,16000).trim();
+        if(extracted) { attachments.push("USER-UPLOADED TEXT FILE: "+file.name+"\n"+selectAttachmentExcerpt(extracted,combinedQuestion)); fileNotes.push("Read "+file.name); }
+        else { unreadableAttachmentNames.push(file.name); fileNotes.push("No readable text found in "+file.name); }
+      }else if(file.type.startsWith("image/")||["png","jpg","jpeg","webp","bmp","tif","tiff"].includes(ext)){
         const description=await readImage(key,file);
-        if(description) attachments.push("AI description of student image "+file.name+":\n"+description);
-        fileNotes.push(description?"Read image "+file.name:"No readable information in "+file.name);
+        if(description) { attachments.push("USER-UPLOADED IMAGE: "+file.name+"\n"+description.slice(0,7000)); fileNotes.push("Read image "+file.name); }
+        else { unreadableAttachmentNames.push(file.name); fileNotes.push("No readable information found in "+file.name); }
       }else if(file.type.startsWith("audio/")||["mp3","wav","m4a","ogg","flac","webm"].includes(ext)){
         const transcript=await readAudio(key,file);
-        if(transcript) combinedQuestion+="\n\nVoice transcript: "+transcript;
-        fileNotes.push(transcript?"Transcribed "+file.name:"No speech transcribed from "+file.name);
+        if(transcript) { combinedQuestion+="\n\nVoice transcript: "+transcript.slice(0,12000); fileNotes.push("Transcribed "+file.name); }
+        else { unreadableAttachmentNames.push(file.name); fileNotes.push("No speech could be transcribed from "+file.name); }
+      }else if(["pdf","docx","xlsx","pptx"].includes(ext)){
+        const { OfficeParser } = await import("officeparser");
+        const ast=await OfficeParser.parseOffice(new Uint8Array(await file.arrayBuffer()));
+        const { value }=await ast.to("text",{includeImages:false,textConfig:{preserveLayout:false,renderNotes:false,pageSeparator:"\n\n"}});
+        const extracted=typeof value==="string"?value.trim():"";
+        const excerpt=selectAttachmentExcerpt(extracted,combinedQuestion,5200);
+        if(excerpt) { attachments.push("USER-UPLOADED DOCUMENT: "+file.name+"\n"+excerpt); fileNotes.push("Read "+file.name+" ("+extracted.length.toLocaleString()+" characters extracted)"); }
+        else { unreadableAttachmentNames.push(file.name); fileNotes.push("No extractable text found in "+file.name+". If it is scanned, upload clear page images."); }
       }else {
         unreadableAttachmentNames.push(file.name);
-        const knownDocumentType = ["pdf","docx","xlsx","pptx"].includes(ext);
-        fileNotes.push(
-          knownDocumentType
-            ? file.name+" was not read. The web app does not currently extract PDF, DOCX, XLSX or PPTX content; this file was not used as evidence."
-            : file.name+" was not read because this file type is not supported by the web app; it was not used as evidence."
-        );
+        fileNotes.push(file.name+" is an unsupported file type and was not used as evidence.");
       }
-    }catch(error){fileNotes.push(file.name+" could not be processed: "+(error instanceof Error?error.message.slice(0,120):"processing error"));}
+    }catch(error){
+      unreadableAttachmentNames.push(file.name);
+      fileNotes.push(file.name+" could not be processed: "+(error instanceof Error?error.message.slice(0,160):"processing error"));
+    }
   }
+  const pendingMinorQuestion = getPendingMinorQuestion(history);
+  const pendingCourseQuestion = getPendingBtechCourseQuestion(history, combinedQuestion);
+  const contextualFacultyQuestion = getContextualFacultyFollowupQuestion(history, combinedQuestion);
+  const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || contextualFacultyQuestion || combinedQuestion;
+  // Uploaded files and transcribed speech must be processed before the general out-of-scope guard.
+  const socialAnswer = files.length ? undefined : (getSimpleSocialAnswer(effectiveQuestion, history) || getDeterministicScopeAnswer(effectiveQuestion));
 
   const pipeline=["Validated question, optional profile and attachment size","Processed supported text/image/audio attachments without storing chat history"];
   const minorIntent=isMinorQuestion(effectiveQuestion);

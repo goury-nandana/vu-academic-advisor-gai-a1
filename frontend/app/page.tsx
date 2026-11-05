@@ -205,6 +205,7 @@ export default function Home() {
   const [syntheticStudentId, setSyntheticStudentId] = useState("");
   const [authStudent, setAuthStudent] = useState<AuthStudent | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -616,6 +617,17 @@ export default function Home() {
             setSyntheticStudentId("");
           }}>Log out</button>
           <button className="clear" onClick={clearChat}>Clear Chat</button>
+          <button className="clear" type="button" aria-expanded={privacyOpen} onClick={() => setPrivacyOpen((open) => !open)}>{privacyOpen ? "Hide Privacy & Security" : "Privacy & Security"}</button>
+          {privacyOpen && <section className="privacy-panel" aria-label="Privacy and Security information">
+            <h3>Privacy & Security</h3>
+            <p><strong>Synthetic demo only.</strong> This app is not connected to Digiicampus or real VU student records. Academic advice is not an official approval.</p>
+            <p><strong>Information used:</strong> your signed-in synthetic profile and its academic records are used to answer account-specific questions.</p>
+            <p><strong>Sent to the AI provider:</strong> your question, relevant profile/course context, and any file or image you choose to upload may be sent to Groq for processing. Voice recordings sent for transcription are also processed by Groq.</p>
+            <p><strong>Never enter:</strong> real student IDs, passwords, Digiicampus credentials, private student records, financial details, or sensitive personal information.</p>
+            <p><strong>Account safety:</strong> use only the public demo credentials. Logout ends the app session and clears the session cookie. Do not share the demo password.</p>
+            <p><strong>Chat:</strong> Clear Chat removes the current conversation from this page state. It cannot recall information already sent to the AI provider.</p>
+            <p><strong>Important:</strong> synthetic names, IDs, grades and CGPAs are fictional. Verify academic rules with official VU sources.</p>
+          </section>}
         </div>
       </aside>
 

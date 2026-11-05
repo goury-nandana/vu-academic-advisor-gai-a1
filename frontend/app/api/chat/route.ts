@@ -533,6 +533,10 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
     return "You should not rely on me blindly. VU-specific answers should be grounded in official university documents or webpages, with sources shown where available. I can still make mistakes or miss recent changes, so verify important decisions with the university. I provide guidance; I do not make official university decisions.";
   }
 
+  if (/^(?:sorry|sry|my apologies|apologies|i am sorry|im sorry|i'm sorry)$/.test(normalized)) {
+    return "No problem. I understand. What would you like to check next?";
+  }
+
   if (/^(?:hi+|hello+|h+e+y+|heylo+|hii+|hlo+|helo+|hallo+|good morning|goodmorning|good afternoon|goodafternoon|good evening|goodevening|good night|namaste|namaskara+|namaskaram+|vanakkam|bonjour|bonour|bonjur|hola)(?: there)?$/.test(normalized)) {
     return "Hello. I’m the VU Academic Advisor. You can ask me about Vidyashilp University programmes, courses, prerequisites, credits, semesters and admissions.";
   }

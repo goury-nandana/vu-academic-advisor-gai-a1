@@ -969,6 +969,72 @@ function formatAcademicSource(document: AcademicDocument, index: number) {
   };
 }
 
+function isProgrammeDirectoryQuestion(question: string): boolean {
+  const asksProgrammes = /\b(?:what|which|list|name)\b.{0,65}\b(?:programmes?|programs?|degrees?)\b|\b(?:programmes?|programs?|degrees?)\b.{0,65}\b(?:offer|offered|available|provide)\b/i.test(question);
+  const asksSpecialisations = /\b(?:speciali[sz]ations?|speciali[sz]ation tracks?|tracks offered)\b/i.test(question) &&
+    /\b(?:what|which|list|offer|offered|available|VU|Vidyashilp|programmes?|programs?|degrees?)\b/i.test(question);
+  return asksProgrammes || asksSpecialisations;
+}
+
+function retrieveProgrammeDirectoryChunks(): WebsiteSearchHit[] {
+  const orderedIds = [
+    "programme_btech_ds__03",
+    "programme_btech_aiml__01",
+    "programme_economics__01",
+    "programme_psychology__01",
+    "programme_bdes__01",
+    "programme_bms__03",
+    "programme_ba_llb__01",
+    "programme_bms_llb__03",
+  ];
+  return orderedIds.flatMap((id) => {
+    const chunk = WEBSITE_KNOWLEDGE.chunks.find((item) => item.chunk_id === id);
+    if (!chunk) return [];
+    return [{
+      title: String(chunk.page_title || "Vidyashilp University") + " — " + String(chunk.heading || chunk.section || ""),
+      url: String(chunk.page_url || "https://vidyashilp.edu.in/"),
+      text: String(chunk.text || ""),
+      pageId: chunk.page_id,
+      heading: chunk.heading,
+      score: 100,
+    }];
+  });
+}
+
+function deterministicProgrammeDirectoryAnswer(
+  question: string,
+  pages: WebsiteSearchHit[],
+  citationOffset: number
+): string | undefined {
+  if (!isProgrammeDirectoryQuestion(question)) return undefined;
+  const citation = (pageId: string) => {
+    const index = pages.findIndex((page) => page.pageId === pageId);
+    return index >= 0 ? " [" + (citationOffset + index + 1) + "]" : "";
+  };
+  const requiredPages = [
+    "programme_btech_ds","programme_btech_aiml","programme_economics","programme_psychology",
+    "programme_bdes","programme_bms","programme_ba_llb","programme_bms_llb",
+  ];
+  if (!requiredPages.every((id) => pages.some((page) => page.pageId === id))) return undefined;
+
+  let answer = "**Vidyashilp University — undergraduate programmes and published specialisation options**\n\n";
+  answer += "| **Programme** | **Major / named programme specialisation** | **Specialisation tracks / focus areas published by VU** |\n";
+  answer += "| :-- | :-- | :-- |\n";
+  answer += "| **B.Tech. CSE — Data Science** | Data Science | **Track 1:** Applied Deep Learning, Probabilistic Graph Models, Bayesian Methods in Machine Learning / Generative AI, Natural Language Processing, Multi-Modal Learning and Reinforcement Learning. **Track 2:** Full Stack Development, Backend Systems and API Development, Big Data Analytics, Web Frameworks, Mobile Application Development and Performance Optimization and Testing." + citation("programme_btech_ds") + " |\n";
+  answer += "| **B.Tech. CSE — AI & Machine Learning** | Artificial Intelligence & Machine Learning | AI/ML is the named programme specialisation. The page separately lists electives such as Generative AI models, Parallel Computing, Probabilistic Graphical Models, Bayesian Methods in Machine Learning, Multi-Modal Learning, Full Stack Development, Backend Systems and API Development, Big Data Analytics, Web Frameworks and Mobile Application Development." + citation("programme_btech_aiml") + " |\n";
+  answer += "| **B.A. (Hons.) Economics** | Economics | Advanced Macroeconomics; Business Economics; Applied Microeconomics; Behavioral Economics; Developmental Economics; Quantitative Techniques; Open Specialisation." + citation("programme_economics") + " |\n";
+  answer += "| **B.A. (Hons.) Psychology** | Psychology | Counselling Psychology; Cognitive Psychology; Clinical Psychology." + citation("programme_psychology") + " |\n";
+  answer += "| **B.Des.** | Design, with a communication-design emphasis | **Track I options:** Interactive Design; Film and Animation; Graphic Design; Comics and Sequential Art; Game Design; Extended Reality (AR/VR/XR). Tracks II and III are described as continuations; the page does not enumerate separate option lists for them." + citation("programme_bdes") + " |\n";
+  answer += "| **B.M.S. (Hons.) Digital Business** | Digital Business | Marketing; Finance; Startup Management; HR Management." + citation("programme_bms") + " |\n";
+  answer += "| **B.A., LL.B. (Hons.)** | Integrated law degree | The page highlights IPR, Technology Law and Arbitration, and discusses ADR (Arbitration, Mediation, Conciliation and Negotiation) and ODR. These are described as focus areas, not as a formal named specialisation-track list." + citation("programme_ba_llb") + " |\n";
+  answer += "| **B.M.S., LL.B. (Hons.)** | Integrated business and law degree | Public Law; Business and Commercial Law; IPR / Intellectual Property Law; AI & Technology Law; Public Health Law; General Law." + citation("programme_bms_llb") + " |\n";
+  answer += "\n**Important distinctions**\n\n";
+  answer += "- A major is the programme’s main discipline; a specialisation track is a structured focus within it; electives are individual selectable subjects; minors are separate interdisciplinary study areas. They are not interchangeable.\n";
+  answer += "- The detailed Economics page lists seven tracks, while a separate older Economics landing page lists only three. The official website also shows different minor lists in different sections of the BMS and B.Des. pages. The advisor should flag these page-level differences and ask students to confirm current cohort availability with VU.\n";
+  answer += "- A list on a public programme page does not guarantee that every track, elective or minor runs for every admission batch or semester.";
+  return answer;
+}
+
 function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
   const terms = queryWords(question);
   if (!terms.length) return [];
@@ -1173,9 +1239,12 @@ export async function POST(request: Request) {
   const requestedMinorBatches=getBtechMinorBatches(effectiveQuestion);
   const isBatchSpecificBtechMinorQuery=requestedMinorBatches.length>0;
   const structuredCourseSearch=findStructuredCourseSearch(effectiveQuestion,profile.program);
-  const academicMatches=retrieveAcademic(effectiveQuestion,profile.program,structuredCourseSearch);
-  const suppressWebsiteForAttendance = /\b(attendance|attendance policy|absence|condonation|shortage|medical leave)\b/i.test(effectiveQuestion);
-  const localWebsiteMatches = socialAnswer || suppressWebsiteForAttendance ? [] : retrieveWebsiteKnowledge(effectiveQuestion);
+  const programmeDirectoryIntent = isProgrammeDirectoryQuestion(effectiveQuestion);
+  const academicMatches=programmeDirectoryIntent ? [] : retrieveAcademic(effectiveQuestion,profile.program,structuredCourseSearch);
+  const suppressWebsiteForAttendance = /\\b(attendance|attendance policy|absence|condonation|shortage|medical leave)\\b/i.test(effectiveQuestion);
+  const localWebsiteMatches = socialAnswer || suppressWebsiteForAttendance
+    ? []
+    : programmeDirectoryIntent ? retrieveProgrammeDirectoryChunks() : retrieveWebsiteKnowledge(effectiveQuestion);
   const pages = (isBtechMinorQuery||isStudentMinorQuery||structuredCourseSearch||socialAnswer||suppressWebsiteForAttendance)
     ? []
     : localWebsiteMatches.length ? localWebsiteMatches : await retrieve(combinedQuestion);
@@ -1194,6 +1263,11 @@ export async function POST(request: Request) {
     Boolean(contextualFacultyQuestion)
   );
   const admissionsAnswer = deterministicAdmissionsAnswer(
+    effectiveQuestion,
+    pages as WebsiteSearchHit[],
+    academicSources.length
+  );
+  const programmeDirectoryAnswer = deterministicProgrammeDirectoryAnswer(
     effectiveQuestion,
     pages as WebsiteSearchHit[],
     academicSources.length
@@ -1267,6 +1341,10 @@ export async function POST(request: Request) {
     answer=unreadableAttachmentAnswer;
     modelUsed="Deterministic attachment-transparency response";
     pipeline.push("Attachment contents were not extracted; clearly separated stored VU course-plan records from the unread file");
+  }else if(programmeDirectoryAnswer){
+    answer=programmeDirectoryAnswer;
+    modelUsed="Deterministic official VU programme-specialisation directory";
+    pipeline.push("Matched the programme-specific official website chunks and separated majors, specialisation tracks, electives and minors");
   }else if(minorBatchClarification){
     answer="B.Tech minor options are batch-specific. Which admission year should I check (for example, 2023 or 2024)?";
     modelUsed="Deterministic admission-batch clarification";
@@ -1333,7 +1411,7 @@ export async function POST(request: Request) {
   const semesterSpecific=/\b(semester|term|this sem|next sem|current sem)\b/i.test(effectiveQuestion);
   const followUps:string[]=[];
   const deterministicMinor=minorBatchClarification||minorProgrammeClarification||minorSemesterClarification||deterministicBtechMinor||deterministicStudentMinor;
-  if(!deterministicAttendance&&!deterministicMinor&&!deterministicStructuredCourse){
+  if(!deterministicAttendance&&!deterministicMinor&&!deterministicStructuredCourse&&!programmeDirectoryAnswer){
     if(programmeSpecific&&programmeMissing) followUps.push("Which programme are you enrolled in?");
     else if(semesterSpecific&&semesterMissing) followUps.push("Which semester are you currently in?");
     if(followUps.length&&!answer.toLowerCase().includes(followUps[0].toLowerCase().replace("?",""))) {

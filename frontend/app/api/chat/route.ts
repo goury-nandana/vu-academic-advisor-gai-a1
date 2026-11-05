@@ -943,15 +943,28 @@ function retrieveBtechMinorBatch(batch: string): AcademicDocument[] {
 
 function retrieveBtechMinorBatches(batches: string[]): AcademicDocument[] {
   const results = batches.flatMap((batch) => retrieveBtechMinorBatch(batch));
-  if (results.length) return results;
   const workbookReference = ACADEMIC_KNOWLEDGE.documents.find(
     (document) => document.source === "Minor_Courses_for_BTech_Students.xlsx"
   );
-  return workbookReference ? [{
-    ...workbookReference,
-    title: "Minor Courses for B.Tech Students — source workbook",
-    section: "Workbook checked for the requested admission batch",
-  }] : [];
+  if (!results.length && workbookReference) {
+    results.push({
+      ...workbookReference,
+      title: "Minor Courses for B.Tech Students — source workbook",
+      section: "Workbook checked for the requested admission batch",
+    });
+  }
+  const handbookThreshold = ACADEMIC_KNOWLEDGE.documents.find((document) =>
+    /Student Handbook/i.test(document.source || "") &&
+    /minimum of ten \(10\) students register/i.test(document.text || "")
+  );
+  if (handbookThreshold) {
+    results.push({
+      ...handbookThreshold,
+      title: "Student Handbook — minimum registration rule for minor courses",
+      section: "Minor-course registration threshold",
+    });
+  }
+  return results;
 }
 
 function retrieveNonBtechMinorContext(): AcademicDocument[] {
@@ -1040,7 +1053,16 @@ function btechMinorSummaryAnswer(batches: string[], documents: AcademicDocument[
   }
 
   lines.push("");
-  lines.push("**Important:** A minor appearing in the workbook does not guarantee that it will run in a particular semester. The Student Handbook says minor courses are offered when at least 10 students register, although the Programme Chair may permit an exception.");
+  const handbookIndex = documents.findIndex((document) =>
+    /Student Handbook/i.test(document.source || "") &&
+    /minimum of ten \(10\) students register/i.test(document.text || "")
+  );
+  const handbookCitation = handbookIndex >= 0 ? " [" + (handbookIndex + 1) + "]" : "";
+  if (handbookIndex >= 0) {
+    lines.push("**Important:** A minor appearing in the workbook does not guarantee that it will run in a particular semester. The Student Handbook says minor courses are offered when at least 10 students register, although the Programme Chair may permit an exception." + handbookCitation);
+  } else {
+    lines.push("**Important:** A minor appearing in the workbook does not guarantee that it will run in a particular semester. The registration threshold could not be retrieved for this answer, so confirm current availability with the Programme Chair.");
+  }
   return lines.join("\n");
 }
 

@@ -139,14 +139,13 @@ async function readImage(key: string, file: File, question: string): Promise<Ima
   try {
     parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch {
-    // Keep a concise fallback for display; do not expose a long analysis report.
-    const firstUsefulLine = raw.split("\n").map((line) => line.trim()).find((line) => line.length > 0) || "";
+    // Retain the raw model response only as internal evidence; never show its report format in chat.
     return {
       visualType: "Image",
       visualDescription: raw.slice(0, 5000),
       visibleText: "",
       academicInformation: "",
-      userSummary: firstUsefulLine.replace(/^#{1,6}\s*|^[-*]\s*/g, "").slice(0, 220),
+      userSummary: "I can see the uploaded image, but I could not generate a reliable description.",
     };
   }
   const getText = (key: string, limit: number) => typeof parsed[key] === "string" ? String(parsed[key]).trim().slice(0, limit) : "";
@@ -1249,7 +1248,6 @@ export async function POST(request: Request) {
   const attachments:string[]=[];
   const fileNotes:string[]=[];
   const unreadableAttachmentNames:string[]=[];
-  const imageAnalyses:ImageAnalysis[]=[];
   const imageSummaries:string[]=[];
   for(const file of files){
     const ext=file.name.split(".").pop()?.toLowerCase()??"";
@@ -1261,7 +1259,6 @@ export async function POST(request: Request) {
       }else if(file.type.startsWith("image/")||["png","jpg","jpeg","webp","bmp","tif","tiff"].includes(ext)){
         const analysis=await readImage(key,file,combinedQuestion);
         if(analysis.userSummary || analysis.visualDescription || analysis.visibleText) {
-          imageAnalyses.push(analysis);
           imageSummaries.push(analysis.userSummary);
           attachments.push("USER-UPLOADED IMAGE: "+file.name+"\nBACKEND IMAGE ANALYSIS (internal evidence; not a student-facing report):\n"+JSON.stringify({
             visualType:analysis.visualType,

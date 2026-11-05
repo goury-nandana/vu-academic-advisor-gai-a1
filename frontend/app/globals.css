@@ -214,3 +214,11 @@ button:disabled{cursor:not-allowed}
 .login-error{margin:0;color:#b4232c;font-size:12px;line-height:1.45}
 .login-note{padding:10px 12px;border-radius:10px;background:#f5f7fc}
 @media(max-width:520px){.login-card{padding:24px 20px;border-radius:18px}.login-card h1{font-size:20px}}
+
+
+/* Visible deterministic specialist-agent trace */
+.agent-workflow{margin:12px 0;padding:11px 13px;border:1px solid #d5def2;border-radius:12px;background:#f7f9fe;color:#30384e;font-size:12px;line-height:1.5}
+.agent-workflow summary{color:var(--blue);font-weight:700;cursor:pointer}
+.agent-workflow ol{margin:10px 0 8px;padding-left:22px}
+.agent-workflow li{margin:5px 0}
+.agent-workflow p{margin:8px 0 0;color:#626b80;font-size:11px}

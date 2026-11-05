@@ -497,8 +497,7 @@ function isMinorQuestion(question: string): boolean {
   return /\bminor(?:s)?\b/i.test(question);
 }
 
-function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = [], student?: { name: string; username: string; synthetic_student_id: string }): string | undefined {
-  const normalized = question.trim().toLowerCase()
+function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = [], student?: { name: string; username: string; synthetic_student_id: string }): string | undefined {  const normalized = question.trim().toLowerCase()
     .replace(/(.)\1{2,}/g, "$1")
     .replace(/[.!?]+$/g, "")
     .replace(/\s+/g, " ");
@@ -506,10 +505,30 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:who\s+(?:am\s+i|a\s+i)|what(?:\s+is|'s)\s+my\s+name|my\s+name|my\s+user\s+id|who\s+is\s+logged\s+in|which\s+profile)$/.test(normalized) && student) {
     return "You are **" + student.name + "**. Your User ID is **" + student.username + "** (synthetic profile: " + student.synthetic_student_id + ").";
   }
-  if (/^(?:who\s+are\s+(?:u|you)|who\s+r\s+u|what(?:\s+is|'s)\s+your\s+name|is\s+your\s+name(?:\s+.*)?|are\s+you\s+vikki|are\s+you\s+vikky)$/.test(normalized)) {
+  if (/^(?:who\s+are\s+(?:u|you)|who\s+r\s+u|what(?:\s+is|'s)\s+your\s+name|your\s+name|name|is\s+your\s+name(?:\s+.*)?|are\s+you\s+vikki|are\s+you\s+vikky)$/.test(normalized)) {
     return "I’m **Vikki Talk**, the academic assistant for B.Tech at Vidyashilp University.";
   }
-
+  if (/^(?:my\s+age|how\s+old\s+am\s+i|what\s+is\s+my\s+age)$/.test(normalized) && student) {
+    return "Your age is not included in this synthetic student profile, so I cannot determine it.";
+  }
+  if (/^(?:student|my\s+student\s+profile|my\s+profile|profile\s+summary)$/.test(normalized) && student) {
+    const status = student.academic_status ? student.academic_status.toLowerCase().replace(/_/g, " ") : "status not recorded";
+    const semester = student.current_semester === null ? "graduated" : "Semester " + student.current_semester;
+    const cgpa = student.synthetic_cgpa === null ? "" : " Demo CGPA: **" + student.synthetic_cgpa + "**.";
+    return "**" + student.name + "** (" + student.username + ") is a " + status + " B.Tech " + student.programme + " student, admission batch " + student.admission_batch + ", " + semester + "." + cgpa + "\n\nThis is a fictional demonstration profile, not an official VU student record.";
+  }
+  if (/^(?:teacher|teachers|professor|professors|faculty)$/.test(normalized)) {
+    return "Are you looking for a particular course instructor, a professor’s contact details, or the VU faculty directory?";
+  }
+  if (/^(?:what|huh|hmm|huh\?)$/.test(normalized)) {
+    return "What would you like me to clarify? You can ask about your courses, credits, prerequisites, eligibility or student profile.";
+  }
+  if (/^(?:ok|okay|alright|all\s+right)$/.test(normalized)) {
+    return "Okay. What would you like to check next?";
+  }
+  if (/^(?:im\s+bad|i\s+am\s+bad|i'm\s+bad)$/.test(normalized)) {
+    return "I’m sorry things feel difficult. Do you mean you’re feeling low, or that something specific has gone wrong?";
+  }
   // Crisis language bypasses academic scope filtering and never depends on Groq availability.
   if (/\b(?:i(?:'m| am)?\s+)?(?:going to|about to|planning to|want to|wish to|thinking about)\s+(?:commit\s+)?suicide\b|\b(?:i(?:'m| am)?\s+)?(?:want to|going to|might|may|plan to)\s+(?:kill|hurt)\s+myself\b|\b(?:i want to die|i don't want to live|i do not want to live|end my life|take my own life|i'm suicidal|i am suicidal)\b/i.test(normalized)) {
     return "I’m really sorry you’re feeling this way. Your safety comes first. If you might act on this now or have already hurt yourself, call India’s emergency number **112** or go to the nearest emergency department now. Move away from anything you could use to hurt yourself and get physically near someone you trust—a friend, family member, roommate, hostel warden or campus staff member. In India, you can also call **Tele-MANAS 14416**, a free 24/7 mental-health helpline. Are you in immediate danger right now, or have you already taken any steps to hurt yourself?";
@@ -604,7 +623,7 @@ function getDeterministicScopeAnswer(question: string): string | undefined {
   }
   const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credits?|credit|attendance|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question) || /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question) || /\b[A-Z]{2,6}[\s-]?\d{3,4}[A-Z]?\b/i.test(question);
   if (!hasVuAcademicContext) {
-    return "I’m the VU Academic Advisor. I can help with Vidyashilp University programmes, courses, curriculum, academic policies, admissions and student support. I can’t answer general-knowledge or unrelated questions.";
+    return "I’m **Vikki Talk**, the academic assistant for B.Tech at Vidyashilp University. I can help with courses, prerequisites, credits, backlogs, eligibility and academic progression. I can’t answer unrelated questions.";
   }
   return undefined;
 }
@@ -997,8 +1016,7 @@ function syntheticAgentWorkflowAnswer(
 ): string {
   const allCodes=[result.course.course_code,...result.prerequisites,...result.creditCourseCodes];
   const citations=[...new Set(allCodes.flatMap((code)=>{
-    const index=evidenceDocuments.findIndex((document)=>
-      String(document.title||"").toUpperCase().startsWith(code.toUpperCase()+" —")
+    const index=evidenceDocuments.findIndex((document)=>      String(document.title||"").toUpperCase().startsWith(code.toUpperCase()+" —")
     );
     return index>=0?["["+(index+1)+"]"]:[];
   }))].join(" ");
@@ -1497,8 +1515,7 @@ export async function POST(request: Request) {
     try{
       if(!requestHost||new URL(origin).host.toLowerCase()!==requestHost.toLowerCase())
         return NextResponse.json({error:"Cross-origin chat requests are not accepted."},{status:403});
-    }catch{
-      return NextResponse.json({error:"Invalid request origin."},{status:403});
+    }catch{      return NextResponse.json({error:"Invalid request origin."},{status:403});
     }
   }
   const declaredLength=Number(request.headers.get("content-length")||0);
@@ -1736,7 +1753,7 @@ export async function POST(request: Request) {
     unreadableAttachments:unreadableAttachmentNames,
     recentConversation:history.slice(-3).map((item)=>({role:item.role,text:item.text.slice(-350)})),
   }));
-  const system="You are the VU Academic Advisor, an academic information assistant for Vidyashilp University, Bengaluru.\n"+
+  const system="You are Vikki Talk, the academic assistant for B.Tech at Vidyashilp University, Bengaluru. Your name is Vikki Talk; never identify yourself as “VU Academic Advisor”.\n"+
      "SCOPE: This advisor is restricted to B.Tech students and B.Tech academic advising. If asked about BMS, BA, Law or another non-B.Tech programme, politely state that the advisor only supports B.Tech. Do not provide detailed non-B.Tech programme or course guidance.\n"+
     "Authenticated synthetic student profile (identity is session-derived; grades and CGPA are fictional demo values):\n"+profileText+"\n\n"+
     "SOURCE PRIORITY: The repository's allowlisted VU Student Handbook (August 2026), Student SOP (17 August 2026), Course Plans, Minor Courses and structured B.Tech semester-spread workbooks are official academic evidence. Use these documents first for attendance, absence, condonation, assessment, credits, prerequisites, progression, course and semester questions. Use official VU webpages for programme descriptions and admissions. A public marketing webpage not mentioning a policy does NOT mean the policy is absent from the academic handbook.\n"+
@@ -1898,16 +1915,3 @@ export async function POST(request: Request) {
       const raw=await groq(key,[
         {role:"system",content:"Return JSON only with kind (bars,steps,cards), title and items. Use ONLY facts/numbers present in the answer and source excerpts. Never infer or calculate missing values. Use bars only for comparable numbers; steps for a process; cards for non-numeric comparisons. At most six items."},
         {role:"user",content:"Request: "+combinedQuestion+"\nAnswer: "+answer+"\nEvidence: "+sources.map((source)=>"["+source.citation+"] "+source.title+"\n"+source.text.slice(0,2200)).join("\n\n")},
-      ],MODEL,true);
-      if(deterministicAttendance&&visualization) modelUsed=MODEL+" (visual summary only)";
-      visualization=validateVisual(JSON.parse(raw));
-      if(visualization) pipeline.push("Created a source-bounded visual summary");
-    }catch{/* Keep the text answer when structured visualization is unavailable. */}
-  }
-  const citedSourceNumbers=new Set(Array.from(answer.matchAll(/\[(\d+)\]/g), (match)=>Number(match[1])));
-  const citedSources=sources.filter((source)=>citedSourceNumbers.has(Number(source.citation)));
-  return NextResponse.json({
-    answer,sources:citedSources.map(({title,url,citation,type})=>({title,url,citation,type})),pipeline,model:modelUsed,
-    visualization,followUps,attachmentContext:allAttachmentContext,
-  },{headers:{"Cache-Control":"no-store, max-age=0","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin"}});
-}

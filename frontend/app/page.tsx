@@ -172,7 +172,7 @@ function renderVisualization(visual?: Visualization) {
 }
 
 const GREETING =
-  "Hi! I'm the VU Academic Advisor for B.Tech. Ask about your semester-wise courses, prerequisites, credits, backlogs, eligibility and academic progression. Your logged-in demo profile contains synthetic academic results.";
+  "Hi! I'm the VU Academic Advisor for B.Tech. Ask me about courses, prerequisites, credits, backlogs, eligibility or academic progression.";
 const CHIPS = ["What courses did I have in Semester 1?", "How many credits have I completed?", "Can I take COMP302?"];
 const MAX_MB = 4;
 const MAX_FILES = 4;
@@ -615,7 +615,7 @@ export default function Home() {
             setSyntheticStudentId("");
           }}>Log out</button>
           <h2>Academic Features</h2>
-          <p className="profile-help">Chat with the B.Tech academic advisor. Use Clear Chat to reset the current conversation.</p>
+          <p className="profile-help">B.Tech academic support.</p>
           <button className="clear" onClick={clearChat}>Clear Chat</button>
         </div>
       </aside>
@@ -776,9 +776,6 @@ export default function Home() {
             <input ref={cameraInput} type="file" hidden accept="image/*" capture="environment"
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           </form>
-          <div className="disclaimer">
-            Academic information only. This AI is not the Registrar and cannot confirm enrolment, eligibility, credit transfer, grades, fees, deadlines, exceptions or approvals. Rules can change; verify course codes, credits and requirements against the current VU Handbook, Digicampus and the responsible university office. Written confirmation from VU is authoritative.
-          </div>
         </div>
       </main>
     </div>

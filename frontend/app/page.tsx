@@ -147,6 +147,55 @@ function renderAnswer(text: string) {
 
 function renderVisualization(visual?: Visualization) {
   if (!visual) return null;
+  if (visual.kind === "course-pathway" && visual.pathway) {
+    const prerequisites = visual.pathway.prerequisites;
+    const height = Math.max(190, prerequisites.length * 88 + 48);
+    const targetCenter = height / 2;
+    const statusLabel = (status: string) => status === "completed" ? "PASSED" : status === "failed" ? "FAILED" : status === "not-required" ? "NOT REQUIRED" : "UNKNOWN";
+    const statusColor = (status: string) => status === "completed" ? "#24734d" : status === "failed" ? "#b4232c" : status === "not-required" ? "#53627f" : "#8a641c";
+    const wrapLabel = (value: string, limit = 34) => {
+      const words = value.split(/\s+/);
+      const lines: string[] = [];
+      let line = "";
+      words.forEach((word) => {
+        if (line && (line + " " + word).length > limit) { lines.push(line); line = word; }
+        else line = line ? line + " " + word : word;
+      });
+      if (line) lines.push(line);
+      return lines.slice(0, 2);
+    };
+    return (
+      <section className="visual-card pathway-visual" aria-label={visual.title}>
+        <h3>{visual.title}</h3>
+        <svg viewBox={`0 0 740 ${height}`} role="img" aria-label={`Prerequisite pathway for ${visual.pathway.target.code} ${visual.pathway.target.title}. ${prerequisites.map((item) => item.code + " " + statusLabel(item.status)).join("; ")}. Eligibility: ${visual.pathway.eligibility.replace(/_/g, " ")}.`} className="pathway-svg">
+          <defs><marker id="course-pathway-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#8795b5" /></marker></defs>
+          {prerequisites.map((item, index) => {
+            const y = 20 + index * 88;
+            const center = y + 31;
+            const lines = wrapLabel(item.title);
+            return (
+              <g key={item.code + "-" + index}>
+                <path d={`M 325 ${center} C 365 ${center}, 382 ${targetCenter}, 425 ${targetCenter}`} fill="none" stroke="#8795b5" strokeWidth="2" markerEnd="url(#course-pathway-arrow)" />
+                <rect x="24" y={y} width="301" height="62" rx="9" fill="#ffffff" stroke={statusColor(item.status)} strokeWidth="1.5" />
+                <text x="38" y={y + 19} fill="#1d2b56" fontSize="12" fontWeight="700">{item.code}</text>
+                <text x="38" y={y + 36} fill="#343b55" fontSize="11">{lines[0] || item.title}</text>
+                {lines[1] && <text x="38" y={y + 49} fill="#343b55" fontSize="11">{lines[1]}</text>}
+                <text x="312" y={y + 15} textAnchor="end" fill={statusColor(item.status)} fontSize="9" fontWeight="700">{statusLabel(item.status)}</text>
+              </g>
+            );
+          })}
+          <rect x="425" y={targetCenter - 43} width="290" height="86" rx="11" fill="#eef2fb" stroke="#253f86" strokeWidth="2" />
+          <text x="444" y={targetCenter - 14} fill="#1d2b56" fontSize="13" fontWeight="700">{visual.pathway.target.code}</text>
+          <text x="444" y={targetCenter + 7} fill="#30384e" fontSize="12">{wrapLabel(visual.pathway.target.title)[0]}</text>
+          <text x="444" y={targetCenter + 25} fill="#53627f" fontSize="10" fontWeight="700">TARGET COURSE</text>
+        </svg>
+        <div className="pathway-legend" aria-label="Prerequisite status legend">
+          <span><i className="passed" /> Passed</span><span><i className="failed" /> Failed</span><span><i className="unknown" /> Not established</span>
+        </div>
+        <p className="visual-note">Based on the signed-in synthetic profile and the matching admission-batch workbook row. This checks direct prerequisites only; it is not registration approval.</p>
+      </section>
+    );
+  }
   const max = Math.max(1, ...visual.items.map((item) => item.value ?? 0));
   return (
     <section className="visual-card" aria-label={"Visual summary: " + visual.title}>

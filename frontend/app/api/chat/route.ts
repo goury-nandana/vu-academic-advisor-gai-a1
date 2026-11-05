@@ -9,6 +9,8 @@ const MAX_BYTES = 4 * 1024 * 1024;
 
 const PAGES = [
   ["VU Official Website", "https://vidyashilp.edu.in/"],
+  ["VU Faculty", "https://vidyashilp.edu.in/faculty/"],
+  ["VU School of Law", "https://vidyashilp.edu.in/Law_School/"],
   ["VU Admissions", "https://vidyashilp.edu.in/admissions/"],
   ["VU Contact", "https://vidyashilp.edu.in/contact/"],
   ["VU Programmes", "https://vidyashilp.edu.in/test-page-new/"],
@@ -310,7 +312,10 @@ function isMinorQuestion(question: string): boolean {
 }
 
 function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []): string | undefined {
-  const normalized = question.trim().toLowerCase().replace(/[.!?]+$/g, "").replace(/\s+/g, " ");
+  const normalized = question.trim().toLowerCase()
+    .replace(/(.)\1{2,}/g, "$1")
+    .replace(/[.!?]+$/g, "")
+    .replace(/\s+/g, " ");
 
   // Crisis language bypasses academic scope filtering and never depends on Groq availability.
   if (/\b(?:i(?:'m| am)?\s+)?(?:going to|about to|planning to|want to|wish to|thinking about)\s+(?:commit\s+)?suicide\b|\b(?:i(?:'m| am)?\s+)?(?:want to|going to|might|may|plan to)\s+(?:kill|hurt)\s+myself\b|\b(?:i want to die|i don't want to live|i do not want to live|end my life|take my own life|i'm suicidal|i am suicidal)\b/i.test(normalized)) {
@@ -332,8 +337,14 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
     return "You should not rely on me blindly. VU-specific answers should be grounded in official university documents or webpages, with sources shown where available. I can still make mistakes or miss recent changes, so verify important decisions with the university. I provide guidance; I do not make official university decisions.";
   }
 
-  if (/^(?:hi+|hello+|h+e+y+|heylo+|hii+|good morning|good afternoon|good evening|good night|namaste|namaskaram+|vanakkam|bonjour|hola)(?: there)?$/.test(normalized)) {
+  if (/^(?:hi+|hello+|h+e+y+|heylo+|hii+|hlo+|helo+|hallo+|good morning|goodmorning|good afternoon|goodafternoon|good evening|goodevening|good night|namaste|namaskaram+|vanakkam|bonjour|bonour|bonjur|hola)(?: there)?$/.test(normalized)) {
     return "Hello. I’m the VU Academic Advisor. You can ask me about Vidyashilp University programmes, courses, prerequisites, credits, semesters and admissions.";
+  }
+  if (/^(?:bro|bruh|dude|yo|mate)$/.test(normalized)) {
+    return "Hey. What do you need help with?";
+  }
+  if (/^(?:dumb|stupid|idiot|useless|you are dumb|you are stupid)$/.test(normalized)) {
+    return "I may have given an unhelpful answer. Tell me what you expected, and I’ll try again using the relevant VU source.";
   }
   if (/^(?:how are you|how are u|how're you|how r u)$/.test(normalized)) {
     return "I’m working and ready to help with your Vidyashilp University questions.";
@@ -360,6 +371,21 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
     return "I don’t have personal relationships. I’m here to help with Vidyashilp University information.";
   }
   return undefined;
+}
+
+
+function getContextualFacultyFollowupQuestion(history: ChatHistoryItem[], question: string): string | undefined {
+  const current = question.toLowerCase();
+  if (!/\b(?:website|web site|site|there|sources?|missed|already)\b/i.test(current)) return undefined;
+  const previousUser = [...history].reverse().find((item) =>
+    item.role === "user" && /\b(?:faculty|professor|professors|law school|school of law|dean)\b/i.test(item.text)
+  );
+  const previousAssistant = [...history].reverse().find((item) => item.role === "assistant");
+  if (!previousUser || !previousAssistant || !/official sources do not contain|do not contain a list of faculty|faculty members or contact details/i.test(previousAssistant.text)) {
+    return undefined;
+  }
+  return previousUser.text +
+    ". Check the official VU Faculty directory for the School of Law. Include the listed names and designations, explain why the earlier reply missed the directory, and keep the source links limited to the relevant official faculty page.";
 }
 
 function getDeterministicScopeAnswer(question: string): string | undefined {
@@ -944,7 +970,18 @@ function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
   const terms = queryWords(question);
   if (!terms.length) return [];
   const query = question.toLowerCase();
-  const scored = WEBSITE_KNOWLEDGE.chunks.map((chunk) => {
+  const lawFacultyIntent =
+    /\b(?:faculty|faculties|professors?|teaching staff|dean|academic staff)\b/i.test(query) &&
+    /\b(?:law|legal|llb)\b/i.test(query);
+  const contactIntent = /\b(?:contact|phone|email|address|reception)\b/i.test(query);
+  const admissionsIntent = /\b(?:apply|application|admission|admissions)\b/i.test(query);
+  const relevantChunks = WEBSITE_KNOWLEDGE.chunks.filter((chunk) => {
+    if (lawFacultyIntent) return chunk.page_id === "faculty" || chunk.page_id === "school_law";
+    if (contactIntent) return chunk.page_id === "contact";
+    if (admissionsIntent && !/scholarship|financial aid|fee waiver/i.test(query)) return chunk.page_id === "admissions";
+    return true;
+  });
+  const scored = relevantChunks.map((chunk) => {
     const title = String(chunk.page_title || "");
     const heading = String(chunk.heading || "");
     const keywords = (chunk.keywords || []).map((item) => String(item).toLowerCase());
@@ -960,6 +997,8 @@ function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
     if (/\b(?:bms|management studies|digital business)\b/i.test(query) && chunk.page_id === "programme_bms") score += 8;
     if (/\b(?:data science|b\.?tech)\b/i.test(query) && chunk.page_id === "programme_btech_ds") score += 5;
     if (/\b(?:artificial intelligence|ai.?ml|machine learning)\b/i.test(query) && chunk.page_id === "programme_btech_aiml") score += 6;
+    if (lawFacultyIntent && chunk.page_id === "faculty") score += 20;
+    if (lawFacultyIntent && chunk.page_id === "school_law") score += 5;
     return { chunk, score };
   }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score);
 
@@ -967,7 +1006,7 @@ function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
   for (const item of scored) {
     const chunk = item.chunk;
     const countOnPage = selected.filter((hit) => hit.pageId === chunk.page_id).length;
-    if (countOnPage >= 4) continue;
+    if (countOnPage >= (lawFacultyIntent ? 1 : 4)) continue;
     selected.push({
       title: String(chunk.page_title || "Vidyashilp University") + " — " + String(chunk.heading || chunk.section || ""),
       url: String(chunk.page_url || "https://vidyashilp.edu.in/"),
@@ -976,9 +1015,25 @@ function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
       heading: chunk.heading,
       score: item.score,
     });
-    if (selected.length >= 6) break;
+    if (selected.length >= (lawFacultyIntent ? 2 : 6)) break;
   }
   return selected;
+}
+
+
+function deterministicLawFacultyAnswer(
+  question: string,
+  pages: WebsiteSearchHit[],
+  citationOffset: number
+): string | undefined {
+  if (!/\b(?:faculty|faculties|professors?|teaching staff|dean|academic staff)\b/i.test(question) ||
+      !/\b(?:law|legal|llb)\b/i.test(question)) return undefined;
+  const directory = pages.find((page) => page.pageId === "faculty");
+  if (!directory) return undefined;
+  const citation = "[" + (citationOffset + pages.indexOf(directory) + 1) + "]";
+  return "**School of Law faculty listed on VU’s official Faculty page**\n\n" +
+    directory.text + " " + citation + "\n\n" +
+    "Faculty listings can change. Check the linked official directory for the latest profiles and individual biographies.";
 }
 
 function deterministicAdmissionsAnswer(
@@ -1015,6 +1070,11 @@ async function retrieve(question: string) {
   if (/admission|apply|application|eligib|entrance/i.test(q)) preferred.push("VU Admissions");
   if (/contact|office|registrar|counsell?or/i.test(q)) preferred.push("VU Contact");
   if (/campus|hostel|facilit/i.test(q)) preferred.push("VU Campus");
+  if (/\b(?:faculty|faculties|professors?|dean|teaching staff)\b/i.test(q) && /\b(?:law|legal|llb)\b/i.test(q)) {
+    preferred.push("VU Faculty", "VU School of Law");
+  } else if (/\b(?:faculty|faculties|professors?|dean|teaching staff)\b/i.test(q)) {
+    preferred.push("VU Faculty");
+  }
   const ordered = [...PAGES.filter(p=>preferred.includes(p[0])),...PAGES.filter(p=>!preferred.includes(p[0]))].slice(0,4);
   const results = await Promise.all(ordered.map(async ([name,url]) => {
     try {
@@ -1067,7 +1127,8 @@ export async function POST(request: Request) {
   let combinedQuestion=question||"Explain the academic information in my attachment.";
   const pendingMinorQuestion = getPendingMinorQuestion(history);
   const pendingCourseQuestion = getPendingBtechCourseQuestion(history, combinedQuestion);
-  const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || combinedQuestion;
+  const contextualFacultyQuestion = getContextualFacultyFollowupQuestion(history, combinedQuestion);
+  const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || contextualFacultyQuestion || combinedQuestion;
   const socialAnswer = getSimpleSocialAnswer(effectiveQuestion, history) || getDeterministicScopeAnswer(effectiveQuestion);
   const attachments:string[]=[];
   const fileNotes:string[]=[];
@@ -1098,7 +1159,8 @@ export async function POST(request: Request) {
   const isBatchSpecificBtechMinorQuery=requestedMinorBatches.length>0;
   const structuredCourseSearch=findStructuredCourseSearch(effectiveQuestion,profile.program);
   const academicMatches=retrieveAcademic(effectiveQuestion,profile.program,structuredCourseSearch);
-  const localWebsiteMatches = socialAnswer ? [] : retrieveWebsiteKnowledge(effectiveQuestion);
+  const attendanceIntent = /\b(attendance|attendance policy|absence|condonation|shortage|medical leave)\b/i.test(effectiveQuestion);
+  const localWebsiteMatches = socialAnswer || attendanceIntent ? [] : retrieveWebsiteKnowledge(effectiveQuestion);
   const pages = (isBtechMinorQuery||isStudentMinorQuery||structuredCourseSearch||socialAnswer)
     ? []
     : localWebsiteMatches.length ? localWebsiteMatches : await retrieve(combinedQuestion);
@@ -1107,9 +1169,10 @@ export async function POST(request: Request) {
   pipeline.push("Fetched "+pages.length+" reachable official VU webpage(s) from the allowlist");
   const academicSources=academicMatches.map((document,index)=>formatAcademicSource(document,index));
   const webSources=pages.map((page,index)=>({
-    title:page.title,url:page.url,text:page.text,citation:academicSources.length+index+1,type:"website",
+    title:page.title,url:page.url,text:page.text,citation:academicSources.length+index+1,type:"website",pageId:page.pageId,
   }));
   const sources=[...academicSources,...webSources];
+  const lawFacultyAnswer = deterministicLawFacultyAnswer(effectiveQuestion,pages as WebsiteSearchHit[],academicSources.length);
   const admissionsAnswer = deterministicAdmissionsAnswer(
     effectiveQuestion,
     pages as WebsiteSearchHit[],
@@ -1177,6 +1240,10 @@ export async function POST(request: Request) {
     answer=nonBtechMinorAnswer(profileProgramme,profileSemester,academicMatches);
     modelUsed="Deterministic VU Handbook and Course Plans lookup";
     pipeline.push("Answered the student-specific minor question using available Course Plans and Handbook clauses");
+  }else if(lawFacultyAnswer){
+    answer=lawFacultyAnswer;
+    modelUsed="Deterministic official VU Faculty directory lookup";
+    pipeline.push("Answered the School of Law faculty query from the official VU Faculty directory and used a single relevant website source");
   }else if(admissionsAnswer){
     answer=admissionsAnswer;
     modelUsed="Deterministic official VU Admissions page lookup";

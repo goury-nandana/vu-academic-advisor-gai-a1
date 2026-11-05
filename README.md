@@ -1,159 +1,112 @@
 # VU Academic Advisor — DATA308 Generative AI Assignment 2
 
-Streamlit-based academic advising chatbot for Vidyashilp University (VU). It uses Groq for answer generation, structured retrieval from the original B.Tech semester-spread workbooks, and a separate official-website knowledge source.
+A multimodal academic-advising prototype for Vidyashilp University. The production-facing app is a Next.js web chat hosted on Vercel. A legacy Streamlit implementation is also retained in the repository for the original academic-data workflow.
 
-**Live app:** https://vu-academic-advisor-gai-a1-hzdbiixzivwbjb3dvbfvka.streamlit.app/
+**Production web chat:** https://vu-academic-advisor-gai-a1.vercel.app/  
+**Repository:** https://github.com/goury-nandana/vu-academic-advisor-gai-a2
 
-## Next.js frontend and Vercel API
+## Production web architecture
 
-The responsive Next.js UI is in `frontend/`. It calls its same-origin Next.js route at `POST /api/chat`; the route uses the server-side `GROQ_API_KEY`, fetches allowlisted official VU webpages, returns clickable source citations and can return a source-bounded visual summary. The web route extracts text from PDF, DOCX, XLSX and PPTX files with OfficeParser, reads images with the configured vision model, and transcribes audio with Groq Whisper. Never expose the Groq key through a `NEXT_PUBLIC_*` variable.
+- **Frontend:** Next.js 15, React 19 and TypeScript.
+- **Hosting:** Vercel; project root is frontend/.
+- **Backend:** same-origin Next.js API routes at POST /api/chat and POST /api/transcribe.
+- **LLM provider:** Groq API. The GROQ_API_KEY is read server-side and must never be exposed via NEXT_PUBLIC_*.
+- **Answer model:** openai/gpt-oss-120b.
+- **Image model:** qwen/qwen3.8-27b.
+- **Audio transcription:** whisper-large-v3-turbo.
+- **Read Aloud:** browser Speech Synthesis API.
+- **Retrieval:** keyword-weighted official-website/document retrieval plus exact structured B.Tech course-record lookup. The web route is not a dense-vector embedding database.
 
-Vercel settings for this repository: **Framework: Next.js**, **Root Directory: frontend**, **Install Command: npm ci**, **Build Command: npm run build**. Add `GROQ_API_KEY` to Vercel Production and Preview server-side environment variables. The API does not require a separate backend URL.
+Configure Vercel with Framework = Next.js, Root Directory = frontend, Install Command = npm ci, Build Command = npm run build. Add GROQ_API_KEY as a server-side Production and Preview environment variable.
 
-Run locally:
+## Academic knowledge and retrieval
 
-```bash
-cd frontend
-npm ci
-npm run typecheck
-npm run build
-npm run dev
-```
+The web route imports two data exports:
 
-The web route supports TXT/MD/CSV, PDF/DOCX/XLSX/PPTX, images and audio attachments up to 4 MB combined. Text extraction is performed in memory; scanned or encrypted PDFs may not yield readable text and should be supplied as clear page images. The Next.js route does not load the batch-specific B.Tech semester-spread workbooks; detailed course-code, credit and prerequisite answers must be checked against the student's registered Digicampus curriculum or the existing Streamlit academic-data workflow. Vercel SSO protection is preserved, so authorized access may be needed to open the deployment.
+- frontend/data/vu-academic-knowledge.json — Student Handbook, Student SOP, course-plan and minor-workbook passages, plus 205 structured B.Tech semester-spread course records.
+- frontend/data/vu-website-knowledge.json — chunked official VU webpage content used for programme, admissions, faculty and campus questions.
 
-## Current scope
+Structured course records retain course code, title, L-T-P, credits, prerequisite, semester, admission batch, track where present, source workbook and cell coordinates. Detailed B.Tech semester-spread coverage is for admission batches 2022–2026. The 2022–2025 files do not identify a named track in their source metadata; the application does not infer one. Some non-B.Tech programme curriculum and minor offerings are not available in the supplied structured records, so the advisor must say when it cannot verify them.
 
-- Detailed B.Tech curriculum lookups for admission batches 2022–2026, using the batch-specific semester-spread workbook.
-- Course code, title, prerequisite, L-T-P, credits, semester, basket, workbook name and cell coordinates are retained from source data.
-- Course and batch context is carried across relevant follow-up questions.
-- Explicit multi-batch questions return the requested supported batches; unsupported cohorts are not fabricated.
-- Student Handbook and SOP material are kept as academic-document sources.
-- Official VU website retrieval is kept separate from academic-document retrieval.
-- Other VU programmes can be asked about, but detailed curriculum answers are limited to what the loaded official sources actually support.
+Minor-course data is batch-specific. A minor listed in a workbook is not a promise that the course will run in a particular semester. When the answer states the Handbook's minimum-registration threshold, the web route now includes a separate Handbook citation.
 
-The 2026 semester-spread source is identified as the B.Tech Data Science track. The 2022–2025 semester-spread files do not explicitly identify a track in the source metadata, so the application does not infer one.
+## Multimodal features
 
-## Assignment 2 reliability safeguards
+The web chat supports:
 
-- Personal-profile questions are answered from explicitly supplied sidebar/chat details only; the chatbot does not claim access to university student records.
-- Unsupported personal or academic profile claims are retracted when challenged.
-- Short acknowledgements such as "oh" and "ok" do not replace the active conversation topic.
-- French greetings (including "bonjour") are handled as social openers without document retrieval.
-- Numeric policy thresholds, including grading cut-offs, require explicit source evidence.
+- Text questions and conversational follow-ups.
+- PDF, DOCX, XLSX, PPTX, TXT, Markdown and CSV document uploads.
+- Image upload and image understanding.
+- Audio recording and voice-note transcription.
+- Read Aloud using browser Speech Synthesis.
+- Structured charts, steps and visual summary cards derived from retrieved answer evidence.
 
-## User file uploads and voice input
+The web API limit is four files and 4 MB combined. Extraction is in memory. Scanned or encrypted files may not yield readable text; the app should disclose this rather than guess.
 
-The chat screen supports multiple attachments and recorded voice questions.
+## Specialist workflow demonstration for Assignment 2
 
-- Documents: PDF, DOCX, TXT, Markdown, CSV, XLSX and PPTX.
-- Images: PNG, JPG/JPEG, WEBP, BMP and TIFF. Image text/content is extracted through a Groq vision-capable model available to the configured account.
-- Audio files: MP3, WAV, M4A, OGG and FLAC. The chat also includes a microphone recorder; recordings are transcribed with Groq Whisper before being submitted as a question.
-- Limit: 15 MB per file; extracted text is capped to keep prompts within practical limits.
-- Legacy DOC/XLS, video files and arbitrary binary formats are not supported. Scanned PDFs may return no text; upload a clear image or OCR-enabled PDF instead.
-- Uploaded content is treated as user-provided material, not automatically as verified VU policy. The chatbot must distinguish it from official university sources.
-- Image understanding depends on a vision model being enabled for the existing Groq account. If unavailable, the app reports the model error rather than inventing image contents.
-- Audio transcription uses Groq's speech endpoint and is subject to the account's model availability and free-tier limits.
+The sidebar contains an optional **Demo profile (synthetic only)** selector:
 
-Files are processed in memory for the current Streamlit session; this feature does not add permanent file storage.
+- SYN-001 — prerequisites met.
+- SYN-002 — failed prerequisite.
+- SYN-003 — incomplete information.
 
-## Ten-model benchmark
+These are invented fixtures stored in frontend/data/synthetic-students.json. They are not VU students and do not contain real personal information.
 
-`benchmark_runner.py` runs the same benchmark questions, source context, and grounding prompt against ten Groq model candidates available to the configured account. It uses the configured `GROQ_API_KEY` only; it does not require paid API access. Unavailable models are not silently replaced. The script records responses, latency and token usage; the four rubric scores are intentionally left blank for consistent human evaluation.
+Select a fixture and ask:
 
-Place `VU_LLM_Benchmark_Framework.xlsx` in the repository root, then run:
+**“Can I take COMP302? Check prerequisites and calculate my completed credits.”**
 
-```bash
-python benchmark_runner.py --limit 3
-python benchmark_runner.py
-```
+The deterministic workflow in frontend/academic-agents.ts runs six specialist stages: synthetic student profile, course retrieval, credit calculation, direct prerequisite check, source verification and limited recommendation. The source-backed COMP302 2025 prerequisite scenarios are tested in tests/test_synthetic_advising.py.
 
-The first command is a small smoke run; the second runs the full question set. The workbook is an evaluation input and is not currently committed to this repository. A benchmark run has not yet been performed from the deployment environment. Groq model availability and free-tier rate limits depend on the account at run time.
+This is a controlled specialist-stage workflow, not six independent autonomous LLM agents. It does not connect to student records, register a course, approve eligibility or replace a Faculty Advisor/Registrar.
 
-## Run locally
+## Privacy and security
 
-Python 3.11+ is recommended.
+- The prototype is not connected to Digiicampus or VU student records.
+- Student profile fields are optional and are provided by the person using the chat.
+- Questions, profile details and uploaded files are sent to Groq for the requested inference. Do not enter passwords, student IDs or sensitive personal records.
+- The prototype does not save chat history in a VU student database or its own permanent server-side chat database. Clear Chat clears the current browser conversation only; it cannot undo data already processed by the provider.
+- Users can explicitly export an answer's question, answer, model identifier, processing steps and displayed citations as a local JSON evidence file. Redact personal details before sharing it.
+- Chat and transcription routes reject mismatched browser Origin hosts and check declared request sizes. These are useful safeguards, not user authentication or distributed abuse protection.
+- Retrieved documents and webpages are treated as untrusted evidence, not instructions.
+- Vercel SSO deployment protection is preserved. It is not a substitute for institutional student authentication.
 
-```bash
-git clone https://github.com/goury-nandana/vu-academic-advisor-gai-a2.git
-cd vu-academic-advisor-gai-a2
-python -m venv .venv
-# Windows: .venv\\Scripts\\activate
-# macOS/Linux:
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+The privacy/security review is in docs/PRIVACY_SECURITY_AUDIT.md. It is a source-code review plus deterministic checks, not a live penetration test or legal compliance certification. Provider retention/region/contract terms, per-student authentication, rate limiting, abuse controls and independent testing require further institutional action.
 
-Set the Groq key as an environment variable, or configure it in Streamlit Secrets:
+## Copyright / legal review evidence
 
-```toml
-GROQ_API_KEY = "your-groq-api-key"
-```
+docs/LEGAL_COPYRIGHT_OUTPUT_REVIEW.md evaluates three actual saved advisor outputs captured on 4 November 2026: an undergraduate programme list, a Calculus course-code lookup and a B.Tech 2022 minor-options answer. The saved transcript did not preserve original model identifiers or timestamps per response. The review records that evidence gap and identifies a missing Handbook citation in the older minor response; the current route has been corrected to cite that policy separately.
 
-Optional debug access requires a separate token:
+The document is an educational risk review, not legal advice or blanket permission to reproduce university material. VU approval is required before commercial use of university content, student data or third-party materials.
 
-```toml
-DEBUG_TOKEN = "a-long-random-secret"
-```
+## Model benchmark status
 
-Debug output is disabled unless the token is configured and supplied as the `debug` query parameter. Do not share debug URLs.
+benchmark_runner.py supports a three-model comparison:
+- openai/gpt-oss-20b
+- openai/gpt-oss-120b
+- qwen/qwen3.8-27b
 
-Start the app:
+It expects VU_LLM_Benchmark_Framework.xlsx, which is not in the repository. No complete scored model comparison or model ranking is claimed. The benchmark also requires a configured GROQ_API_KEY and must be run where that secret is authorised. The model displayed in an individual chat turn is the model used for that turn, not a model-comparison result.
 
-```bash
-streamlit run app.py
-```
+## Local development and tests
 
-## Streamlit Community Cloud
+Python checks from the repository root:
 
-1. Connect this GitHub repository to Streamlit Community Cloud.
-2. Set the app entry point to `app.py`.
-3. Add `GROQ_API_KEY` under App settings → Secrets.
-4. Optionally add `DEBUG_TOKEN`; leave it unset in normal use.
-5. Deploy from `main`.
+    python -m py_compile app.py course_data.py advisor_guardrails.py upload_support.py benchmark_runner.py
+    python -m unittest discover -s tests -v
 
-Do not commit API keys, `.env` files or `.streamlit/secrets.toml`.
+Next.js checks from frontend/:
 
-## Data sources and retrieval
+    npm ci
+    npm run typecheck
+    npm run build
+    npm run dev
 
-| Source | Intended use |
-|---|---|
-| `VU_Semester_Data_Split.zip` | Batch-specific B.Tech semester spread, course details and L-T-P |
-| Embedded Student Handbook | University regulations and academic policies |
-| Embedded SOP | Student-facing procedures |
-| `Course_Plans.txt` | Academic course-plan context |
-| `Minor_Courses_for_BTech_Students.xlsx` (legacy embedded extract) | Minor-course context |
-| Official VU website sources | Admissions, programmes, faculty, placements and campus information |
+GitHub Actions runs Python and frontend checks on pushes and pull requests to main.
 
-The structured loader reads only the five semester-spread workbooks in the archive. It does not infer missing values or treat programme-structure sheets as semester-spread rows. Each structured row includes source workbook and cell coordinates.
+## Remaining production requirements
 
-## Tests
+Before real students' confidential records are enabled, VU must approve the purpose, privacy notice, provider agreement, identity integration and data-retention rules. A production integration would require authorised VU/vendor SSO or APIs, minimum data scopes, server-side authorisation, deletion and retention controls, distributed rate limits, security logging, incident response, cross-user isolation tests and independent penetration testing.
 
-Run Python checks from the repository root and frontend checks from `frontend/`:
-
-```bash
-python -m py_compile app.py course_data.py advisor_guardrails.py upload_support.py benchmark_runner.py
-python -m unittest discover -s tests -v
-cd frontend
-npm ci
-npm run typecheck
-npm run build
-```
-
-GitHub Actions runs the Python syntax/unit tests plus the Next.js TypeScript check and production build on pushes and pull requests to `main`.
-
-## Known limitations
-
-- Structured semester-spread curriculum coverage is B.Tech batches 2022–2026. Do not assume a different cohort is covered.
-- The 2022–2025 workbook metadata does not establish a named track; the application leaves track unspecified.
-- Ambiguous elective cells, TBA placeholders, and combined alternative-course cells (for example, slash-separated codes with multiple titles or L-T-P values) are not converted into single course records. They require a separate source-aware treatment; the loader does not guess how to split them.
-- Minor-workbook extraction and non-B.Tech programme semester structures are not yet fully normalized into the structured course-record loader.
-- Website information depends on the official pages being reachable when the website knowledge base is refreshed.
-- Real Groq API behaviour and the deployed Streamlit instance must be smoke-tested with the configured deployment secret; automated tests do not validate external API credentials.
-
-
-## Assignment evidence and limitations
-
-- The web chat displays the answer-generation model and the response pipeline. It does not claim a live multi-model ranking. The benchmark harness is not evidence of a completed comparison until its missing input workbook is supplied and the responses are scored.
-- The privacy review adds deterministic prompt-boundary tests, not a live model penetration test. Provider retention and production abuse controls remain to be verified.
-- The three-output legal/copyright evaluation remains incomplete until three actual redacted chat transcripts and their cited sources are captured. No fictional outputs are used as evidence.
+The current system is a working educational prototype, not a production-authorised student-record system.

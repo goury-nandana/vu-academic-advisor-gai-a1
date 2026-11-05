@@ -12,7 +12,9 @@ export async function GET(request: Request) {
   if (rawSemester !== null && (!Number.isInteger(semester) || Number(semester) < 1 || Number(semester) > 10)) {
     return NextResponse.json({ error: "Semester must be a whole number between 1 and 10." }, { status: 400, headers: { "Cache-Control": "no-store" } });
   }
-  const pdf = createSyntheticMarksheetPdf(student, semester);
+  const pdf = semester === undefined
+    ? createSyntheticMarksheetPdf(student)
+    : createSyntheticMarksheetPdf(student, semester);
   const safeName = student.name.replace(/[^a-zA-Z0-9-]+/g, "-").replace(/^-|-$/g, "") || "Synthetic-Student";
   return new Response(new Uint8Array(pdf), {
     status: 200,

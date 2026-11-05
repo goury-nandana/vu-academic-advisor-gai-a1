@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Camera, Check, Copy, FileText, Mic, Square, X, Volume2, VolumeX } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { askAdvisor, type Source, type Visualization } from "./advisor";
+import { askAdvisor, transcribeVoice, type Source, type Visualization } from "./advisor";
 
 type ImageAttachment = { name: string; url: string; file: File };
 type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[]; imageFiles?: ImageAttachment[]; pipeline?: string[]; model?: string; visualization?: Visualization; followUps?: string[]; fileNotes?: string[] };
@@ -192,6 +192,7 @@ export default function Home() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [notice, setNotice] = useState("");
   const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -256,32 +257,70 @@ export default function Home() {
       recRef.current?.stop();
       return;
     }
+    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setNotice("Voice recording is not supported in this browser.");
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const rec = new MediaRecorder(stream);
       const chunks: Blob[] = [];
-      rec.ondataavailable = (e) => chunks.push(e.data);
-      rec.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
+      rec.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      rec.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
         if (tickRef.current) clearInterval(tickRef.current);
         const type = rec.mimeType || "audio/webm";
         const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
-        setAttachments((a) => [...a, new File(chunks, `voice-note.${ext}`, { type })]);
+        const recordingFile = new File(chunks, "voice-note." + ext, { type });
         setRecording(false);
+        if (recordingFile.size === 0) {
+          setNotice("No audio was captured. Please try recording again.");
+          return;
+        }
+        if (recordingFile.size > MAX_MB * 1024 * 1024) {
+          setNotice("This recording is larger than 4 MB. Please record a shorter message.");
+          return;
+        }
+        setTranscribing(true);
+        setNotice("Transcribing your recording…");
+        try {
+          const transcript = await transcribeVoice(recordingFile);
+          if (!transcript) {
+            setNotice("No speech could be recognised. Try speaking more clearly or recording again.");
+            return;
+          }
+          const draft = draftRef.current;
+          if (draft) {
+            const existing = draft.value.trim();
+            draft.value = existing ? existing + "\n" + transcript : transcript;
+            draft.style.height = "auto";
+            draft.style.height = Math.min(draft.scrollHeight, 120) + "px";
+            draft.focus();
+          }
+          setNotice("");
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : "Voice transcription failed. Please try again.");
+        } finally {
+          setTranscribing(false);
+        }
       };
       rec.start();
       recRef.current = rec;
       setSeconds(0);
       setRecording(true);
+      setNotice("");
       tickRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
     } catch {
-      setNotice("Allow microphone access in your browser to send a voice note.");
+      setRecording(false);
+      setNotice("Allow microphone access in your browser to record a message.");
     }
   }
 
   async function send(text?: string) {
     const typed = (text ?? draftRef.current?.value ?? "").trim();
-    if ((!typed && attachments.length === 0) || busy || recording) return;
+    if ((!typed && attachments.length === 0) || busy || recording || transcribing) return;
     const question = typed || "Please look at my attachment.";
     const files = attachments;
     const imageFiles: ImageAttachment[] = files
@@ -554,13 +593,13 @@ export default function Home() {
             <textarea
               ref={draftRef}
               rows={1}
-              placeholder={recording ? "Recording… tap the square to stop" : "Ask an academic question…"}
+              placeholder={recording ? "Recording… tap the square to stop" : transcribing ? "Transcribing audio…" : "Ask an academic question…"}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
               }}
             />
-            <button type="button" className={`tool ${recording ? "rec" : ""}`} onClick={toggleMic}
-              aria-label={recording ? "Stop recording" : "Record a voice note"}>
+            <button type="button" className={`tool ${recording ? "rec" : ""}`} onClick={toggleMic} disabled={busy || transcribing}
+              aria-label={recording ? "Stop recording" : "Record a voice message"}>
               {recording ? <><Square size={16} fill="currentColor" /><b>{fmt(seconds)}</b></> : <Mic size={22} />}
             </button>
             <button type="button" className="tool" onClick={() => cameraInput.current?.click()} aria-label="Take or attach a photo">

@@ -1478,7 +1478,7 @@ export async function POST(request: Request) {
   const contextualCourseLtpQuestion = getContextualBtechCourseLtpQuestion(history, combinedQuestion);
   const contextualFacultyQuestion = getContextualFacultyFollowupQuestion(history, combinedQuestion);
   const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || contextualCourseLtpQuestion || contextualFacultyQuestion || combinedQuestion;
-  const genericAttachmentInspection = files.length > 0 && /^(?:(?:please|can you|could you)\\s+)?(?:look(?:\\s+at)?|check|review|inspect|describe|summari[sz]e|take\\s+a\\s+look\\s+at)\\s+(?:(?:my|these|this|the)\\s+)?(?:attachments?|files?|documents?)(?:\\s+please)?[.!?]*$/i.test(question);
+  const genericAttachmentInspection = files.length > 0 && /^(?:(?:please|can you|could you)\s+)?(?:look(?:\s+at)?|check|review|inspect|describe|summari[sz]e|take\s+a\s+look\s+at)\s+(?:(?:my|these|this|the)\s+)?(?:attachments?|files?|documents?)(?:\s+please)?[.!?]*$/i.test(question);
   const failedImageNames=unreadableAttachmentNames.filter((name)=>imageFiles.some((file)=>file.name===name));
   const readableImageCount=imageFiles.length-failedImageNames.length;
   const imageOnlyAnswer = onlyImagesUploaded && previousAttachmentContext.length===0 && readableImageCount > 0 && imageBatch.answer

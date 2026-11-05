@@ -104,7 +104,7 @@ function compactSources(sources: Source[]): Source[] {
       });
     }
   }
-  return Array.from(groups.values()).slice(0, 5).map((group) => {
+  return Array.from(groups.values()).slice(0, 8).map((group) => {
     const pages = Array.from(group.pages).sort((a, b) => a - b);
     return {
       title: group.title + (pages.length ? " · pp. " + pages.join(", ") : ""),

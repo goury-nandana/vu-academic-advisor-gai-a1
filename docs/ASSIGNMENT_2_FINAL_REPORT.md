@@ -60,7 +60,7 @@ See [Legal/Copyright Output Review](LEGAL_COPYRIGHT_OUTPUT_REVIEW.md).
 
 The repository includes the README, system architecture, multimodal guide, agentic workflow comparison, privacy audit, legal review, synthetic-account data, viva demo guide, and test/release evidence. GitHub Actions passed on the source commit recorded in [Testing and Results](TESTING_AND_RESULTS.md).
 
-The production release must be treated separately from source CI. The Task 6 production deployment was blocked by Vercel's daily Hobby deployment limit; the production alias was still serving an older commit at the last verified check. This report does not claim the latest source is deployed. Recheck Vercel's deployment by commit SHA after the documentation update.
+The production runtime is deployed in a Vercel **READY** production deployment (`dpl_DR61rbmBqambRvN665GxgtLYqRVv`) from commit `36605c53ba5557cc3c7e7822f184b7466933f21a`, with the `vu-academic-advisor-gai-a1.vercel.app` production alias assigned. This deployment includes the Task 6 application code; the intervening and current Task 7 changes are documentation-only. An attempt to deploy the latest Task 7 documentation commit `328b5203a59dbf2347199b07503267312a189737` was rejected with Vercel HTTP 402 because the team exceeded its 100-deployments-per-day allowance. The runtime app is live, but the newest documentation-only Git commit is not the deployment's exact source SHA.
 
 ## 4. Synthetic student account design
 
@@ -89,7 +89,7 @@ The test suite is deterministic and largely source/fixture-level. It should not 
 
 ## 6. Known limitations and outstanding work
 
-1. **Production deployment:** Vercel's daily Hobby deployment cap previously blocked release of the Task 6 commit. Confirm the current documentation commit is deployed by exact SHA before claiming it is live.
+1. **Production deployment:** The Task 6 runtime is deployed and READY at the production alias. Vercel's daily cap blocked deploying the newest documentation-only commit; no application code changed after the deployed runtime commit.
 2. **Authentication:** shared demo password, pre-provisioned accounts and no institutional SSO or durable student account database.
 3. **Privacy/security:** no independent penetration test, deployed cross-account red team or formal provider-retention audit.
 4. **Model benchmark:** `VU_LLM_Benchmark_Framework.xlsx` is absent; no complete scored multi-model comparison or model ranking.
@@ -102,4 +102,4 @@ The test suite is deterministic and largely source/fixture-level. It should not 
 
 The repository contains substantive implementations and passing automated checks across the assignment's five phases. The strongest evidence is the functioning source-code pathways, synthetic account fixtures, deterministic specialist workflow, multimodal wiring, SVG infographic renderer, privacy controls and repeatable CI build.
 
-The main evidence gaps are live production deployment of the latest commit, end-to-end browser and adversarial testing, a scored model benchmark, and institutional/legal approval. Accordingly, this is a developed and tested educational prototype, not a fully validated production student-information service and not a defensible claim of 50/50 marks.
+The main evidence gaps are deployed browser/end-to-end and adversarial testing, a scored model benchmark, and institutional/legal approval. The runtime deployment is READY, although the latest docs-only commit could not be separately deployed due to Vercel's daily deployment cap. Accordingly, this is a developed and tested educational prototype, not a fully validated production student-information service and not a defensible claim of 50/50 marks.

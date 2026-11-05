@@ -40,7 +40,7 @@ export function createSyntheticMarksheetPdf(student: SyntheticStudentProfile): B
     const code = ascii(record.course_code).padEnd(12).slice(0, 12);
     const title = ascii(record.course_title).padEnd(40).slice(0, 40);
     const credits = String(record.credits).padStart(2, " ");
-    const grade = ascii(record.grade || "—").padEnd(10).slice(0, 10);
+    const grade = ascii(record.grade || "Not provided").padEnd(10).slice(0, 10);
     const status = ascii(record.status);
     return `${sem}   ${code} ${title} ${credits}  ${grade} ${status}`;
   });
@@ -53,7 +53,7 @@ export function createSyntheticMarksheetPdf(student: SyntheticStudentProfile): B
     { text: "User ID / Student name: " + student.name, size: 10, bold: true },
     { text: "Synthetic ID: " + student.synthetic_student_id + "    Programme: " + student.programme },
     { text: "Admission batch: " + student.admission_batch + "    Current semester: " + (student.current_semester === null ? "Graduated" : student.current_semester) },
-    { text: "Academic status: " + student.academic_status + "    Synthetic CGPA: " + (student.synthetic_cgpa ?? "Not provided") },
+    { text: "Academic status: " + (student.current_semester === null || /graduat/i.test(student.academic_status || "") ? "GRADUATED" : (student.academic_status || "Not provided")) + "    Synthetic CGPA: " + (student.synthetic_cgpa ?? "Not provided") },
     { text: "Cumulative completed credits (passed course records): " + passedCredits + "    Credits across listed records: " + attemptedCredits },
     { text: "Semester credit totals: " + semesterTotalsLabel, size: 8 },
     { text: "Numeric marks not provided; synthetic grade values are displayed from the profile.", size: 8 },

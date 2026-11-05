@@ -209,6 +209,7 @@ export default function Home() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
+  const [marksheetBusy, setMarksheetBusy] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [demoAccountOptions, setDemoAccountOptions] = useState<DemoAccountOption[]>([]);
 
@@ -616,6 +617,29 @@ export default function Home() {
             <span>Demo CGPA: {authStudent?.synthetic_cgpa ?? "Not provided"}</span>
             <small>All profile identities and academic outcomes are synthetic demonstration data.</small>
           </div>
+          <button className="clear" disabled={marksheetBusy} onClick={async () => {
+            setMarksheetBusy(true);
+            setNotice("Preparing your synthetic marksheet PDF…");
+            try {
+              const response = await fetch("/api/marksheet", { cache: "no-store" });
+              if (!response.ok) {
+                const data = await response.json().catch(() => ({})) as { error?: string };
+                throw new Error(data.error || "Could not download the marksheet.");
+              }
+              const blob = await response.blob();
+              const objectUrl = window.URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = objectUrl;
+              link.download = (authStudent?.name || "Synthetic-Student").replace(/[^a-zA-Z0-9-]+/g, "-") + "-Synthetic-Marksheet.pdf";
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              window.URL.revokeObjectURL(objectUrl);
+              setNotice("Synthetic marksheet PDF downloaded. This is fictional demo data, not an official marksheet.");
+            } catch (error) {
+              setNotice(error instanceof Error ? error.message : "Marksheet download failed.");
+            } finally { setMarksheetBusy(false); }
+          }}>{marksheetBusy ? "Preparing PDF…" : "Download Synthetic Marksheet (PDF)"}</button>
           <button className="clear" onClick={async () => {
             await fetch("/api/auth/logout", { method: "POST" });
             setAuthStudent(null);

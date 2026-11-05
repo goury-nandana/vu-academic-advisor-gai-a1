@@ -88,7 +88,7 @@ The privacy/security review is in docs/PRIVACY_SECURITY_AUDIT.md. It is a source
 
 docs/LEGAL_COPYRIGHT_OUTPUT_REVIEW.md evaluates three actual saved advisor outputs captured on 4 November 2026: an undergraduate programme list, a Calculus course-code lookup and a B.Tech 2022 minor-options answer. The saved transcript did not preserve original model identifiers or timestamps per response. The review records that evidence gap and identifies a missing Handbook citation in the older minor response; the current route has been corrected to cite that policy separately.
 
-The document is an educational risk review, not legal advice or blanket permission to reproduce university material. VU approval is required before commercial use of university content, student data or third-party materials.
+The document is an educational risk review, not legal advice or blanket permission to reproduce university material. It also documents prospective copyright/consent safeguards for image, audio, and video generation; those media types are not among the three actual text outputs reviewed. The frontend does not currently provide a downloadable response-evidence export. VU approval is required before commercial use of university content, student data or third-party materials.
 
 ## Model benchmark status
 

@@ -190,6 +190,7 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [presence, setPresence] = useState<Presence>("off");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachmentContext, setAttachmentContext] = useState<string[]>([]);
   const [pendingImageUrls, setPendingImageUrls] = useState<Map<File, string>>(new Map());
   const [notice, setNotice] = useState("");
   const [recording, setRecording] = useState(false);
@@ -359,10 +360,24 @@ export default function Home() {
         history,
         profile: { program, semester, completedCredits: credits, cgpa },
         files,
+        attachmentContext,
       });
+      setAttachmentContext(r.attachmentContext ?? attachmentContext);
       setMessages((m) => [...m, { id: idRef.current++, role: "bot", text: r.answer, ...r }]);
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unknown request error";
+      if (files.length) {
+        setAttachments((current) => {
+          const restored = [...files, ...current.filter((file) => !files.includes(file))];
+          const total = restored.reduce((sum, file) => sum + file.size, 0);
+          if (total <= MAX_MB * 1024 * 1024) {
+            setNotice("The request failed. Your attachments have been restored so you can retry.");
+            return restored;
+          }
+          setNotice("The request failed. New attachments were kept, but the earlier files could not all be restored because they exceed the 4 MB limit.");
+          return current;
+        });
+      }
       setMessages((m) => [
         ...m,
         { id: idRef.current++, role: "bot", text: "The advisor request failed: " + detail },
@@ -443,6 +458,7 @@ export default function Home() {
     setPresence("off");
     setMessages([{ id: idRef.current++, role: "bot", text: GREETING }]);
     setAttachments([]);
+    setAttachmentContext([]);
     setNotice("");
   }
 

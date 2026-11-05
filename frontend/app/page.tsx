@@ -178,6 +178,8 @@ const SEMESTERS = [
   "6th Semester", "7th Semester", "8th Semester", "9th Semester", "10th Semester",
 ];
 const MAX_MB = 4;
+const MAX_FILES = 4;
+const isImageFile = (file: File) => file.type.startsWith("image/") || /\.(?:png|jpe?g|webp|bmp|tiff?)$/i.test(file.name);
 const IDLE_MS = 5000; // green ring / dot disappear after 5 seconds of inactivity
 
 function fmt(s: number) {
@@ -257,6 +259,10 @@ export default function Home() {
       setAttachments((current) => {
         const combined = [...current, ...ok];
         const total = combined.reduce((sum, file) => sum + file.size, 0);
+        if (combined.length > MAX_FILES) {
+          setNotice("You can attach up to 4 files per message.");
+          return current;
+        }
         if (total > MAX_MB * 1024 * 1024) {
           setNotice("Attachments exceed the 4 MB total limit. Remove a file and try again.");
           return current;
@@ -343,7 +349,7 @@ export default function Home() {
     const question = typed || "Please look at my attachment.";
     const files = attachments;
     const imageFiles: ImageAttachment[] = files
-      .filter((file) => file.type.startsWith("image/"))
+      .filter(isImageFile)
       .map((file) => ({ name: file.name, url: URL.createObjectURL(file), file }));
     const history = messages
       .slice(-8)

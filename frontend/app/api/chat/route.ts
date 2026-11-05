@@ -466,6 +466,15 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
     return "I’m really sorry you’re feeling this way. Your safety comes first. If you might act on this now or have already hurt yourself, call India’s emergency number **112** or go to the nearest emergency department now. Move away from anything you could use to hurt yourself and get physically near someone you trust—a friend, family member, roommate, hostel warden or campus staff member. In India, you can also call **Tele-MANAS 14416**, a free 24/7 mental-health helpline. Are you in immediate danger right now, or have you already taken any steps to hurt yourself?";
   }
 
+  if (/^(?:athille|athil|oru)\s+(?:oru\s+)?(?:karyam|kaaryam)(?:\s+(?:parayatte|paraytte|chodikkatte|chothikkatte))?$/.test(normalized)) {
+    return "Of course. Go ahead—tell me what you wanted to say.";
+  }
+  if (/^(?:nthan|entha|enth|enthada|entha\s+da)(?:\s+bro)?(?:\s+ingane)?$/.test(normalized)) {
+    return "Did I misunderstand something or give you an unhelpful answer? Tell me what went wrong and I’ll correct it.";
+  }
+  if (/^(?:myr|myre|myru|poda|podi|bitch)$/.test(normalized)) {
+    return "I may have frustrated you. Tell me what I got wrong, and I’ll address that instead of repeating the same response.";
+  }
   const latestAssistant = [...history].reverse().find((item) => item.role === "assistant");
   if (
     /^(?:can i|may i|could i|can i talk|can i share|can i tell you)$/.test(normalized) &&
@@ -484,7 +493,7 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
     return "You should not rely on me blindly. VU-specific answers should be grounded in official university documents or webpages, with sources shown where available. I can still make mistakes or miss recent changes, so verify important decisions with the university. I provide guidance; I do not make official university decisions.";
   }
 
-  if (/^(?:hi+|hello+|h+e+y+|heylo+|hii+|hlo+|helo+|hallo+|good morning|goodmorning|good afternoon|goodafternoon|good evening|goodevening|good night|namaste|namaskaram+|vanakkam|bonjour|bonour|bonjur|hola)(?: there)?$/.test(normalized)) {
+  if (/^(?:hi+|hello+|h+e+y+|heylo+|hii+|hlo+|helo+|hallo+|good morning|goodmorning|good afternoon|goodafternoon|good evening|goodevening|good night|namaste|namaskara+|namaskaram+|vanakkam|bonjour|bonour|bonjur|hola)(?: there)?$/.test(normalized)) {
     return "Hello. I’m the VU Academic Advisor. You can ask me about Vidyashilp University programmes, courses, prerequisites, credits, semesters and admissions.";
   }
   if (/^(?:bro|bruh|dude|yo|mate)$/.test(normalized)) {

@@ -64,7 +64,7 @@ function repairFlattenedMarkdownTables(value: string) {
 function normalizeAnswerMarkdown(input: string) {
   let markdown = String(input || "")
     .replace(/\r\n?/g, "\n")
-    .replace(/\\[ \t]*(?=\n)/g, "")
+    .replace(/\\+[ \t]*(?=\n)/g, "")
     .replace(/\\\*\\\*/g, "**")
     .replace(/\\\*/g, "*")
     .replace(/\\_/g, "_")

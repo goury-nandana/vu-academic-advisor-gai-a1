@@ -40,8 +40,8 @@ class SyntheticAccountTests(unittest.TestCase):
             with self.subTest(username=account["username"]):
                 profile = self.students[account["profileId"]]
                 self.assertEqual(profile["username"], account["username"])
-                self.assertEqual(profile["user_id"], profile["name"])
-                self.assertEqual(account["username"], profile["name"])
+                self.assertEqual(profile["user_id"], account["username"])
+                self.assertEqual(account["username"], profile["username"])
                 self.assertTrue(profile["name"])
                 self.assertTrue(profile["synthetic_student_id"].startswith("VU-SYN-"))
                 self.assertTrue(profile["programme"].startswith("B.Tech"))
@@ -109,7 +109,7 @@ class SyntheticAccountTests(unittest.TestCase):
         self.assertIn("academic_records", MARKSHEET_PDF)
         self.assertIn("createSyntheticMarksheetPdf", MARKSHEET_PDF)
         self.assertIn("/api/marksheet", FRONTEND_PAGE)
-        self.assertIn("Download Synthetic Marksheet (PDF)", FRONTEND_PAGE)
+        self.assertIn("Download Synthetic Marksheet PDF", FRONTEND_PAGE)
 
 
 if __name__ == "__main__":

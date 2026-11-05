@@ -3,9 +3,14 @@ export type Source = { title: string; url: string; citation?: number; type?: str
 export type Profile = { program: string; semester: string; completedCredits: string; cgpa: string; syntheticStudentId?: string };
 export type HistoryItem = { role: "user" | "assistant"; text: string };
 export type Visualization = {
-  kind: "bars" | "steps" | "cards";
+  kind: "bars" | "steps" | "cards" | "course-pathway";
   title: string;
   items: Array<{ label: string; value?: number; valueLabel?: string; detail?: string }>;
+  pathway?: {
+    target: { code: string; title: string };
+    prerequisites: Array<{ code: string; title: string; status: "completed" | "failed" | "unknown" | "not-required"; detail: string }>;
+    eligibility: "prerequisites_met" | "prerequisite_failed" | "insufficient_information";
+  };
 };
 export type AdvisorReply = {
   answer: string;

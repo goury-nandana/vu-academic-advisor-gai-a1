@@ -15,6 +15,7 @@ export type AdvisorReply = {
   visualization?: Visualization;
   followUps: string[];
   fileNotes: string[];
+  attachmentContext?: string[];
 };
 
 const EXTERNAL_API = process.env.NEXT_PUBLIC_ADVISOR_API_URL?.replace(/\/$/, "") ?? "";
@@ -24,12 +25,14 @@ export async function askAdvisor(input: {
   history: HistoryItem[];
   profile: Profile;
   files: File[];
+  attachmentContext?: string[];
 }): Promise<AdvisorReply> {
   const form = new FormData();
   form.append("question", input.question);
   form.append("history", JSON.stringify(input.history));
   form.append("profile", JSON.stringify(input.profile));
   input.files.forEach((file) => form.append("files", file, file.name));
+  form.append("attachmentContext", JSON.stringify(input.attachmentContext ?? []));
 
   const endpoint = EXTERNAL_API ? EXTERNAL_API + "/chat" : "/api/chat";
   const response = await fetch(endpoint, { method: "POST", body: form, cache: "no-store" });
@@ -43,6 +46,7 @@ export async function askAdvisor(input: {
     visualization: data.visualization,
     followUps: Array.isArray(data.followUps) ? data.followUps : [],
     fileNotes: Array.isArray(data.fileNotes) ? data.fileNotes : [],
+    attachmentContext: Array.isArray(data.attachmentContext) ? data.attachmentContext.filter((item): item is string => typeof item === "string") : [],
   };
 }
 

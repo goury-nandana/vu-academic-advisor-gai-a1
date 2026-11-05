@@ -185,3 +185,11 @@ button:disabled{cursor:not-allowed}
 .attachment-draft>img{display:block;width:100%;height:132px;object-fit:contain;border-radius:8px;background:#f5f7fc}
 .attachment-draft .file-chip{max-width:100%;box-shadow:none;background:#f3f5fb;padding:5px 6px 5px 9px;font-size:11px}
 .attachment-draft .file-chip button{flex:none}
+
+
+/* Privacy and transparent workflow/evidence metadata. */
+.privacy-disclaimer{margin:8px 0;padding:9px 12px;border:1px solid #d9e0ef;border-radius:12px;background:rgba(255,255,255,.86);color:#34394b;font-size:11px;line-height:1.5}
+.answer-meta{display:flex;flex-direction:column;gap:4px;margin-top:8px;color:#60677a;font-size:11px;line-height:1.4}
+.answer-meta details{margin-top:2px}
+.answer-meta summary{width:max-content;color:var(--blue);font-weight:650;cursor:pointer}
+.answer-meta ol{margin:5px 0 0 18px;padding:0;display:grid;gap:3px}

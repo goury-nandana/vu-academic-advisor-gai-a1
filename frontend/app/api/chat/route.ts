@@ -204,11 +204,17 @@ async function readImages(key: string, files: File[], question: string): Promise
     answer=typeof parsed.answer==="string"?parsed.answer.trim().slice(0,5000):"";
     const returned=Array.isArray(parsed.images)?parsed.images:[];
     analyses=files.map((file,index)=>{
-      const match=returned.find((item)=>{
+      const explicitMatch=returned.find((item)=>{
         if(!item || typeof item!=="object") return false;
         const record=item as Record<string,unknown>;
         return Number(record.image_index)===index || record.file_name===file.name;
       });
+      const positionalMatch=returned[index] && typeof returned[index]==="object" &&
+        (typeof (returned[index] as Record<string,unknown>).image_index!=="number" &&
+         typeof (returned[index] as Record<string,unknown>).file_name!=="string")
+        ? returned[index]
+        : undefined;
+      const match=explicitMatch || positionalMatch;
       return match ? parseImageAnalysis(file.name,match) : {
         fileName:file.name,visualType:"Image",visualDescription:"",
         visibleText:"",academicInformation:"",
@@ -1356,7 +1362,7 @@ export async function POST(request: Request) {
       }else if(file.type.startsWith("image/")||["png","jpg","jpeg","webp","bmp","tif","tiff"].includes(ext)){
         const analysis=imageBatch.analyses[imageIndex++];
         if(analysis && (analysis.userSummary || analysis.visualDescription || analysis.visibleText || analysis.academicInformation)) {
-          attachments.push("USER-UPLOADED IMAGE: "+file.name+"\\nBACKEND IMAGE ANALYSIS (internal evidence; not a student-facing report):\\n"+JSON.stringify({
+          attachments.push("USER-UPLOADED IMAGE: "+file.name+"\nBACKEND IMAGE ANALYSIS (internal evidence; not a student-facing report):\n"+JSON.stringify({
             visualType:analysis.visualType,
             visualDescription:analysis.visualDescription,
             visibleText:analysis.visibleText,
@@ -1414,7 +1420,7 @@ export async function POST(request: Request) {
   const contextualFacultyQuestion = getContextualFacultyFollowupQuestion(history, combinedQuestion);
   const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || contextualFacultyQuestion || combinedQuestion;
   const imageOnlyAnswer = onlyImagesUploaded && previousAttachmentContext.length===0 && imageBatch.analyses.length > 0
-    ? (imageBatch.answer || imageBatch.analyses.map((item)=>"**"+item.fileName+"** — "+item.userSummary).join("\\n\\n"))
+    ? (imageBatch.answer || imageBatch.analyses.map((item)=>"**"+item.fileName+"** — "+item.userSummary).join("\n\n"))
     : undefined;
   // Uploaded files and transcribed speech must be processed before the general out-of-scope guard.
   const socialAnswer = files.length ? undefined : (getSimpleSocialAnswer(effectiveQuestion, history) || getDeterministicScopeAnswer(effectiveQuestion));

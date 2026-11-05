@@ -497,8 +497,7 @@ function isMinorQuestion(question: string): boolean {
   return /\bminor(?:s)?\b/i.test(question);
 }
 
-function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = [], student?: { name: string; username: string; synthetic_student_id: string }): string | undefined {  const normalized = question.trim().toLowerCase()
-    .replace(/(.)\1{2,}/g, "$1")
+function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = [], student?: { name: string; username: string; synthetic_student_id: string; programme?: string; admission_batch?: string; current_semester?: number | null; academic_status?: string; synthetic_cgpa?: number | null }): string | undefined {  const normalized = question.trim().toLowerCase()    .replace(/(.)\1{2,}/g, "$1")
     .replace(/[.!?]+$/g, "")
     .replace(/\s+/g, " ");
 
@@ -997,8 +996,7 @@ function retrieveBtechMinorBatches(batches: string[]): AcademicDocument[] {
 function retrieveNonBtechMinorContext(): AcademicDocument[] {
   return ACADEMIC_KNOWLEDGE.documents.filter((document) =>
     (
-      /Student Handbook/i.test(document.source || "") &&
-      (
+      /Student Handbook/i.test(document.source || "") &&      (
         /Pre-Registration \(Specialization \/ Minor/i.test(document.text || "") ||
         /minimum of ten \(10\) students register/i.test(document.text || "")
       )
@@ -1497,8 +1495,7 @@ function buildCoursePathwayVisualization(result: AgentWorkflowResult) {
         detail: "The matching batch course row lists no direct prerequisite",
       }];
   return {
-    kind: "course-pathway" as const,
-    title: "Course prerequisite pathway",
+    kind: "course-pathway" as const,    title: "Course prerequisite pathway",
     items: [],
     pathway: {
       target: { code: result.course.course_code, title: result.course.course_title },
@@ -1898,20 +1895,3 @@ export async function POST(request: Request) {
   const semesterSpecific=/\b(semester|term|this sem|next sem|current sem)\b/i.test(effectiveQuestion);
   const followUps:string[]=[];
   const deterministicMinor=minorBatchClarification||minorProgrammeClarification||minorSemesterClarification||deterministicBtechMinor||deterministicStudentMinor;
-  if(!deterministicAttendance&&!deterministicMinor&&!deterministicStructuredCourse&&!programmeDirectoryAnswer){
-    if(programmeSpecific&&programmeMissing) followUps.push("Which programme are you enrolled in?");
-    else if(semesterSpecific&&semesterMissing) followUps.push("Which semester are you currently in?");
-    if(followUps.length&&!answer.toLowerCase().includes(followUps[0].toLowerCase().replace("?",""))) {
-      answer+="\n\n"+followUps[0]+" I need this detail to avoid mixing requirements from different programmes or semesters.";
-    }
-  }
-  let visualization;
-  if(syntheticAgentWorkflow && asksForVisual) {
-    visualization = buildCoursePathwayVisualization(syntheticAgentWorkflow);
-    modelUsed = modelUsed + " + deterministic SVG course-pathway infographic";
-    pipeline.push("Rendered a source-grounded course prerequisite infographic from the authenticated profile and exact batch-matched workbook records");
-  } else if(key&&/\b(chart|graph|infographic|visuali[sz]e|diagram|flowchart|visual summary)\b/i.test(combinedQuestion)&&sources.length){
-    try{
-      const raw=await groq(key,[
-        {role:"system",content:"Return JSON only with kind (bars,steps,cards), title and items. Use ONLY facts/numbers present in the answer and source excerpts. Never infer or calculate missing values. Use bars only for comparable numbers; steps for a process; cards for non-numeric comparisons. At most six items."},
-        {role:"user",content:"Request: "+combinedQuestion+"\nAnswer: "+answer+"\nEvidence: "+sources.map((source)=>"["+source.citation+"] "+source.title+"\n"+source.text.slice(0,2200)).join("\n\n")},

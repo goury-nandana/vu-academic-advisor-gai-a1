@@ -66,7 +66,7 @@ function normalizeAnswerMarkdown(input: string) {
     .replace(/\\\*\\\*/g, "**")
     .replace(/\\\*/g, "*")
     .replace(/\\_/g, "_")
-    .replace(/\\\|/g, "|")
+    .replace(/\\+\|/g, "|")
     .replace(/\\?<br\s*\/?>/gi, " / ")
     .replace(/<br\s*\/?>/gi, " / ")
     .replace(/^\s*Sources consulted\s*:\s*.*$/gim, "")
@@ -77,6 +77,8 @@ function normalizeAnswerMarkdown(input: string) {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
+  // Normalize escaped table delimiters before GFM sees the Markdown.
+  markdown = markdown.replace(/^(\s*)\\?\|/gm, "$1|");
   markdown = repairFlattenedMarkdownTables(markdown);
   return markdown;
 }

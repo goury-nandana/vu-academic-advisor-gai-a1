@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import academicKnowledgeJson from "../../../data/vu-academic-knowledge.json";
 import websiteKnowledgeJson from "../../../data/vu-website-knowledge.json";
+import { getSyntheticStudent, runAcademicAdvisorAgentWorkflow, type AgentWorkflowResult } from "../../../academic-agents";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -969,6 +970,37 @@ function retrieveNonBtechMinorContext(): AcademicDocument[] {
   );
 }
 
+function syntheticAgentWorkflowAnswer(
+  result: AgentWorkflowResult,
+  evidenceDocuments: AcademicDocument[],
+): string {
+  const allCodes=[result.course.course_code,...result.prerequisites,...result.creditCourseCodes];
+  const citations=[...new Set(allCodes.flatMap((code)=>{
+    const index=evidenceDocuments.findIndex((document)=>
+      String(document.title||"").toUpperCase().startsWith(code.toUpperCase()+" —")
+    );
+    return index>=0?["["+(index+1)+"]"]:[];
+  }))].join(" ");
+  const status=result.eligibility==="prerequisites_met"
+    ? "**Direct prerequisite check: met**"
+    : result.eligibility==="prerequisite_failed"
+      ? "**Direct prerequisite check: not met**"
+      : "**Direct prerequisite check: insufficient information**";
+  let answer="**Synthetic student demonstration — "+result.student.id+"**\\n\\n";
+  answer+="- **Profile:** "+result.student.programme+", admission batch "+result.student.admission_batch+", semester "+result.student.current_semester+".\\n";
+  answer+="- **Course:** "+result.course.course_code+" — "+result.course.course_title+" ("+result.course.credits+" credits).\\n";
+  answer+="- **Required prerequisites:** "+(result.prerequisites.join(", ")||"None listed")+".\\n";
+  answer+="- **Profile check:** "+status+".\\n";
+  if(result.failedPrerequisites.length) answer+="- **Failed prerequisites recorded:** "+result.failedPrerequisites.join(", ")+".\\n";
+  if(result.unverifiedPrerequisites.length) answer+="- **Prerequisites not established by this profile:** "+result.unverifiedPrerequisites.join(", ")+".\\n";
+  answer+="- **Calculated completed-course credits:** "+result.calculatedCredits+" credits across "+result.creditCourseCodes.length+" completed course rows with matching 2025 workbook records.";
+  if(result.missingCreditRecords.length) answer+=" The following profile codes had no matching credit row and were excluded: "+result.missingCreditRecords.join(", ")+".";
+  answer+="\\n\\n**Recommendation:** "+result.recommendation;
+  answer+="\\n\\n**Important:** This uses invented demonstration data, not an actual VU student record. It checks only the listed direct prerequisites; it does not establish registration, timetable availability, minimum-credit rules or Registrar approval.";
+  if(citations) answer+="\\n\\n**Evidence:** "+citations;
+  return answer;
+}
+
 function btechMinorSummaryAnswer(batches: string[], documents: AcademicDocument[]): string {
   const workbook = ACADEMIC_KNOWLEDGE.documents.filter(
     (document) => document.source === "Minor_Courses_for_BTech_Students.xlsx" && document.sheet
@@ -1406,6 +1438,8 @@ export async function POST(request: Request) {
       Boolean(item) && (item.role === "user" || item.role === "assistant") && typeof item.text === "string"
   ).slice(-8);
   const profile=resolveStudentProfile(rawProfile,history,question);
+  const syntheticStudentId=typeof profile.syntheticStudentId==="string"?profile.syntheticStudentId.trim():"";
+  const syntheticStudent=syntheticStudentId?getSyntheticStudent(syntheticStudentId):undefined;
   const files=form.getAll("files").filter((f):f is File=>f instanceof File);
   const previousAttachmentContext=parse<string[]>(form.get("attachmentContext"),[])
     .filter((item):item is string=>typeof item==="string").slice(-4).map((item)=>item.slice(0,9000));
@@ -1523,9 +1557,25 @@ export async function POST(request: Request) {
   const isStudentMinorQuery=minorIntent&&!isBtechMinorQuery;
   const requestedMinorBatches=getBtechMinorBatches(effectiveQuestion);
   const isBatchSpecificBtechMinorQuery=requestedMinorBatches.length>0;
-  const structuredCourseSearch=findStructuredCourseSearch(effectiveQuestion,profile.program);
+  const structuredSearchQuestion = syntheticStudent
+    ? effectiveQuestion + " for B.Tech admission batch " + syntheticStudent.admission_batch
+    : effectiveQuestion;
+  const structuredCourseSearch=findStructuredCourseSearch(structuredSearchQuestion,syntheticStudent?.programme||profile.program);
+  const requestedSyntheticCourseCode=structuredCourseSearch?.requestedCodes[0];
+  const asksSyntheticDecision=/\b(?:eligible|eligibility|prerequisite|can i take|can they take|can this student take|can .* take|how many credits|credit total)\b/i.test(effectiveQuestion);
+  const syntheticAgentWorkflow:AgentWorkflowResult|undefined=
+    syntheticStudent&&requestedSyntheticCourseCode&&asksSyntheticDecision
+      ? runAcademicAdvisorAgentWorkflow(syntheticStudent.id,requestedSyntheticCourseCode,ACADEMIC_KNOWLEDGE.courseRecords)
+      : undefined;
   const programmeDirectoryIntent = isProgrammeDirectoryQuestion(effectiveQuestion);
-  const academicMatches=programmeDirectoryIntent || onlyImagesUploaded ? [] : retrieveAcademic(effectiveQuestion,profile.program,structuredCourseSearch);
+  const baseAcademicMatches:AcademicDocument[]=programmeDirectoryIntent || onlyImagesUploaded
+    ? []
+    : retrieveAcademic(effectiveQuestion,syntheticStudent?.programme||profile.program,structuredCourseSearch);
+  const syntheticEvidenceDocuments=(syntheticAgentWorkflow?.evidenceRecords||[]).map((record)=>courseRecordDocument(record));
+  const academicMatches=[...baseAcademicMatches,...syntheticEvidenceDocuments].filter((document,index,all)=>{
+    const key=[document.source||"",document.title||"",document.section||"",document.text.slice(0,100)].join("|");
+    return all.findIndex((candidate)=>[candidate.source||"",candidate.title||"",candidate.section||"",candidate.text.slice(0,100)].join("|")===key)===index;
+  });
   const suppressWebsiteForAttendance = /\b(attendance|attendance policy|absence|condonation|shortage|medical leave)\b/i.test(effectiveQuestion);
   const localWebsiteMatches = socialAnswer || suppressWebsiteForAttendance || onlyImagesUploaded
     ? []
@@ -1663,6 +1713,10 @@ export async function POST(request: Request) {
     answer=admissionsAnswer;
     modelUsed="Deterministic official VU Admissions page lookup";
     pipeline.push("Answered the application process from the uploaded official VU website knowledge chunks");
+  }else if(syntheticAgentWorkflow){
+    answer=syntheticAgentWorkflowAnswer(syntheticAgentWorkflow,academicMatches);
+    modelUsed="Deterministic specialist-agent workflow (synthetic demonstration)";
+    pipeline.push("Orchestrated six specialist stages using a synthetic student fixture; no real student account or LLM inference was used for the decision");
   }else if(deterministicStructuredCourse){
     answer=structuredCourseAnswer(structuredCourseSearch);
     modelUsed="Deterministic VU B.Tech structured course lookup (no answer-generation model)";

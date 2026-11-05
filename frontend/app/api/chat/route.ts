@@ -1167,7 +1167,7 @@ export async function POST(request: Request) {
   const academicMatches=retrieveAcademic(effectiveQuestion,profile.program,structuredCourseSearch);
   const suppressWebsiteForAttendance = /\b(attendance|attendance policy|absence|condonation|shortage|medical leave)\b/i.test(effectiveQuestion);
   const localWebsiteMatches = socialAnswer || suppressWebsiteForAttendance ? [] : retrieveWebsiteKnowledge(effectiveQuestion);
-  const pages = (isBtechMinorQuery||isStudentMinorQuery||structuredCourseSearch||socialAnswer)
+  const pages = (isBtechMinorQuery||isStudentMinorQuery||structuredCourseSearch||socialAnswer||suppressWebsiteForAttendance)
     ? []
     : localWebsiteMatches.length ? localWebsiteMatches : await retrieve(combinedQuestion);
   pipeline.push("Searched the embedded VU Student Handbook, Student SOP, course plans and structured B.Tech semester-spread records");

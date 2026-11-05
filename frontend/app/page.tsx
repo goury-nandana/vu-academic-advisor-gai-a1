@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Camera, Check, Copy, Download, FileText, Mic, Square, X, Volume2, VolumeX } from "lucide-react";
+import { ArrowUp, Camera, Check, Copy, FileText, Mic, Square, X, Volume2, VolumeX } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { askAdvisor, transcribeVoice, type Source, type Visualization } from "./advisor";
@@ -377,6 +377,21 @@ export default function Home() {
     const typed = (text ?? draftRef.current?.value ?? "").trim();
     if ((!typed && attachments.length === 0) || busy || recording || transcribing) return;
     const question = typed || "Please look at my attachment.";
+    const normalizedQuestion = question.toLowerCase();
+    const identityQuestion = /\b(who am i|what is my name|my name|my user id|who is logged in|which profile)\b/.test(normalizedQuestion);
+    const marksheetQuestion = /\b(marksheet|mark sheet)\b/.test(normalizedQuestion) && /\b(download|get|generate|give|show|need|want|provide)\b/.test(normalizedQuestion);
+    if (identityQuestion && authStudent) {
+      setMessages((current) => [...current, { id: idRef.current++, role: "user", text: question }, { id: idRef.current++, role: "bot", text: "You are **" + authStudent.name + "**. Your User ID is **" + authStudent.username + "** (synthetic profile: " + authStudent.synthetic_student_id + ")." }]);
+      if (draftRef.current) { draftRef.current.value = ""; draftRef.current.style.height = ""; }
+      setNotice("");
+      return;
+    }
+    if (marksheetQuestion) {
+      setMessages((current) => [...current, { id: idRef.current++, role: "user", text: question }, { id: idRef.current++, role: "bot", text: "Your synthetic marksheet PDF is ready: [Download marksheet](/api/marksheet)." }]);
+      if (draftRef.current) { draftRef.current.value = ""; draftRef.current.style.height = ""; }
+      setNotice("");
+      return;
+    }
     const files = attachments;
     const imageFiles: ImageAttachment[] = files
       .filter(isImageFile)
@@ -567,16 +582,12 @@ export default function Home() {
               setLoginError(error instanceof Error ? error.message : "Account access failed.");
             } finally { setLoginBusy(false); }
           }}>
-            {authMode === "login" ? (
-              <label className="login-field"><span>User ID (VU001–VU010)</span><input autoComplete="username" value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} placeholder="e.g. VU001" required /></label>
-            ) : (
-              <label className="login-field"><span>Choose synthetic student scenario / User ID</span>
-                <select value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} required>
-                  <option value="" disabled>Select a profile scenario</option>
-                  {demoAccountOptions.map((account) => <option key={account.profileId} value={account.username}>{account.username} — {account.name} — {account.persona}</option>)}
-                </select>
-              </label>
-            )}
+            <label className="login-field"><span>User ID</span>
+              <select autoComplete="username" value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} required>
+                <option value="" disabled>Select User ID</option>
+                {demoAccountOptions.filter((account) => /^VU00[1-9]$|^VU010$/.test(account.username)).map((account) => <option key={account.profileId} value={account.username}>{account.username}</option>)}
+              </select>
+            </label>
             <label className="login-field"><span>Password (same for all demo accounts)</span><input type="password" autoComplete={authMode === "login" ? "current-password" : "new-password"} value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="1234" required /></label>
             {loginError && <p className="login-error" role="alert">{loginError}</p>}
             <button className="login-submit" type="submit" disabled={loginBusy || (authMode === "signup" && demoAccountOptions.length === 0)}>{loginBusy ? (authMode === "signup" ? "Activating scenario…" : "Signing in…") : (authMode === "signup" ? "Sign up / Activate demo profile" : "Log in")}</button>
@@ -617,29 +628,6 @@ export default function Home() {
             <span>Demo CGPA: {authStudent?.synthetic_cgpa ?? "Not provided"}</span>
             <small>All profile identities and academic outcomes are synthetic demonstration data.</small>
           </div>
-          <button className="clear" disabled={marksheetBusy} onClick={async () => {
-            setMarksheetBusy(true);
-            setNotice("Preparing your synthetic marksheet PDF…");
-            try {
-              const response = await fetch("/api/marksheet", { cache: "no-store" });
-              if (!response.ok) {
-                const data = await response.json().catch(() => ({})) as { error?: string };
-                throw new Error(data.error || "Could not download the marksheet.");
-              }
-              const blob = await response.blob();
-              const objectUrl = window.URL.createObjectURL(blob);
-              const link = document.createElement("a");
-              link.href = objectUrl;
-              link.download = (authStudent?.name || "Synthetic-Student").replace(/[^a-zA-Z0-9-]+/g, "-") + "-Synthetic-Marksheet.pdf";
-              document.body.appendChild(link);
-              link.click();
-              link.remove();
-              window.URL.revokeObjectURL(objectUrl);
-              setNotice("Synthetic marksheet PDF downloaded. This is fictional demo data, not an official marksheet.");
-            } catch (error) {
-              setNotice(error instanceof Error ? error.message : "Marksheet download failed.");
-            } finally { setMarksheetBusy(false); }
-          }}>{marksheetBusy ? "Preparing PDF…" : "Download Synthetic Marksheet (PDF)"}</button>
           <button className="clear" onClick={async () => {
             await fetch("/api/auth/logout", { method: "POST" });
             setAuthStudent(null);
@@ -720,22 +708,8 @@ export default function Home() {
                         {speakingId === m.id ? <VolumeX size={16} aria-hidden="true" focusable="false" /> : <Volume2 size={16} aria-hidden="true" focusable="false" />}
                         <span>{speakingId === m.id ? "Stop" : "Read aloud"}</span>
                       </button>
-                      <button type="button" className="answer-tool" onClick={() => exportEvidence(m)} aria-label="Export answer evidence" title="Export question, answer, model and citations">
-                        <Download size={16} aria-hidden="true" focusable="false" />
-                        <span>Export evidence</span>
-                      </button>
+
                     </div>
-                    {m.model && (
-                      <div className="answer-meta">
-                        <span>Model: {m.model}</span>
-                        {m.pipeline && m.pipeline.length > 0 && (
-                          <details>
-                            <summary>Processing steps</summary>
-                            <ol>{m.pipeline.map((step, index) => <li key={index}>{step}</li>)}</ol>
-                          </details>
-                        )}
-                      </div>
-                    )}
                     {m.sources && m.sources.length > 0 && (
                       <div className="sources">
                         {compactSources(m.sources).map((s, i) =>
@@ -830,9 +804,6 @@ export default function Home() {
             <input ref={cameraInput} type="file" hidden accept="image/*" capture="environment"
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           </form>
-          <div className="privacy-disclaimer">
-            Privacy notice: Questions, optional profile details and uploaded files are sent to Groq for AI processing. This prototype does not save chat history in a VU student database and is not connected to Digiicampus. Do not enter passwords, student IDs or sensitive personal records. Clear Chat removes the current browser conversation; it cannot revoke data already processed by the model provider.
-          </div>
           <div className="disclaimer">
             Academic information only. This AI is not the Registrar and cannot confirm enrolment, eligibility, credit transfer, grades, fees, deadlines, exceptions or approvals. Rules can change; verify course codes, credits and requirements against the current VU Handbook, Digicampus and the responsible university office. Written confirmation from VU is authoritative.
           </div>

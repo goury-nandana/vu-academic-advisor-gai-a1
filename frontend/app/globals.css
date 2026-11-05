@@ -178,3 +178,10 @@ button:disabled{cursor:not-allowed}
 .answer-tools .answer-tool:hover{background:#e6ecf9;border-color:#b9c8e8}
 .answer-tools .answer-tool:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .answer-tools .answer-tool svg{width:16px;height:16px;flex:0 0 16px}
+
+
+/* Pending image attachments: visible previews before sending. */
+.attachment-draft{display:flex;flex-direction:column;align-items:flex-start;gap:6px;max-width:min(220px,100%);padding:7px;border:1px solid #dce3f4;border-radius:13px;background:rgba(255,255,255,.94)}
+.attachment-draft>img{display:block;width:100%;height:132px;object-fit:contain;border-radius:8px;background:#f5f7fc}
+.attachment-draft .file-chip{max-width:100%;box-shadow:none;background:#f3f5fb;padding:5px 6px 5px 9px;font-size:11px}
+.attachment-draft .file-chip button{flex:none}

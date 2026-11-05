@@ -86,12 +86,12 @@ function compactSources(sources: Source[]): Source[] {
     const url = String(source.url || "");
     const canonicalUrl = url.replace(/#.*$/, "");
     const key = canonicalUrl || source.title;
-    const pageMatch = source.title.match(/·\\s*p\\.\\s*(\\d+)/i);
+    const pageMatch = source.title.match(/·\s*p\.\s*(\\d+)/i);
     const pageNumber = pageMatch ? Number(pageMatch[1]) : undefined;
     const baseTitle = source.title
-      .replace(/\\s*·\\s*p\\.\\s*\\d+/i, "")
-      .replace(/\\s*·\\s*[^·]+$/, "")
-      .replace(/\\s+—\\s+.+$/, "")
+      .replace(/\s*·\s*p\.\s*\\d+/i, "")
+      .replace(/\s*·\s*[^·]+$/, "")
+      .replace(/\s+—\s+.+$/, "")
       .trim();
     const existing = groups.get(key);
     if (existing) {

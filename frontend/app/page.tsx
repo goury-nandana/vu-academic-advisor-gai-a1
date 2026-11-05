@@ -568,12 +568,12 @@ export default function Home() {
             } finally { setLoginBusy(false); }
           }}>
             {authMode === "login" ? (
-              <label className="login-field"><span>User ID (student name)</span><input autoComplete="username" value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} placeholder="e.g. Aarohi Menon" required /></label>
+              <label className="login-field"><span>User ID (VU001–VU010)</span><input autoComplete="username" value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} placeholder="e.g. VU001" required /></label>
             ) : (
               <label className="login-field"><span>Choose synthetic student scenario / User ID</span>
                 <select value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} required>
                   <option value="" disabled>Select a profile scenario</option>
-                  {demoAccountOptions.map((account) => <option key={account.profileId} value={account.username}>{account.name} — {account.persona}</option>)}
+                  {demoAccountOptions.map((account) => <option key={account.profileId} value={account.username}>{account.username} — {account.name} — {account.persona}</option>)}
                 </select>
               </label>
             )}
@@ -581,7 +581,7 @@ export default function Home() {
             {loginError && <p className="login-error" role="alert">{loginError}</p>}
             <button className="login-submit" type="submit" disabled={loginBusy || (authMode === "signup" && demoAccountOptions.length === 0)}>{loginBusy ? (authMode === "signup" ? "Activating scenario…" : "Signing in…") : (authMode === "signup" ? "Sign up / Activate demo profile" : "Log in")}</button>
           </form>
-          <p className="login-note">{authMode === "signup" ? "Signup activates one of the 10 pre-provisioned synthetic scenarios. It does not create a permanent custom account. User ID is the student's name; shared demo password: 1234." : "Use one of the listed synthetic student names as User ID. Shared demo password: 1234. These public classroom accounts must never be used for real data."}</p>
+          <p className="login-note">{authMode === "signup" ? "Signup activates one of the 10 pre-provisioned synthetic scenarios. It does not create a permanent custom account. User ID is the assigned code VU001–VU010; shared demo password: 1234." : "Use the assigned synthetic User ID (VU001–VU010). Shared demo password: 1234. These public classroom accounts must never be used for real data."}</p>
         </div>
       </div>
     );

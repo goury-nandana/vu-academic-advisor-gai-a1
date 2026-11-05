@@ -33,13 +33,22 @@ class SyntheticAgentWorkflowTests(unittest.TestCase):
     def test_synthetic_records_are_explicitly_not_real_students(self):
         self.assertEqual(SYNTHETIC_DATA["dataset_type"], "synthetic_demonstration_only")
         self.assertIn("not real VU students", SYNTHETIC_DATA["warning"])
-        self.assertEqual(set(self.students), {"SYN-001", "SYN-002", "SYN-003"})
+        self.assertEqual({sid for sid, row in self.students.items() if row.get("test_fixture_only")}, {"SYN-001", "SYN-002", "SYN-003"})
+        account_profiles = [row for row in self.students.values() if row.get("username")]
+        self.assertEqual(len(account_profiles), 10)
+        self.assertEqual(len({row["username"] for row in account_profiles}), 10)
+        self.assertTrue(all(row["programme"].startswith("B.Tech") for row in account_profiles))
 
-    def test_all_demo_course_codes_have_2025_source_rows(self):
+    def test_all_profile_course_codes_have_batch_matched_source_rows(self):
+        rows_by_batch = {}
+        for row in COURSE_DATA["courseRecords"]:
+            if row.get("document_type") == "semester_spread" and row.get("is_course_record") is not False and str(row.get("programme", "")).lower() == "b.tech":
+                rows_by_batch.setdefault(str(row.get("batch")), {})[row["course_code"]] = row
         for student in self.students.values():
+            matching_rows = rows_by_batch.get(str(student["admission_batch"]), {})
             for code in student["completed_course_codes"]:
-                with self.subTest(student=student["id"], code=code):
-                    self.assertIn(code, self.record_by_code)
+                with self.subTest(student=student["id"], batch=student["admission_batch"], code=code):
+                    self.assertIn(code, matching_rows)
 
     def test_prerequisite_scenarios_cover_pass_fail_and_unknown(self):
         passed = set(self.students["SYN-001"]["completed_course_codes"])

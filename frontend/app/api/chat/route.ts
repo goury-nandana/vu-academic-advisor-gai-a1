@@ -1428,6 +1428,19 @@ function validateVisual(input: unknown) {
 }
 
 export async function POST(request: Request) {
+  const origin=request.headers.get("origin");
+  const requestHost=request.headers.get("x-forwarded-host")||request.headers.get("host");
+  if(origin){
+    try{
+      if(!requestHost||new URL(origin).host.toLowerCase()!==requestHost.toLowerCase())
+        return NextResponse.json({error:"Cross-origin chat requests are not accepted."},{status:403});
+    }catch{
+      return NextResponse.json({error:"Invalid request origin."},{status:403});
+    }
+  }
+  const declaredLength=Number(request.headers.get("content-length")||0);
+  if(Number.isFinite(declaredLength)&&declaredLength>MAX_BYTES+512*1024)
+    return NextResponse.json({error:"The chat request is larger than the allowed upload limit."},{status:413});
   const key=process.env.GROQ_API_KEY?.trim() || "";
   let form:FormData;
   try { form=await request.formData(); } catch { return NextResponse.json({error:"Could not read the chat request."},{status:400}); }

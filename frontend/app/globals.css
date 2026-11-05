@@ -192,6 +192,11 @@ button:disabled{cursor:not-allowed}
 /* Authenticated synthetic demo accounts */
 .account-meta{display:flex;flex-direction:column;gap:7px;padding:13px 14px;border:1px solid #d5def2;border-radius:14px;background:rgba(255,255,255,.92);color:#26345d;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
 .account-meta strong{font-size:15px;color:var(--blue)}
+.privacy-panel{margin:8px 0 4px;padding:12px 13px;border:1px solid #d5def2;border-radius:14px;background:#fff;color:#30384e;font-size:11px;line-height:1.55;overflow-wrap:anywhere}
+.privacy-panel h3{margin:0 0 8px;color:var(--blue);font-size:13px;font-weight:700}
+.privacy-panel p{margin:0 0 8px}
+.privacy-panel p:last-child{margin-bottom:0}
+
 .account-meta small{margin-top:5px;color:#626b80;font-size:11px;line-height:1.45}
 .login-shell{position:relative;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:22px;background:#f2f5fc}
 .login-card{width:min(100%,440px);padding:30px 28px;border:1px solid #d9e1f2;border-radius:22px;background:#fff;box-shadow:0 14px 40px rgba(31,63,158,.10);display:flex;flex-direction:column;gap:14px}

@@ -1169,7 +1169,7 @@ export async function POST(request: Request) {
   pipeline.push("Fetched "+pages.length+" reachable official VU webpage(s) from the allowlist");
   const academicSources=academicMatches.map((document,index)=>formatAcademicSource(document,index));
   const webSources=pages.map((page,index)=>({
-    title:page.title,url:page.url,text:page.text,citation:academicSources.length+index+1,type:"website",pageId:page.pageId,
+    title:page.title,url:page.url,text:page.text,citation:academicSources.length+index+1,type:"website",pageId:"pageId" in page ? page.pageId : undefined,
   }));
   const sources=[...academicSources,...webSources];
   const lawFacultyAnswer = deterministicLawFacultyAnswer(effectiveQuestion,pages as WebsiteSearchHit[],academicSources.length);

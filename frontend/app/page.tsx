@@ -6,7 +6,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { askAdvisor, type Source, type Visualization } from "./advisor";
 
-type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[]; pipeline?: string[]; model?: string; visualization?: Visualization; followUps?: string[]; fileNotes?: string[] };
+type ImageAttachment = { name: string; url: string; file: File };
+type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[]; imageFiles?: ImageAttachment[]; pipeline?: string[]; model?: string; visualization?: Visualization; followUps?: string[]; fileNotes?: string[] };
 type Presence = "off" | "typing" | "recent";
 
 function splitPipeCells(value: string) {
@@ -63,6 +64,7 @@ function repairFlattenedMarkdownTables(value: string) {
 function normalizeAnswerMarkdown(input: string) {
   let markdown = String(input || "")
     .replace(/\r\n?/g, "\n")
+    .replace(/\\[ \t]*(?=\n)/g, "")
     .replace(/\\\*\\\*/g, "**")
     .replace(/\\\*/g, "*")
     .replace(/\\_/g, "_")
@@ -193,6 +195,7 @@ export default function Home() {
   const [seconds, setSeconds] = useState(0);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [copiedImageKey, setCopiedImageKey] = useState<string | null>(null);
   const [program, setProgram] = useState("Not specified");
   const [semester, setSemester] = useState("Not specified");
   const [credits, setCredits] = useState("");
@@ -281,10 +284,13 @@ export default function Home() {
     if ((!typed && attachments.length === 0) || busy || recording) return;
     const question = typed || "Please look at my attachment.";
     const files = attachments;
+    const imageFiles: ImageAttachment[] = files
+      .filter((file) => file.type.startsWith("image/"))
+      .map((file) => ({ name: file.name, url: URL.createObjectURL(file), file }));
     const history = messages
       .slice(-8)
       .map((m) => ({ role: m.role === "bot" ? ("assistant" as const) : ("user" as const), text: m.text }));
-    setMessages((m) => [...m, { id: idRef.current++, role: "user", text: question, files: files.map((f) => f.name) }]);
+    setMessages((m) => [...m, { id: idRef.current++, role: "user", text: question, files: files.map((f) => f.name), imageFiles }]);
     if (draftRef.current) { draftRef.current.value = ""; draftRef.current.style.height = ""; }
     setAttachments([]);
     setNotice("");
@@ -330,16 +336,46 @@ export default function Home() {
 
   async function copyAnswer(id: number, text: string) {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(normalizeAnswerMarkdown(text));
       setCopiedId(id);
     } catch {
       setNotice("Clipboard access is unavailable. Check your browser permissions and try again.");
     }
   }
 
+  async function copyImage(messageId: number, image: ImageAttachment) {
+    const imageKey = `${messageId}:${image.name}`;
+    try {
+      if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
+        throw new Error("This browser does not support copying images directly. You can right-click the preview and choose Copy image.");
+      }
+      const bitmap = await createImageBitmap(image.file);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        bitmap.close();
+        throw new Error("The image could not be prepared for copying.");
+      }
+      context.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      const png = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("The image could not be converted for copying.")), "image/png");
+      });
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+      setCopiedImageKey(imageKey);
+      setNotice("");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "The image could not be copied. Check clipboard permissions and try again.");
+    }
+  }
+
   function clearChat() {
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    messages.forEach((message) => message.imageFiles?.forEach((image) => URL.revokeObjectURL(image.url)));
     setSpeakingId(null);
+    setCopiedImageKey(null);
     setCopiedId(null);
     if (idleTimer.current) clearTimeout(idleTimer.current);
     setPresence("off");
@@ -423,6 +459,25 @@ export default function Home() {
                   <div className="bubble user">
                     {m.text}
                     {m.files && m.files.length > 0 && <div className="files">📎 {m.files.join(", ")}</div>}
+                    {m.imageFiles && m.imageFiles.length > 0 && (
+                      <div className="user-image-previews">
+                        {m.imageFiles.map((image, index) => {
+                          const imageKey = `${m.id}:${image.name}`;
+                          return (
+                            <div className="user-image-preview" key={image.name + "-" + index}>
+                              <img src={image.url} alt={"Uploaded image: " + image.name} />
+                              <div className="image-preview-actions">
+                                <span>{image.name}</span>
+                                <button type="button" onClick={() => void copyImage(m.id, image)} aria-label={"Copy image " + image.name}>
+                                  {copiedImageKey === imageKey ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+                                  {copiedImageKey === imageKey ? "Copied" : "Copy image"}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

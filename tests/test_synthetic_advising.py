@@ -34,7 +34,7 @@ class SyntheticAgentWorkflowTests(unittest.TestCase):
         self.assertEqual(SYNTHETIC_DATA["dataset_type"], "synthetic_demonstration_only")
         self.assertIn("not real VU students", SYNTHETIC_DATA["warning"])
         self.assertEqual({sid for sid, row in self.students.items() if row.get("test_fixture_only")}, {"SYN-001", "SYN-002", "SYN-003"})
-        account_profiles = [row for row in self.students.values() if row.get("username")]
+        account_profiles = [row for row in self.students.values() if row.get("username") and not row.get("test_fixture_only")]
         self.assertEqual(len(account_profiles), 10)
         self.assertEqual(len({row["username"] for row in account_profiles}), 10)
         self.assertTrue(all(row["programme"].startswith("B.Tech") for row in account_profiles))

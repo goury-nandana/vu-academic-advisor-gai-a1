@@ -87,7 +87,7 @@
 ## Safeguards adopted in the prototype
 
 - Keep source links and source titles with answers where available.
-- Export a response evidence record containing the question, answer, model identifier, processing steps and displayed citations. The export is a user-triggered browser download, not a permanent server-side archive.
+- The prototype displays source titles/links for retrieved answers where available. A downloadable response-evidence export is **not implemented** in the current frontend; this review therefore relies on the saved transcript cited above, rather than claiming an app-generated evidence export.
 - Warn users that uploads and profile details are sent to Groq for processing.
 - Do not ask for Digiicampus passwords, student IDs or sensitive personal records.
 - Treat retrieved pages and uploaded material as untrusted data; do not obey embedded instructions.
@@ -101,3 +101,31 @@
 - Groq, *Services Agreement* (customer data, input permissions and output responsibility): https://console.groq.com/docs/legal/services-agreement
 
 **Review boundary:** This evaluation covers the three actual saved text answers above. It is not a general legal clearance for every future output, image, audio recording, university document or commercial deployment. VU should obtain its own legal and data-protection review before using real student data or distributing the system institution-wide.
+
+
+## Synthetic-media scope and additional legal-risk analysis
+
+**Scope distinction:** The three evidence samples reviewed above are actual text answers. They do not include an actual AI-generated image, audio clip, video, voice clone, or synthetic likeness. No legal conclusion about a particular media output is made here. This section records the risks and controls that should apply if multimodal generation is introduced in a later assignment phase.
+
+| Media / use case | Principal copyright, consent, and misuse risks | Responsible-use controls |
+|---|---|---|
+| Generated infographic or image | Incorporating protected artwork, logos, photographs, or distinctive character designs; confusing users about university endorsement; unclear authorship/ownership of AI-generated expression | Prefer original diagrams based on factual course data; use only licensed or permissioned inputs; do not reproduce VU logos/third-party artwork absent permission; label AI-generated visuals; preserve prompt and source references when practical |
+| Generated speech or audio | Unauthorized use of a person's voice, voice imitation, copyrighted music/recordings, or identifiable student voice data; misleading impersonation | Do not clone real people’s voices without informed consent and authorization; avoid copyrighted music; label synthetic speech; do not upload identifiable recordings unless purpose, consent, and access are documented |
+| Generated video or likeness | Depiction of real students/faculty without consent, deceptive endorsements, manipulated statements, or derivative use of copyrighted footage | Use fictional/synthetic characters or explicitly consented participants; avoid portraying a real VU official as making an approval; disclose synthetic manipulation and restrict distribution |
+| Student or university-supplied material as input | Uploading course notes, assessments, student projects, transcripts, images, or restricted handbook content beyond the permitted purpose | Confirm assignment or institutional permission; minimize and redact personal data; restrict access; honor provider retention and processing terms; do not assume possession equals permission |
+| Reuse / publication of output | Output may resemble third-party expression; attribution may be incomplete; a generated result may contain factual error or create reputational confusion | Human-review before public or graded use; check similarity and sources; cite source material actually used; keep a record of prompt, output, tool/model and review; do not claim legal clearance based solely on AI generation |
+
+### Ownership and licensing: practical position
+
+- The Copyright Act, 1957, contains a computer-generated-work authorship provision in section 2(d)(vi), but its application to current generative AI systems and the required human contribution is not conclusively resolved by this project. Avoid categorical claims that an AI model owns the work or that a student automatically owns every output.
+- Copyright or license rights in the input material remain distinct from rights, if any, in the generated output. Provider terms are not a substitute for permission from a university, student, photographer, author, performer, or other rights holder.
+- Attribution is a transparency practice and may also be required by a license, assignment, or institutional policy; attribution alone does not cure unauthorized copying or use.
+- A factual short text response can still create risk if it reproduces protected expression. Conversely, factual values such as course codes and credit counts are generally different from protected creative expression; compilation/database rights and restrictions still require consideration.
+- These are risk-management conclusions for an academic prototype, not a legal opinion. Applicable institutional policy, contract terms, licenses, and facts may change the analysis.
+
+### Evidence and review limitations
+
+- The three output excerpts are transcribed from the saved conversation transcript identified in the opening statement. The repository report does not include a cryptographic hash or raw model response payload for that transcript.
+- The model identifier and per-answer timestamps were not captured in the source transcript; they are expressly left unspecified.
+- The review is a qualitative desk analysis. It did not perform similarity matching, image/audio forensic analysis, a license audit of every source, or legal clearance by VU counsel.
+- This section is prospective guidance, not a claim that media-generation features are already implemented or that media outputs were tested.

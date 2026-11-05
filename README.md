@@ -6,7 +6,7 @@ Streamlit-based academic advising chatbot for Vidyashilp University (VU). It use
 
 ## Next.js frontend and Vercel API
 
-The responsive Next.js UI is in `frontend/`. It calls its same-origin Next.js route at `POST /api/chat`; the route uses the server-side `GROQ_API_KEY`, fetches allowlisted official VU webpages, returns clickable source citations and can return a source-bounded visual summary. Never expose the Groq key through a `NEXT_PUBLIC_*` variable.
+The responsive Next.js UI is in `frontend/`. It calls its same-origin Next.js route at `POST /api/chat`; the route uses the server-side `GROQ_API_KEY`, fetches allowlisted official VU webpages, returns clickable source citations and can return a source-bounded visual summary. The web route extracts text from PDF, DOCX, XLSX and PPTX files with OfficeParser, reads images with the configured vision model, and transcribes audio with Groq Whisper. Never expose the Groq key through a `NEXT_PUBLIC_*` variable.
 
 Vercel settings for this repository: **Framework: Next.js**, **Root Directory: frontend**, **Install Command: npm ci**, **Build Command: npm run build**. Add `GROQ_API_KEY` to Vercel Production and Preview server-side environment variables. The API does not require a separate backend URL.
 
@@ -20,7 +20,7 @@ npm run build
 npm run dev
 ```
 
-The web route supports TXT/MD/CSV, images and audio attachments up to 4 MB combined. PDF/DOCX/XLSX/PPTX extraction remains available in the Streamlit implementation. The Next.js route does not load the batch-specific B.Tech semester-spread workbooks; detailed course-code, credit and prerequisite answers must be checked against the student's registered Digicampus curriculum or the existing Streamlit academic-data workflow. Vercel SSO protection is preserved, so authorized access may be needed to open the deployment.
+The web route supports TXT/MD/CSV, PDF/DOCX/XLSX/PPTX, images and audio attachments up to 4 MB combined. Text extraction is performed in memory; scanned or encrypted PDFs may not yield readable text and should be supplied as clear page images. The Next.js route does not load the batch-specific B.Tech semester-spread workbooks; detailed course-code, credit and prerequisite answers must be checked against the student's registered Digicampus curriculum or the existing Streamlit academic-data workflow. Vercel SSO protection is preserved, so authorized access may be needed to open the deployment.
 
 ## Current scope
 

@@ -68,13 +68,27 @@ function parse<T>(value: FormDataEntryValue | null, fallback: T): T {
   try { return JSON.parse(value) as T; } catch { return fallback; }
 }
 async function groq(key: string, messages: Array<{role: string; content: unknown}>, model = MODEL, json = false, temperature = 0.1, timeoutMs = 20000, maxTokens?: number) {
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, messages, temperature, reasoning_effort: model === VISION_MODEL ? "none" : "low", max_tokens: maxTokens ?? (json ? 500 : (/\bminor(?:s)?\b/i.test(String(messages[1]?.content || "")) ? 2200 : 650)),
-      ...(json ? { response_format: { type: "json_object" } } : {}) }),
-    signal: AbortSignal.timeout(timeoutMs), cache: "no-store",
-  });
+  const requestBody=JSON.stringify({ model, messages, temperature, reasoning_effort: model === VISION_MODEL ? "none" : "low", max_tokens: maxTokens ?? (json ? 500 : (/\bminor(?:s)?\b/i.test(String(messages[1]?.content || "")) ? 2200 : 650)),
+    ...(json ? { response_format: { type: "json_object" } } : {}) });
+  let response:Response;
+  for(let attempt=0;;attempt+=1){
+    response=await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method:"POST",
+      headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},
+      body:requestBody,
+      signal:AbortSignal.timeout(timeoutMs),cache:"no-store",
+    });
+    if(response.ok || response.status!==429 || attempt>=1) break;
+    const retryHeader=response.headers.get("retry-after");
+    const resetHeader=response.headers.get("x-ratelimit-reset-tokens");
+    const retrySeconds=retryHeader && Number.isFinite(Number(retryHeader))
+      ? Number(retryHeader)
+      : resetHeader ? Number.parseFloat(resetHeader) : 0;
+    // Retry once only when the provider gives a short, explicit reset window.
+    if(!Number.isFinite(retrySeconds)||retrySeconds<=0||retrySeconds>20) break;
+    console.warn("[VU Academic Advisor] Groq rate limited; retrying once after "+retrySeconds+" seconds.",{model});
+    await new Promise((resolve)=>setTimeout(resolve,Math.ceil(retrySeconds*1000)+250));
+  }
   if (!response.ok) {
     let providerMessage = "";
     let providerCode = "";

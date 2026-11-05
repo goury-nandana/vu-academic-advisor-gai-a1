@@ -672,6 +672,15 @@ export default function Home() {
             {CHIPS.map((c) => (
               <button key={c} className="chip" onClick={() => send(c)} disabled={busy}>{c}</button>
             ))}
+            {syntheticStudentId && (
+              <button
+                className="chip"
+                onClick={() => send("Can I take COMP302? Check prerequisites and calculate my completed credits.")}
+                disabled={busy}
+              >
+                Run synthetic eligibility demo
+              </button>
+            )}
           </div>
           {attachments.length > 0 && (
             <div className="attached">

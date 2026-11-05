@@ -948,16 +948,20 @@
       "section": "ACADEMICS",
       "page_title": "B.Tech. (Hons.) Computer Science & Engineering — AI & Machine Learning",
       "page_url": "https://vidyashilp.edu.in/schools/b_tech_ai_ml/",
-      "heading": "Electives and minors",
+      "heading": "AI/ML electives and minors, distinct from the named programme specialisation",
       "chunk_index": 3,
-      "text": "The page describes elective choices such as generative AI, probabilistic graphical models, Bayesian machine learning, multi-modal learning, full-stack development, backend systems and API development, big-data analytics, web frameworks and mobile application development. It lists minors in Economics, Psychology, Design, Marketing, Finance and Law. An elective or minor being listed publicly does not prove it is offered to a particular cohort in a particular semester.",
+      "text": "The B.Tech. CSE AI/ML page identifies Artificial Intelligence & Machine Learning as the programme specialisation. Its elective list is separate from that named programme specialisation and includes Generative AI models; Parallel Computing; Probabilistic Graphical Models; Bayesian Methods in Machine Learning; Multi-Modal Learning; Data Visualization and Story Telling; Full Stack Development; Backend Systems and API Development; Big Data Analytics; Web Frameworks; Mobile Application Development; and Performance Optimization and Testing. The page lists minors in Economics, Marketing, Psychology, Finance, Design and Law. These electives and minors should not be presented as additional formal specialisation tracks. Whether a particular elective or minor is offered to a particular admission batch or semester requires confirmation from current cohort-level records.",
       "keywords": [
         "AI/ML",
         "electives",
         "Generative AI",
         "Bayesian methods",
         "minors",
-        "course availability"
+        "course availability",
+        "Parallel Computing",
+        "Data Visualization and Story Telling",
+        "AI/ML electives",
+        "programme specialisation"
       ],
       "source_type": "official_website_page",
       "captured_at": "2026-11-04",

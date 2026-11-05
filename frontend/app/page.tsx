@@ -10,6 +10,7 @@ type ImageAttachment = { name: string; url: string; file: File };
 type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[]; imageFiles?: ImageAttachment[]; pipeline?: string[]; model?: string; visualization?: Visualization; followUps?: string[]; fileNotes?: string[]; createdAt?: string };
 type Presence = "off" | "typing" | "recent";
 type AuthStudent = { id: string; username: string; name: string; synthetic_student_id: string; programme: string; admission_batch: string; current_semester: number | null; academic_status: string; synthetic_cgpa: number | null };
+type DemoAccountOption = { username: string; profileId: string; name: string; persona: string; programme: string; currentSemester: number | null; academicStatus: string };
 
 function splitPipeCells(value: string) {
   return value.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
@@ -208,6 +209,8 @@ export default function Home() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [demoAccountOptions, setDemoAccountOptions] = useState<DemoAccountOption[]>([]);
 
   const idRef = useRef(1);
   const endRef = useRef<HTMLDivElement>(null);
@@ -228,6 +231,9 @@ export default function Home() {
   }, []); 
   useEffect(() => {
     let active = true;
+    fetch("/api/auth/demo-profiles", { cache: "no-store" })
+      .then(async (response) => { const data = await response.json().catch(() => ({})) as { profiles?: DemoAccountOption[] }; if (active && response.ok) setDemoAccountOptions(data.profiles || []); })
+      .catch(() => { if (active) setLoginError("Could not load the synthetic scenario list."); });
     fetch("/api/auth/session", { cache: "no-store" })
       .then(async (response) => {
         const data = await response.json().catch(() => ({})) as { student?: AuthStudent | null };
@@ -531,18 +537,24 @@ export default function Home() {
         <div className="login-card">
           <img src="/logo.png" alt="Vidyashilp University" />
           <h1>VU Academic Advisor</h1>
-          <h2>Student account login</h2>
-          <p>Use a pre-created fictional B.Tech account for this Assignment 2 demonstration. This is not VU/Digiicampus authentication.</p>
+          <h2>{authMode === "login" ? "Student account login" : "Synthetic demo signup"}</h2>
+          <p>This advisor is restricted to B.Tech. All student accounts and academic records are fictional Assignment 2 scenarios, not VU/Digiicampus accounts.</p>
+          <div className="login-tabs" role="tablist" aria-label="Account access">
+            <button type="button" className={authMode === "login" ? "login-tab active" : "login-tab"} onClick={() => { setAuthMode("login"); setLoginError(""); }}>Log in</button>
+            <button type="button" className={authMode === "signup" ? "login-tab active" : "login-tab"} onClick={() => { setAuthMode("signup"); setLoginError(""); if (!loginUsername && demoAccountOptions[0]) setLoginUsername(demoAccountOptions[0].username); }}>Sign up</button>
+          </div>
           <form onSubmit={async (event) => {
             event.preventDefault();
             setLoginBusy(true);
             setLoginError("");
             try {
-              const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: loginUsername, password: loginPassword }), cache: "no-store" });
+              const endpoint = authMode === "signup" ? "/api/auth/signup" : "/api/auth/login";
+              const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: loginUsername, password: loginPassword }), cache: "no-store" });
               const data = await response.json().catch(() => ({})) as { student?: AuthStudent; error?: string };
-              if (!response.ok || !data.student) throw new Error(data.error || "Login failed.");
+              if (!response.ok || !data.student) throw new Error(data.error || (authMode === "signup" ? "Demo signup failed." : "Login failed."));
               const student = data.student;
               setAuthStudent(student);
+              setLoginUsername(student.username);
               setProgram(student.programme);
               setSemester(student.current_semester === null ? "Graduated" : String(student.current_semester));
               setCgpa(student.synthetic_cgpa === null ? "" : String(student.synthetic_cgpa));
@@ -551,15 +563,24 @@ export default function Home() {
               setMessages([{ id: 0, role: "bot", text: GREETING }]);
               setLoginPassword("");
             } catch (error) {
-              setLoginError(error instanceof Error ? error.message : "Login failed.");
+              setLoginError(error instanceof Error ? error.message : "Account access failed.");
             } finally { setLoginBusy(false); }
           }}>
-            <label className="login-field"><span>Username</span><input autoComplete="username" value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} required /></label>
-            <label className="login-field"><span>Password</span><input type="password" autoComplete="current-password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required /></label>
+            {authMode === "login" ? (
+              <label className="login-field"><span>User ID (student name)</span><input autoComplete="username" value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} placeholder="e.g. Aarohi Menon" required /></label>
+            ) : (
+              <label className="login-field"><span>Choose synthetic student scenario / User ID</span>
+                <select value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} required>
+                  <option value="" disabled>Select a profile scenario</option>
+                  {demoAccountOptions.map((account) => <option key={account.profileId} value={account.username}>{account.name} — {account.persona}</option>)}
+                </select>
+              </label>
+            )}
+            <label className="login-field"><span>Password (same for all demo accounts)</span><input type="password" autoComplete={authMode === "login" ? "current-password" : "new-password"} value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="1234" required /></label>
             {loginError && <p className="login-error" role="alert">{loginError}</p>}
-            <button className="login-submit" type="submit" disabled={loginBusy}>{loginBusy ? "Signing in…" : "Log in"}</button>
+            <button className="login-submit" type="submit" disabled={loginBusy || (authMode === "signup" && demoAccountOptions.length === 0)}>{loginBusy ? (authMode === "signup" ? "Activating scenario…" : "Signing in…") : (authMode === "signup" ? "Sign up / Activate demo profile" : "Log in")}</button>
           </form>
-          <p className="login-note">Demo accounts are provisioned for the presentation; self-service signup is not enabled because this prototype has no persistent account database.</p>
+          <p className="login-note">{authMode === "signup" ? "Signup activates one of the 10 pre-provisioned synthetic scenarios. It does not create a permanent custom account. User ID is the student's name; shared demo password: 1234." : "Use one of the listed synthetic student names as User ID. Shared demo password: 1234. These public classroom accounts must never be used for real data."}</p>
         </div>
       </div>
     );

@@ -1315,7 +1315,23 @@ export async function POST(request: Request) {
   const attachments:string[]=[];
   const fileNotes:string[]=[];
   const unreadableAttachmentNames:string[]=[];
-  const imageSummaries:string[]=[];
+  const imageFiles=files.filter((file)=>file.type.startsWith("image/")||/\\.(?:png|jpe?g|webp|bmp|tiff?)$/i.test(file.name));
+  let imageBatch:ImageBatchAnalysis={analyses:[],answer:""};
+  if(imageFiles.length){
+    try{
+      imageBatch=await readImages(key,imageFiles,combinedQuestion);
+    }catch(error){
+      imageBatch={
+        analyses:imageFiles.map((file)=>({
+          fileName:file.name,visualType:"Image",visualDescription:"",visibleText:"",
+          academicInformation:"",userSummary:"I could not read this image. Please try uploading it again.",
+        })),
+        answer:"",
+      };
+      fileNotes.push("One or more images could not be processed: "+(error instanceof Error?error.message.slice(0,160):"image processing error"));
+    }
+  }
+  let imageIndex=0;
   for(const file of files){
     const ext=file.name.split(".").pop()?.toLowerCase()??"";
     try{
@@ -1324,19 +1340,19 @@ export async function POST(request: Request) {
         if(extracted) { attachments.push("USER-UPLOADED TEXT FILE: "+file.name+"\n"+selectAttachmentExcerpt(extracted,combinedQuestion)); fileNotes.push("Read "+file.name); }
         else { unreadableAttachmentNames.push(file.name); fileNotes.push("No readable text found in "+file.name); }
       }else if(file.type.startsWith("image/")||["png","jpg","jpeg","webp","bmp","tif","tiff"].includes(ext)){
-        const analysis=await readImage(key,file,combinedQuestion);
-        if(analysis.userSummary || analysis.visualDescription || analysis.visibleText) {
-          imageSummaries.push(analysis.userSummary);
-          attachments.push("USER-UPLOADED IMAGE: "+file.name+"\nBACKEND IMAGE ANALYSIS (internal evidence; not a student-facing report):\n"+JSON.stringify({
+        const analysis=imageBatch.analyses[imageIndex++];
+        if(analysis && (analysis.userSummary || analysis.visualDescription || analysis.visibleText || analysis.academicInformation)) {
+          attachments.push("USER-UPLOADED IMAGE: "+file.name+"\\nBACKEND IMAGE ANALYSIS (internal evidence; not a student-facing report):\\n"+JSON.stringify({
             visualType:analysis.visualType,
             visualDescription:analysis.visualDescription,
             visibleText:analysis.visibleText,
             academicInformation:analysis.academicInformation,
           }));
-          fileNotes.push("Read image "+file.name+" (scene analysis and text extraction completed)");
+          if(!analysis.visualDescription && !analysis.visibleText && !analysis.academicInformation){
+            unreadableAttachmentNames.push(file.name);
+          }
         } else {
           unreadableAttachmentNames.push(file.name);
-          fileNotes.push("No readable information found in "+file.name);
         }
       }else if(file.type.startsWith("audio/")||["mp3","wav","m4a","ogg","flac","webm"].includes(ext)){
         const transcript=await readAudio(key,file);
@@ -1383,8 +1399,8 @@ export async function POST(request: Request) {
   const pendingCourseQuestion = getPendingBtechCourseQuestion(history, combinedQuestion);
   const contextualFacultyQuestion = getContextualFacultyFollowupQuestion(history, combinedQuestion);
   const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || contextualFacultyQuestion || combinedQuestion;
-  const imageOnlyAnswer = onlyImagesUploaded && imageSummaries.length > 0
-    ? imageSummaries.filter(Boolean).join(" ")
+  const imageOnlyAnswer = onlyImagesUploaded && imageBatch.analyses.length > 0
+    ? (imageBatch.answer || imageBatch.analyses.map((item)=>"**"+item.fileName+"** — "+item.userSummary).join("\\n\\n"))
     : undefined;
   // Uploaded files and transcribed speech must be processed before the general out-of-scope guard.
   const socialAnswer = files.length ? undefined : (getSimpleSocialAnswer(effectiveQuestion, history) || getDeterministicScopeAnswer(effectiveQuestion));

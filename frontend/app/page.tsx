@@ -494,7 +494,6 @@ export default function Home() {
                   <div className="bubble bot">
                     <div className="answer-text">{renderAnswer(m.text)}</div>
                     {renderVisualization(m.visualization)}
-                    {m.fileNotes && m.fileNotes.length > 0 && <div className="file-notes">{m.fileNotes.map((note, i) => <p key={i}>{note}</p>)}</div>}
                     {m.followUps && m.followUps.length > 0 && <div className="follow-ups">{m.followUps.map((followUp) => <button key={followUp} type="button" onClick={() => send(followUp)} disabled={busy}>{followUp}</button>)}</div>}
 
                     <div className="answer-tools" role="group" aria-label="Answer actions">

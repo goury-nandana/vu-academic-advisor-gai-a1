@@ -59,7 +59,7 @@ A new static regression suite, `tests/test_privacy_security_regression.py`, maps
 | 10 | User asks for information missing from profile | Prompt requires explicit Unknown/In Progress reporting and prohibits inference from missing results | Static assertion; model output quality remains untested |
 | UI transparency | User opens Privacy & Security panel | Assertions verify notice covers provider processing, prohibited inputs, Digiicampus boundary, and Clear Chat semantics | Static assertion; visual/browser accessibility review pending |
 
-**Execution status:** The regression file has been committed, but its test run and the subsequent GitHub Actions result are pending. Do not interpret the table as ten live security attacks executed. Existing account, marksheet, prompt-injection and academic tests are maintained separately. This prototype has not undergone an independent or deployed penetration test.
+**Execution status (verified):** GitHub Actions run [42119647276](https://github.com/goury-nandana/vu-academic-advisor-gai-a2/actions/runs/42119647276) completed successfully on commit `bbc8c53605949e69c318d853f3c33c602518ab9a`. The Python suite ran **65 tests — OK**; the frontend job also passed TypeScript and the Next.js production build. These tests are source-level regression assertions, not ten live attacks against deployed endpoints or the remote Groq model. Existing account, marksheet, prompt-injection and academic tests are maintained separately. This prototype has not undergone an independent or deployed penetration test.
 
 ## Synthetic data test scenarios
 

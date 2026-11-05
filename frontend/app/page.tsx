@@ -9,6 +9,7 @@ import { askAdvisor, transcribeVoice, type Source, type Visualization } from "./
 type ImageAttachment = { name: string; url: string; file: File };
 type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[]; imageFiles?: ImageAttachment[]; pipeline?: string[]; model?: string; visualization?: Visualization; followUps?: string[]; fileNotes?: string[]; createdAt?: string };
 type Presence = "off" | "typing" | "recent";
+type AuthStudent = { id: string; username: string; name: string; synthetic_student_id: string; programme: string; admission_batch: string; current_semester: number | null; academic_status: string; synthetic_cgpa: number | null };
 
 function splitPipeCells(value: string) {
   return value.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
@@ -206,6 +207,12 @@ export default function Home() {
   const [credits, setCredits] = useState("");
   const [cgpa, setCgpa] = useState("");
   const [syntheticStudentId, setSyntheticStudentId] = useState("");
+  const [authStudent, setAuthStudent] = useState<AuthStudent | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
 
   const idRef = useRef(1);
   const endRef = useRef<HTMLDivElement>(null);
@@ -223,6 +230,26 @@ export default function Home() {
       if (tickRef.current) clearInterval(tickRef.current);
       if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     };
+  }, []); 
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({})) as { student?: AuthStudent | null };
+        if (!active) return;
+        if (response.ok && data.student) {
+          const student = data.student;
+          setAuthStudent(student);
+          setLoginUsername(student.username);
+          setProgram(student.programme);
+          setSemester(student.current_semester === null ? "Graduated" : String(student.current_semester));
+          setCgpa(student.synthetic_cgpa === null ? "" : String(student.synthetic_cgpa));
+          setSyntheticStudentId(student.id);
+        }
+      })
+      .catch(() => { if (active) setLoginError("Could not check the demo session. Please try again."); })
+      .finally(() => { if (active) setAuthReady(true); });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -500,6 +527,49 @@ export default function Home() {
     setNotice("");
   }
 
+  if (!authReady) {
+    return <div className="login-shell"><div className="login-card"><img src="/logo.png" alt="Vidyashilp University" /><p>Loading synthetic demo account…</p></div></div>;
+  }
+  if (!authStudent) {
+    return (
+      <div className="login-shell">
+        <div className="login-card">
+          <img src="/logo.png" alt="Vidyashilp University" />
+          <h1>VU Academic Advisor</h1>
+          <h2>Student account login</h2>
+          <p>Use a pre-created fictional B.Tech account for this Assignment 2 demonstration. This is not VU/Digiicampus authentication.</p>
+          <form onSubmit={async (event) => {
+            event.preventDefault();
+            setLoginBusy(true);
+            setLoginError("");
+            try {
+              const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: loginUsername, password: loginPassword }), cache: "no-store" });
+              const data = await response.json().catch(() => ({})) as { student?: AuthStudent; error?: string };
+              if (!response.ok || !data.student) throw new Error(data.error || "Login failed.");
+              const student = data.student;
+              setAuthStudent(student);
+              setProgram(student.programme);
+              setSemester(student.current_semester === null ? "Graduated" : String(student.current_semester));
+              setCgpa(student.synthetic_cgpa === null ? "" : String(student.synthetic_cgpa));
+              setSyntheticStudentId(student.id);
+              setCredits("");
+              setMessages([{ id: 0, role: "bot", text: GREETING }]);
+              setLoginPassword("");
+            } catch (error) {
+              setLoginError(error instanceof Error ? error.message : "Login failed.");
+            } finally { setLoginBusy(false); }
+          }}>
+            <label className="login-field"><span>Username</span><input autoComplete="username" value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} required /></label>
+            <label className="login-field"><span>Password</span><input type="password" autoComplete="current-password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required /></label>
+            {loginError && <p className="login-error" role="alert">{loginError}</p>}
+            <button className="login-submit" type="submit" disabled={loginBusy}>{loginBusy ? "Signing in…" : "Log in"}</button>
+          </form>
+          <p className="login-note">Demo accounts are provisioned for the presentation; self-service signup is not enabled because this prototype has no persistent account database.</p>
+        </div>
+      </div>
+    );
+  }
+
   const lastBotId = [...messages].reverse().find((m) => m.role === "bot")?.id;
   const live = presence !== "off";
 
@@ -518,50 +588,34 @@ export default function Home() {
         </button>
         <div className="side-body">
           <img className="logo" src="/logo.png" alt="Vidyashilp University" />
-          <h2>Student profile</h2>
-          <p className="profile-help">Profile details are optional. Blank values remain unknown; the advisor asks one clarification when programme information is needed.</p>
-          <label className="field">
-            <span>Program</span>
-            <select value={program} onChange={(e) => setProgram(e.target.value)}>
-              {PROGRAMS.map((p) => (
-                <option key={p}>{p}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Current Semester</span>
-            <select value={semester} onChange={(e) => setSemester(e.target.value)}>
-              {SEMESTERS.map((p) => (
-                <option key={p}>{p}</option>
-              ))}
-            </select>
-          </label>
-          <div className="row2">
-            <label className="field">
-              <span>Completed Credits</span>
-              <input
-                type="number" inputMode="numeric" min={0} max={400} placeholder="Optional"
-                value={credits} onChange={(e) => setCredits(e.target.value)}
-              />
-            </label>
-            <label className="field">
-              <span>CGPA</span>
-              <input
-                type="number" inputMode="decimal" min={0} max={10} step={0.1} placeholder="Optional"
-                value={cgpa} onChange={(e) => setCgpa(e.target.value)}
-              />
-            </label>
+          <h2>Student Account</h2>
+          <div className="account-meta">
+            <strong>{authStudent?.name}</strong>
+            <span>Username: {authStudent?.username}</span>
+            <span>Synthetic ID: {authStudent?.synthetic_student_id}</span>
+            <span>Programme: {authStudent?.programme}</span>
+            <span>Admission batch: {authStudent?.admission_batch}</span>
+            <span>Semester: {authStudent?.current_semester === null ? "Graduated" : authStudent?.current_semester}</span>
+            <span>Status: {authStudent?.academic_status}</span>
+            <span>Demo CGPA: {authStudent?.synthetic_cgpa ?? "Not provided"}</span>
+            <small>All profile identities and academic outcomes are synthetic demonstration data.</small>
           </div>
-          <label className="field">
-            <span>Demo profile (synthetic only)</span>
-            <select value={syntheticStudentId} onChange={(e) => setSyntheticStudentId(e.target.value)}>
-              <option value="">Not selected</option>
-              <option value="SYN-001">SYN-001 — prerequisites met</option>
-              <option value="SYN-002">SYN-002 — failed prerequisite</option>
-              <option value="SYN-003">SYN-003 — incomplete information</option>
-            </select>
-          </label>
-          <p className="profile-help">Invented test profiles for demonstrating the multi-stage workflow. They are not real student records.</p>
+          <button className="clear" onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST" });
+            setAuthStudent(null);
+            setLoginPassword("");
+            setLoginError("");
+            setMessages([{ id: 0, role: "bot", text: GREETING }]);
+            setAttachments([]);
+            setAttachmentContext([]);
+            setProgram("Not specified");
+            setSemester("Not specified");
+            setCredits("");
+            setCgpa("");
+            setSyntheticStudentId("");
+          }}>Log out</button>
+          <h2>Academic Features</h2>
+          <p className="profile-help">Chat with the B.Tech academic advisor. Use Clear Chat to reset the current conversation.</p>
           <button className="clear" onClick={clearChat}>Clear Chat</button>
         </div>
       </aside>

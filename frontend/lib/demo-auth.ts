@@ -7,9 +7,9 @@ const pbkdf2 = promisify(pbkdf2Callback);
 const SESSION_COOKIE = "vu_demo_session";
 const SESSION_TTL_SECONDS = 8 * 60 * 60;
 type Account = { username: string; profileId: string; salt: string; hash: string };
-export type SyntheticStudentProfile = (typeof studentData.students)[number];
+export type SyntheticStudentProfile = { id: string; username: string; name: string; synthetic_student_id: string; programme: string; admission_batch: string; current_semester: number | null; academic_status: string; synthetic_cgpa: number | null; academic_records: Array<{ course_code: string; course_title: string; semester: number; credits: number; grade: string | null; status: string; attempts?: Array<{ semester: number; grade: string; status: string }> }>; completed_course_codes: string[]; failed_course_codes: string[]; unknown_course_codes: string[]; declared_minor: string };
 const accounts = accountData.accounts as Account[];
-const students = studentData.students as SyntheticStudentProfile[];
+const students = studentData.students as unknown as SyntheticStudentProfile[];
 
 function sessionSecret(): string {
   // SESSION_SECRET is preferred. GROQ_API_KEY is a server-only fallback so an

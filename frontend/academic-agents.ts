@@ -94,7 +94,7 @@ export function creditCalculationAgent(
       String(record.batch || "") === student.admission_batch &&
       record.document_type === "semester_spread" &&
       record.is_course_record !== false &&
-      String(record.programme || "").toLowerCase() === student.programme.toLowerCase()
+      matchesProgramme(record.programme, student.programme)
     );
     const credits = Number(row?.credits);
     if (!row || !Number.isFinite(credits) || credits < 0) {
@@ -127,7 +127,7 @@ export function eligibilityAgent(
       String(record.batch || "") === student.admission_batch &&
       record.document_type === "semester_spread" &&
       record.is_course_record !== false &&
-      String(record.programme || "").toLowerCase() === student.programme.toLowerCase()
+      matchesProgramme(record.programme, student.programme)
     );
     return row ? [row] : [];
   });
@@ -153,7 +153,7 @@ export function verificationAgent(
       String(record.batch || "") === student.admission_batch &&
       record.document_type === "semester_spread" &&
       record.is_course_record !== false &&
-      String(record.programme || "").toLowerCase() === student.programme.toLowerCase() &&
+      matchesProgramme(record.programme, student.programme) &&
       Boolean(record.source) && Boolean(record.cells)
     );
     return row ? [row] : [];

@@ -1159,8 +1159,8 @@ export async function POST(request: Request) {
   const isBatchSpecificBtechMinorQuery=requestedMinorBatches.length>0;
   const structuredCourseSearch=findStructuredCourseSearch(effectiveQuestion,profile.program);
   const academicMatches=retrieveAcademic(effectiveQuestion,profile.program,structuredCourseSearch);
-  const attendanceIntent = /\b(attendance|attendance policy|absence|condonation|shortage|medical leave)\b/i.test(effectiveQuestion);
-  const localWebsiteMatches = socialAnswer || attendanceIntent ? [] : retrieveWebsiteKnowledge(effectiveQuestion);
+  const suppressWebsiteForAttendance = /\b(attendance|attendance policy|absence|condonation|shortage|medical leave)\b/i.test(effectiveQuestion);
+  const localWebsiteMatches = socialAnswer || suppressWebsiteForAttendance ? [] : retrieveWebsiteKnowledge(effectiveQuestion);
   const pages = (isBtechMinorQuery||isStudentMinorQuery||structuredCourseSearch||socialAnswer)
     ? []
     : localWebsiteMatches.length ? localWebsiteMatches : await retrieve(combinedQuestion);

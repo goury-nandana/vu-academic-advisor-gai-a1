@@ -171,13 +171,8 @@ function renderVisualization(visual?: Visualization) {
 }
 
 const GREETING =
-  "Hi! I'm the VU Academic Advisor. Ask me about courses, programmes, prerequisites, credits, semesters and admissions.";
-const CHIPS = ["What programmes does VU offer?", "How do I apply to VU?", "What are the attendance requirements?"];
-const PROGRAMS = ["Not specified", "B.Tech", "BMS", "BA LLB", "BMS LLB", "B.A. Economics", "B.A. Psychology", "B.Des"];
-const SEMESTERS = [
-  "Not specified", "1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester",
-  "6th Semester", "7th Semester", "8th Semester", "9th Semester", "10th Semester",
-];
+  "Hi! I'm the VU Academic Advisor for B.Tech. Ask about your semester-wise courses, prerequisites, credits, backlogs, eligibility and academic progression. Your logged-in demo profile contains synthetic academic results.";
+const CHIPS = ["What courses did I have in Semester 1?", "How many credits have I completed?", "Can I take COMP302?"];
 const MAX_MB = 4;
 const MAX_FILES = 4;
 const isImageFile = (file: File) => file.type.startsWith("image/") || /\.(?:png|jpe?g|webp|bmp|tiff?)$/i.test(file.name);

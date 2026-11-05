@@ -40,25 +40,26 @@ The web chat supports:
 - Audio recording and voice-note transcription.
 - Read Aloud using browser Speech Synthesis.
 - Structured charts, steps and visual summary cards derived from retrieved answer evidence.
+- An authenticated, source-grounded course-prerequisite SVG infographic that shows Passed / Failed / Unknown direct prerequisite states for the signed-in synthetic account.
 
 The web API limit is four files and 4 MB combined. Extraction is in memory. Scanned or encrypted files may not yield readable text; the app should disclose this rather than guess.
 
 ## Synthetic B.Tech demo accounts and signup (Assignment 2)
 
-The account screen supports **Log in** and **Sign up** modes. The user ID is the student's name. The shared classroom-demo password is `1234` for all ten pre-provisioned profiles.
+The account screen supports **Log in** and a signup-style activation flow for the ten pre-provisioned demo accounts. Enter the username shown below. The shared classroom-demo password is `1234` for all ten accounts; it is intentionally public and weak, and must never be reused for real accounts.
 
-| User ID / Student name | Password | Scenario |
-|---|---|---|
-| Aarohi Menon | `1234` | Semester 1 — first-semester, in-progress courses |
-| Ananya Rao | `1234` | Semester 2 — clean progression |
-| Meera Nair | `1234` | Semester 3 — backlog in DATA103 |
-| Kavya Iyer | `1234` | Semester 4 — incomplete/unknown result data |
-| Diya Sharma | `1234` | Semester 5 — high CGPA, strong progression |
-| Isha Kulkarni | `1234` | Semester 6 — failed course affecting prerequisite |
-| Nandita Bose | `1234` | Semester 7 — repeated course |
-| Rhea Pillai | `1234` | Semester 8 — pending course and backlog |
-| Saanvi Krishnan | `1234` | Graduated profile — completed record |
-| Tara Desai | `1234` | Semester 6 — multiple backlogs / complex progression |
+| Username | Fictional student | Password | Scenario |
+|---|---|---|---|
+| VU001 | Aarohi Menon | `1234` | Semester 1 — first-semester, in-progress courses |
+| VU002 | Ananya Rao | `1234` | Semester 2 — clean progression |
+| VU003 | Meera Nair | `1234` | Semester 3 — backlog in DATA103 |
+| VU004 | Kavya Iyer | `1234` | Semester 4 — incomplete/unknown result data |
+| VU005 | Diya Sharma | `1234` | Semester 5 — high CGPA, strong progression |
+| VU006 | Isha Kulkarni | `1234` | Semester 6 — failed course affecting prerequisite |
+| VU007 | Nandita Bose | `1234` | Semester 7 — repeated course |
+| VU008 | Rhea Pillai | `1234` | Semester 8 — pending course and backlog |
+| VU009 | Saanvi Krishnan | `1234` | Graduated profile — completed record |
+| VU010 | Tara Desai | `1234` | Semester 6 — multiple backlogs / complex progression |
 
 **Signup behavior:** signup lets the evaluator choose one pre-provisioned scenario and activate its session. It does not create a permanent custom account or persist a new student profile; the repository has no durable account database. The demo password is intentionally shared and public; never use these demo accounts for real data.
 
@@ -118,6 +119,17 @@ Next.js checks from frontend/:
     npm run dev
 
 GitHub Actions runs Python and frontend checks on pushes and pull requests to main.
+
+## Assignment 2 documentation and viva pack
+
+- [System architecture and data-flow boundaries](docs/ARCHITECTURE.md)
+- [Multimodal feature implementation and limitations](docs/MULTIMODAL_EXTENSION.md)
+- [Agent workflow and RAG-only comparison](docs/AGENT_PIPELINE_AND_MODEL_COMPARISON.md)
+- [Privacy and security audit](docs/PRIVACY_SECURITY_AUDIT.md)
+- [Legal/copyright review of three actual outputs](docs/LEGAL_COPYRIGHT_OUTPUT_REVIEW.md)
+- [Viva demonstration guide and synthetic account scenarios](docs/VIVA_DEMO_GUIDE.md)
+- [Test evidence and release status](docs/TESTING_AND_RESULTS.md)
+- [Assignment 2 final report and Phase 8–12 gap analysis](docs/ASSIGNMENT_2_FINAL_REPORT.md)
 
 ## Remaining production requirements
 

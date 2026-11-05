@@ -172,7 +172,7 @@ function renderVisualization(visual?: Visualization) {
 }
 
 const GREETING =
-  "Hi! I'm the VU Academic Advisor for B.Tech. Ask me about courses, prerequisites, credits, backlogs, eligibility or academic progression.";
+  "Hi! I’m Vikki Talk by VU, your academic guide for B.Tech. Ask me about courses, prerequisites, credits, backlogs, eligibility or academic progression.";
 const CHIPS = ["What courses did I have in Semester 1?", "How many credits have I completed?", "Can I take COMP302?"];
 const MAX_MB = 4;
 const MAX_FILES = 4;
@@ -525,7 +525,8 @@ export default function Home() {
       <div className="login-shell">
         <div className="login-card">
           <img src="/logo.png" alt="Vidyashilp University" />
-          <h1>VU Academic Advisor</h1>
+          <h1>Vikki Talk</h1>
+          <p className="brand-byline">by Vidyashilp University</p>
           <h2>{authMode === "login" ? "Student account login" : "Synthetic demo signup"}</h2>
           <p>This advisor is restricted to B.Tech. All student accounts and academic records are fictional Assignment 2 scenarios, not VU/Digiicampus accounts.</p>
           <div className="login-tabs" role="tablist" aria-label="Account access">
@@ -625,9 +626,9 @@ export default function Home() {
           <div className="pill">
             <span className="av-lg">
               <span className={`ring ${live ? "on" : ""}`} />
-              <span className="av-in"><img src="/symbol.jpg" alt="VU Academic Advisor" /></span>
+              <span className="av-in"><img src="/symbol.jpg" alt="Vikki Talk by VU" /></span>
             </span>
-            <span className="pill-title">VU ACADEMIC ADVISOR</span>
+            <span className="pill-title">VIKKI TALK BY VU</span>
           </div>
         </div>
 
@@ -776,6 +777,7 @@ export default function Home() {
             <input ref={cameraInput} type="file" hidden accept="image/*" capture="environment"
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           </form>
+          <p className="disclaimer">AI-generated responses may contain errors. Please verify important academic information with official university sources.</p>
         </div>
       </main>
     </div>

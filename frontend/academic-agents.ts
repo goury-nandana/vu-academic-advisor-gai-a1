@@ -50,6 +50,14 @@ function normalizeCode(value: unknown): string {
   return String(value || "").replace(/[\s-]/g, "").toUpperCase();
 }
 
+/** Match B.Tech branch labels such as "B.Tech CSE" to workbook degree label "B.Tech". Other programmes must match exactly. */
+function matchesProgramme(recordProgramme: unknown, studentProgramme: unknown): boolean {
+  const record = String(recordProgramme || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const student = String(studentProgramme || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (record === student) return true;
+  return record === "btech" && /^btech(?:[a-z0-9]+)?$/.test(student);
+}
+
 /** Agent 1: retrieves the synthetic student record selected for the demo. */
 export function studentProfileAgent(id: string): SyntheticStudent | undefined {
   return getSyntheticStudent(id);

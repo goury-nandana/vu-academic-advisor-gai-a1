@@ -1439,7 +1439,8 @@ export async function POST(request: Request) {
   const contextualFacultyQuestion = getContextualFacultyFollowupQuestion(history, combinedQuestion);
   const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || contextualFacultyQuestion || combinedQuestion;
   const failedImageNames=unreadableAttachmentNames.filter((name)=>imageFiles.some((file)=>file.name===name));
-  const imageOnlyAnswer = onlyImagesUploaded && previousAttachmentContext.length===0 && imageBatch.analyses.length > 0 && imageBatch.answer
+  const readableImageCount=imageFiles.length-failedImageNames.length;
+  const imageOnlyAnswer = onlyImagesUploaded && previousAttachmentContext.length===0 && readableImageCount > 0 && imageBatch.answer
     ? imageBatch.answer+(failedImageNames.length?"\n\nI could not reliably read "+failedImageNames.join(", ")+". The answer uses only the images that could be analysed.":"")
     : undefined;
   // Uploaded files and transcribed speech must be processed before the general out-of-scope guard.

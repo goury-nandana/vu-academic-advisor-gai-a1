@@ -7,7 +7,7 @@
 
 - The web UI is hosted by Vercel and calls the same-origin Next.js /api/chat and /api/transcribe routes.
 - Answer generation, image understanding and speech transcription requests are sent from the server to Groq. The browser does not receive the GROQ_API_KEY.
-- Optional programme, semester, credits and CGPA are supplied by the student in the browser. The prototype is not connected to VU's Digiicampus or student-information database.
+- The student signs in to one of ten pre-provisioned synthetic B.Tech demo accounts. The profile ID and academic context used by the chat API are derived server-side from the signed HttpOnly session cookie; browser-submitted profile identity is ignored. The prototype is not connected to VU's Digiicampus or student-information database.
 - Questions, uploaded content and optional profile fields may be transmitted to Groq for the requested inference. The prototype does not write chat history or uploaded content to a VU student database or its own permanent chat database.
 - The browser-side Clear Chat action clears the current conversation from the page state; it cannot recall a request already sent to the provider.
 - A user can explicitly export one answer's question, text, model identifier, processing steps and displayed citations to a local JSON file. Export is user-triggered and is not an automatic server archive.
@@ -19,7 +19,9 @@
 - **Request limits:** the API checks declared request size before parsing and enforces the existing four-file / 4 MB combined upload limit after parsing. These limits do not replace infrastructure-level body limits.
 - **No local persistence:** the browser keeps the chat in transient page state; no server-side transcript database is implemented.
 - **Data minimisation notice:** the UI tells users that questions, optional profile details and uploads are sent to Groq and says not to enter passwords, student IDs or sensitive personal records.
-- **Synthetic student data:** three invented B.Tech 2025 fixtures are explicitly labelled synthetic and used only in the demo workflow. They are not linked to a real student or university account.
+- **Synthetic student data:** ten fictional female B.Tech demo profiles span semesters 1–8 and a graduated case, with synthetic grades/CGPAs, backlogs, repeats and unknown results. Curriculum course codes, titles, semesters, credits and admission batches are derived from the repository's structured B.Tech records. Three legacy COMP302 fixtures remain marked test-only; none is connected to a real student or university account.
+- **Demo account authentication:** username/password verification uses server-side PBKDF2-SHA256 hashes (120,000 iterations) and timing-safe hash comparison. Successful login issues an 8-hour signed HMAC session cookie with HttpOnly, SameSite=Strict, Path=/ and Secure in production. Logout clears the cookie. The signing secret uses SESSION_SECRET if configured; otherwise the server-only GROQ_API_KEY is used as a fallback. This is a classroom demo credential system, not VU identity verification.
+- **Authenticated chat boundary:** /api/chat returns 401 without a valid session and uses the student profile from that session rather than trusting browser profile fields. The authenticated synthetic academic history is included in the requested Groq inference context.
 - **Prompt-injection boundary:** retrieved webpages, university documents, images and attachments are treated as untrusted data. The server escapes source material before placing it in marked context blocks, and system instructions reject embedded instructions to reveal prompts, keys or private data.
 - **Deterministic tests:** tests/test_prompt_injection.py checks delimiter escaping and representative attack strings. tests/test_synthetic_advising.py checks the sample student data against actual 2025 B.Tech course rows and verifies origin/body-size safeguards.
 - **Dependency review:** the previous resolved frontend npm audit run reported zero known advisories at that scan time. This is not a continuous security guarantee.
@@ -27,7 +29,7 @@
 
 ## Synthetic data test scenarios
 
-The new synthetic demo lets an evaluator select three fictional records and ask whether the selected student can take COMP302 (Internet of Things) while requesting the completed-course credit total. The course row and direct prerequisites are retrieved from the B.Tech 2025 semester-spread dataset.
+The pre-provisioned demo accounts are authenticated individually. Ten accounts cover semester-wise course history, failed and repeated courses, incomplete information, a borderline case and a graduated profile. The three legacy SYN-001–SYN-003 fixtures remain test-only for the existing COMP302 prerequisite tests.
 
 | Synthetic fixture | Test outcome | Calculated credits |
 |---|---|---:|
@@ -39,12 +41,12 @@ The credit totals are computed from the matching 2025 workbook rows for the cour
 
 ## Residual risks and controls requiring university/provider action
 
-- **No in-app authentication:** there is no student login, role-based access or verified student identity. Vercel deployment protection is not a replacement for this.
+- **Demo-only identity and account persistence:** in-app login/logout and session-bound profile isolation are implemented for the pre-provisioned synthetic accounts, but identity is not verified by VU. Self-service signup and persistent user-created accounts are not implemented because no durable account database is configured. Vercel deployment protection remains separate from this demo login.
 - **No Digiicampus connection:** there is no authorised VU SSO, SAML/OIDC or student-record API integration. Do not request a student's Digiicampus password in chat. Real integration needs VU/vendor approval, consent, scoped access, token security and a data-processing agreement.
 - **No distributed rate limit / abuse control:** the application routes do not implement per-user quotas, distributed rate limiting, bot detection or abuse monitoring.
 - **No live penetration test:** deterministic code tests are not a live red-team exercise against the deployed Groq model or a penetration test of the Vercel deployment.
 - **Provider retention and region:** provider-side retention, processing region, deletion guarantees and the exact contract accepted for the configured Groq account must be checked by the account owner. Do not claim zero retention or that data never leaves the app. Groq's published agreement places responsibilities on customers for input permissions and output evaluation; account-specific settings and terms still need confirmation.
-- **No cross-user isolation proof:** because there is no student login or user data store, the current prototype has no production multi-tenant student-record isolation design to certify.
+- **Isolation testing remains limited:** chat identity is server-bound to the signed session, but a full deployed cross-account penetration test and marksheet endpoint tests have not yet been executed. No real student data or multi-tenant university database is present.
 - **No legal compliance certification:** the UI privacy notice is a transparency measure, not proof of compliance with the DPDP Act/Rules or any institutional policy. VU's data-protection/legal team must approve the actual purposes, notices, retention and vendor terms.
 - **Source drift:** official pages and handbooks may change. A source citation identifies evidence used for an answer; it is not university endorsement of the generated answer.
 

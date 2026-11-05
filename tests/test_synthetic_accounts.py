@@ -55,7 +55,8 @@ class SyntheticAccountTests(unittest.TestCase):
             actual = hashlib.pbkdf2_hmac("sha256", password, bytes.fromhex(account["salt"]), iterations)
             with self.subTest(username=account["username"]):
                 self.assertEqual(actual.hex(), account["hash"])
-                self.assertNotIn(password.decode(), json.dumps(CREDENTIALS))
+                self.assertNotIn(password.decode(), json.dumps(account))
+                self.assertNotIn("password", account)
 
     def test_account_course_history_matches_exact_batch_semester_source_rows(self):
         for account in self.accounts:

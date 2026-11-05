@@ -115,6 +115,10 @@
 | Student or university-supplied material as input | Uploading course notes, assessments, student projects, transcripts, images, or restricted handbook content beyond the permitted purpose | Confirm assignment or institutional permission; minimize and redact personal data; restrict access; honor provider retention and processing terms; do not assume possession equals permission |
 | Reuse / publication of output | Output may resemble third-party expression; attribution may be incomplete; a generated result may contain factual error or create reputational confusion | Human-review before public or graded use; check similarity and sources; cite source material actually used; keep a record of prompt, output, tool/model and review; do not claim legal clearance based solely on AI generation |
 
+### Current course-pathway SVG — output classification
+
+The current application also renders a course-prerequisite pathway as an SVG diagram. This is a deterministic visualisation of the student's synthetic pass/fail/unknown states and batch-matched course workbook facts; it is not an AI-generated image or a copied university logo/artwork. The three-output evidence review above remains limited to the three saved text responses and does not count this later feature as one of those three historical outputs. The diagram should retain its source/data disclaimer and must not imply VU endorsement or official registration approval.
+
 ### Ownership and licensing: practical position
 
 - The Copyright Act, 1957, contains a computer-generated-work authorship provision in section 2(d)(vi), but its application to current generative AI systems and the required human contribution is not conclusively resolved by this project. Avoid categorical claims that an AI model owns the work or that a student automatically owns every output.
@@ -128,4 +132,4 @@
 - The three output excerpts are transcribed from the saved conversation transcript identified in the opening statement. The repository report does not include a cryptographic hash or raw model response payload for that transcript.
 - The model identifier and per-answer timestamps were not captured in the source transcript; they are expressly left unspecified.
 - The review is a qualitative desk analysis. It did not perform similarity matching, image/audio forensic analysis, a license audit of every source, or legal clearance by VU counsel.
-- This section is prospective guidance, not a claim that media-generation features are already implemented or that media outputs were tested.
+- The application now renders a deterministic SVG course-pathway diagram, but does not implement AI image, video or generated-audio creation. The media-generation risk table remains prospective guidance; no generated image/audio/video output was part of the three historical text-output review.

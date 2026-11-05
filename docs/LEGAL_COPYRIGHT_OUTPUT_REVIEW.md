@@ -8,6 +8,19 @@
 
 - **Question:** "programmes offered at vu"
 - **Generated answer:** A seven-row summary of undergraduate programme families: B.Tech CSE with Data Science/AI & ML specialisations, B.A. Economics, B.A. Psychology, B.Des, B.M.S. Digital Business, integrated B.A. LL.B. and integrated B.M.S. LL.B.
+
+**Saved response extract (transcribed from the actual conversation):**
+
+> Vidyashilp University — Undergraduate Programmes
+>
+> - Engineering & Technology: B.Tech Computer Science and Engineering (specialisations: Data Science; Artificial Intelligence & Machine Learning)
+> - Liberal Arts & Sciences: B.A. Economics; B.A. Psychology
+> - Design: B.Des (Design)
+> - Management & Business: B.M.S. Digital Business
+> - Law (Integrated): Integrated B.A. LL.B.; Integrated B.M.S. LL.B.
+>
+> Sources: the university homepage and programme directory.
+
 - **Displayed source titles:** "Vidyashilp University — Homepage" and "Undergraduate Programmes and Areas of Study"; the saved transcript also lists "Study at VU / Admissions" and school pages.
 - **Canonical source pages for review:** https://vidyashilp.edu.in/ and https://vidyashilp.edu.in/#academics
 - **Model/date:** Model identifier not preserved in the saved transcript; transcript capture date 4 November 2026.
@@ -19,6 +32,21 @@
 
 - **Question:** "course code of calculus"
 - **Generated answer:** MATH201, with batch-specific rows for B.Tech batches 2022, 2023 and 2024. The transcript reports semesters 1, 2 and 2 respectively, three credits, and no prerequisite listed. It explicitly says the source does not specify a track for those batches.
+
+**Saved response extract (transcribed from the actual conversation):**
+
+> Calculus — course details
+>
+> The course code in the available B.Tech semester-spread records is MATH201.
+>
+> | Admission batch | Course code | Semester | Credits | Prerequisite | Track in source |
+> |---|---|---:|---:|---|---|
+> | 2022 | MATH201 | 1 | 3 | None listed | Not specified |
+> | 2023 | MATH201 | 2 | 3 | None listed | Not specified |
+> | 2024 | MATH201 | 2 | 3 | None listed | Not specified |
+>
+> The source only identifies the 2026 records as Data Science. The 2022–2025 records do not specify a specialisation, so their track should not be inferred.
+
 - **Displayed source title:** `VU_Semester_Data_Split.zip · 01_Semester_Spread_BTech_2022.xlsx`, with source workbook and cell coordinates shown for the 2022 row.
 - **Canonical source file:** https://github.com/goury-nandana/vu-academic-advisor-gai-a2/blob/main/VU_Semester_Data_Split.zip
 - **Model/date:** Model identifier not preserved in the saved transcript; transcript capture date 4 November 2026.
@@ -30,6 +58,15 @@
 
 - **Question:** "minors offered for btech for teh year 2022"
 - **Generated answer:** Design, Psychology, Economics, Finance and Marketing are listed as minor disciplines recorded for the 2022 admission batch. The answer also says that a listed minor is not guaranteed to run and states the Student Handbook's ten-student registration threshold, subject to a Programme Chair exception.
+
+**Saved response extract (transcribed from the actual conversation):**
+
+> B.Tech minor options recorded by admission batch
+>
+> 2022 batch: Design, Psychology, Economics, Finance, Marketing.
+>
+> Important: A minor appearing in the workbook does not guarantee that it will run in a particular semester. The Student Handbook says minor courses are offered when at least 10 students register, although the Programme Chair may permit an exception.
+
 - **Displayed source title:** `Minor_Courses_for_BTech_Students.xlsx · Design Minor minor; admission batch 2022`; the saved transcript does not show a separate Student Handbook citation for the ten-student rule.
 - **Canonical source files:** https://github.com/goury-nandana/vu-academic-advisor-gai-a2/blob/main/VU_Minor_Data_Split.zip and https://github.com/goury-nandana/vu-academic-advisor-gai-a2/blob/main/4.%20Student%20Handbook%20Aug%202026.pdf
 - **Model/date:** Model identifier not preserved in the saved transcript; transcript capture date 4 November 2026.

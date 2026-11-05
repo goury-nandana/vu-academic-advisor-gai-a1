@@ -333,6 +333,9 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:wtf|what the fuck|what the hell)$/.test(normalized)) {
     return "I may have misunderstood you. Tell me what felt wrong or what you were trying to ask, and I’ll respond to that instead of repeating the same message.";
   }
+  if (/^(?:why (?:are there )?so many sources|why so many links|too many sources|too many links)$/.test(normalized)) {
+    return "The previous search returned several matching excerpts, including multiple sections from the same document. Those should be grouped under one source with the relevant page range, rather than displayed as separate links. The source list is now being consolidated.";
+  }
   if (/^(?:how can i trust you|why should i trust you|can i trust you|how do i know you are accurate|how do i know you are telling the truth)$/.test(normalized)) {
     return "You should not rely on me blindly. VU-specific answers should be grounded in official university documents or webpages, with sources shown where available. I can still make mistakes or miss recent changes, so verify important decisions with the university. I provide guidance; I do not make official university decisions.";
   }
@@ -1024,14 +1027,18 @@ function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
 function deterministicLawFacultyAnswer(
   question: string,
   pages: WebsiteSearchHit[],
-  citationOffset: number
+  citationOffset: number,
+  acknowledgeCorrection = false
 ): string | undefined {
   if (!/\b(?:faculty|faculties|professors?|teaching staff|dean|academic staff)\b/i.test(question) ||
       !/\b(?:law|legal|llb)\b/i.test(question)) return undefined;
   const directory = pages.find((page) => page.pageId === "faculty");
   if (!directory) return undefined;
   const citation = "[" + (citationOffset + pages.indexOf(directory) + 1) + "]";
-  return "**School of Law faculty listed on VU’s official Faculty page**\n\n" +
+  const correction = acknowledgeCorrection
+    ? "You’re right—the official Faculty page does list School of Law staff. The earlier answer missed it because the Faculty page had not been included in the advisor’s indexed website content. The long source list came from showing several matching excerpts separately; this answer uses the single relevant Faculty directory link.\n\n"
+    : "";
+  return correction + "**School of Law faculty listed on VU’s official Faculty page**\n\n" +
     directory.text + " " + citation + "\n\n" +
     "Faculty listings can change. Check the linked official directory for the latest profiles and individual biographies.";
 }
@@ -1172,7 +1179,12 @@ export async function POST(request: Request) {
     title:page.title,url:page.url,text:page.text,citation:academicSources.length+index+1,type:"website",pageId:"pageId" in page ? page.pageId : undefined,
   }));
   const sources=[...academicSources,...webSources];
-  const lawFacultyAnswer = deterministicLawFacultyAnswer(effectiveQuestion,pages as WebsiteSearchHit[],academicSources.length);
+  const lawFacultyAnswer = deterministicLawFacultyAnswer(
+    effectiveQuestion,
+    pages as WebsiteSearchHit[],
+    academicSources.length,
+    Boolean(contextualFacultyQuestion)
+  );
   const admissionsAnswer = deterministicAdmissionsAnswer(
     effectiveQuestion,
     pages as WebsiteSearchHit[],

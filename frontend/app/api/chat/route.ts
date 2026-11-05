@@ -1045,24 +1045,20 @@ function deterministicProgrammeDirectoryAnswer(
   ];
   if (!requiredPages.every((id) => pages.some((page) => page.pageId === id))) return undefined;
 
-  let answer = "**Vidyashilp University — undergraduate programmes and published specialisation options**\n\n";
-  answer += "| **Programme** | **Major / named programme specialisation** | **Specialisation tracks / focus areas published by VU** |\n";
-  answer += "| :-- | :-- | :-- |\n";
-  answer += "| **B.Tech. CSE — Data Science** | Data Science | **Track 1:** Applied Deep Learning, Probabilistic Graph Models, Bayesian Methods in Machine Learning / Generative AI, Natural Language Processing, Multi-Modal Learning and Reinforcement Learning. **Track 2:** Full Stack Development, Backend Systems and API Development, Big Data Analytics, Web Frameworks, Mobile Application Development and Performance Optimization and Testing." + citation("programme_btech_ds") + " |\n";
-  answer += "| **B.Tech. CSE — AI & Machine Learning** | Artificial Intelligence & Machine Learning | AI/ML is the named programme specialisation. The page separately lists electives such as Generative AI models, Parallel Computing, Probabilistic Graphical Models, Bayesian Methods in Machine Learning, Multi-Modal Learning, Full Stack Development, Backend Systems and API Development, Big Data Analytics, Web Frameworks and Mobile Application Development." + citation("programme_btech_aiml") + " |\n";
-  answer += "| **B.A. (Hons.) Economics** | Economics | Advanced Macroeconomics; Business Economics; Applied Microeconomics; Behavioral Economics; Developmental Economics; Quantitative Techniques; Open Specialisation." + citation("programme_economics") + " |\n";
-  answer += "| **B.A. (Hons.) Psychology** | Psychology | Counselling Psychology; Cognitive Psychology; Clinical Psychology." + citation("programme_psychology") + " |\n";
-  answer += "| **B.Des.** | Design, with a communication-design emphasis | **Track I options:** Interactive Design; Film and Animation; Graphic Design; Comics and Sequential Art; Game Design; Extended Reality (AR/VR/XR). Tracks II and III are described as continuations; the page does not enumerate separate option lists for them." + citation("programme_bdes") + " |\n";
-  answer += "| **B.M.S. (Hons.) Digital Business** | Digital Business | Marketing; Finance; Startup Management; HR Management." + citation("programme_bms") + " |\n";
-  answer += "| **B.A., LL.B. (Hons.)** | Integrated law degree | The page highlights IPR, Technology Law and Arbitration, and discusses ADR (Arbitration, Mediation, Conciliation and Negotiation) and ODR. These are described as focus areas, not as a formal named specialisation-track list." + citation("programme_ba_llb") + " |\n";
-  answer += "| **B.M.S., LL.B. (Hons.)** | Integrated business and law degree | Public Law; Business and Commercial Law; IPR / Intellectual Property Law; AI & Technology Law; Public Health Law; General Law." + citation("programme_bms_llb") + " |\n";
-  answer += "\n**Important distinctions**\n\n";
-  answer += "- A major is the programme’s main discipline; a specialisation track is a structured focus within it; electives are individual selectable subjects; minors are separate interdisciplinary study areas. They are not interchangeable.\n";
-  answer += "- The detailed Economics page lists seven tracks, while a separate older Economics landing page lists only three. The official website also shows different minor lists in different sections of the BMS and B.Des. pages. The advisor should flag these page-level differences and ask students to confirm current cohort availability with VU.\n";
-  answer += "- A list on a public programme page does not guarantee that every track, elective or minor runs for every admission batch or semester.";
+  let answer = "**VU undergraduate programmes and published specialisation options**\n\n";
+  answer += "| **Programme** | **Published specialisation tracks / options** |\n";
+  answer += "| :-- | :-- |\n";
+  answer += "| **B.Tech. (Hons.) CSE — Data Science** | **Track 1:** Advanced Exploratory Data Analysis, Optimization Techniques for Data Science, Machine Learning, Deep Learning, Cloud Computing and AI Model Deployment. **Track 2:** Full Stack Development, Backend Systems and API Development, Big Data Analytics, Web Frameworks, Mobile Application Development, Performance Optimization and Testing." + citation("programme_btech_ds") + " |\n";
+  answer += "| **B.Tech. (Hons.) CSE — AI & Machine Learning** | AI & ML is the named programme specialisation. The page lists electives separately, including Generative AI, Parallel Computing, Probabilistic Graphical Models, Bayesian Methods in Machine Learning and Multi-Modal Learning." + citation("programme_btech_aiml") + " |\n";
+  answer += "| **B.A. (Hons.) Economics** | Advanced Macroeconomics; Business Economics; Applied Microeconomics; Behavioral Economics; Developmental Economics; Quantitative Techniques; Open Specialisation." + citation("programme_economics") + " |\n";
+  answer += "| **B.A. (Hons.) Psychology** | Counselling Psychology; Cognitive Psychology; Clinical Psychology." + citation("programme_psychology") + " |\n";
+  answer += "| **B.Des. — Communication Design** | Track I options: Interactive Design; Film and Animation; Graphic Design; Comics and Sequential Art; Game Design; Extended Reality (AR/VR/XR). Tracks II and III are described as continuations." + citation("programme_bdes") + " |\n";
+  answer += "| **B.M.S. (Hons.) Digital Business** | Marketing; Finance; Startup Management; HR Management." + citation("programme_bms") + " |\n";
+  answer += "| **B.A., LL.B. (Hons.)** | The page highlights IPR, Technology Law and Arbitration, and discusses ADR and ODR. These are focus areas; the page does not give a formal named specialisation-track list." + citation("programme_ba_llb") + " |\n";
+  answer += "| **B.M.S., LL.B. (Hons.)** | Public Law; Business and Commercial Law; IPR / Intellectual Property Law; AI & Technology Law; Public Health Law; General Law." + citation("programme_bms_llb") + " |\n";
+  answer += "\nVU also lists **Hons. with Research** pathways for Economics, Psychology and Digital Business. Electives, minors and the homepage’s broader “Areas of Study” are not automatically formal specialisation tracks. Track/minor availability can vary by intake, so confirm the current options for the student’s batch.";
   return answer;
 }
-
 function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
   const terms = queryWords(question);
   if (!terms.length) return [];

@@ -209,7 +209,6 @@ export default function Home() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
-  const [marksheetBusy, setMarksheetBusy] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [demoAccountOptions, setDemoAccountOptions] = useState<DemoAccountOption[]>([]);
 
@@ -471,32 +470,6 @@ export default function Home() {
     }
   }
 
-  function exportEvidence(message: Msg) {
-    const messageIndex = messages.findIndex((item) => item.id === message.id);
-    const precedingQuestion = messages.slice(0, Math.max(0, messageIndex)).reverse()
-      .find((item) => item.role === "user");
-    const recordedAt = message.createdAt || new Date().toISOString();
-    const evidence = {
-      recordType: "VU Academic Advisor output evidence",
-      recordedAt,
-      model: message.model || "Not reported",
-      question: precedingQuestion?.text || "Question not found in current browser session",
-      answer: message.text,
-      sources: message.sources || [],
-      processingSteps: message.pipeline || [],
-      note: "This export is a browser-side evidence copy. Redact personal information before sharing it for evaluation. It does not prove that the answer is correct; verify every claim against its cited source.",
-    };
-    const blob = new Blob([JSON.stringify(evidence, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "vu-advisor-evidence-" + recordedAt.replace(/[:.]/g, "-") + ".json";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
   async function copyImage(messageId: number, image: ImageAttachment) {
     const imageKey = `${messageId}:${image.name}`;
     try {
@@ -626,7 +599,6 @@ export default function Home() {
             <span>Semester: {authStudent?.current_semester === null ? "Graduated" : authStudent?.current_semester}</span>
             <span>Status: {authStudent?.academic_status}</span>
             <span>Demo CGPA: {authStudent?.synthetic_cgpa ?? "Not provided"}</span>
-            <small>All profile identities and academic outcomes are synthetic demonstration data.</small>
           </div>
           <button className="clear" onClick={async () => {
             await fetch("/api/auth/logout", { method: "POST" });

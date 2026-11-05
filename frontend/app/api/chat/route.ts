@@ -1138,6 +1138,7 @@ export async function POST(request: Request) {
   const socialAnswer = getSimpleSocialAnswer(effectiveQuestion, history) || getDeterministicScopeAnswer(effectiveQuestion);
   const attachments:string[]=[];
   const fileNotes:string[]=[];
+  const unreadableAttachmentNames:string[]=[];
   for(const file of files){
     const ext=file.name.split(".").pop()?.toLowerCase()??"";
     try{
@@ -1152,7 +1153,15 @@ export async function POST(request: Request) {
         const transcript=await readAudio(key,file);
         if(transcript) combinedQuestion+="\n\nVoice transcript: "+transcript;
         fileNotes.push(transcript?"Transcribed "+file.name:"No speech transcribed from "+file.name);
-      }else fileNotes.push(file.name+" was not processed here; PDF/DOCX/XLSX/PPTX extraction is available in the Streamlit version.");
+      }else {
+        unreadableAttachmentNames.push(file.name);
+        const knownDocumentType = ["pdf","docx","xlsx","pptx"].includes(ext);
+        fileNotes.push(
+          knownDocumentType
+            ? file.name+" was not read. The web app does not currently extract PDF, DOCX, XLSX or PPTX content; this file was not used as evidence."
+            : file.name+" was not read because this file type is not supported by the web app; it was not used as evidence."
+        );
+      }
     }catch(error){fileNotes.push(file.name+" could not be processed: "+(error instanceof Error?error.message.slice(0,120):"processing error"));}
   }
 
@@ -1189,6 +1198,28 @@ export async function POST(request: Request) {
     pages as WebsiteSearchHit[],
     academicSources.length
   );
+  const attachmentReferenceIntent = unreadableAttachmentNames.length > 0 &&
+    /\b(?:this|that|these|those|attached|uploaded|document|file|pdf|spreadsheet|workbook|course plan|course plans|summari[sz]e|extract|read|what is in|explain)\b/i.test(combinedQuestion);
+  const storedCoursePlan = academicMatches.find((document) =>
+    /Course_Plans\.txt/i.test(document.source || "")
+  );
+  const unreadableAttachmentAnswer = attachmentReferenceIntent
+    ? (() => {
+        const names = unreadableAttachmentNames.map((name) => "**" + name + "**").join(", ");
+        let result = "**I could not read the attached file.** The web version of the VU Academic Advisor does not currently extract text from PDF, DOCX, XLSX or PPTX files. " +
+          names + " was not processed, so I cannot confirm what is in that file.\n\n";
+        if (/course plan/i.test(combinedQuestion) && storedCoursePlan) {
+          const citationIndex = academicMatches.indexOf(storedCoursePlan) + 1;
+          result += "**Separate information in the advisor’s stored course-plan record** (not verified against your attachment) [" + citationIndex + "]:\n\n";
+          result += "- **DATA204 — Predictive Analytics:** Data Science minor; Semester V; 4 credits (2-0-4); 15 weeks; prerequisite: Exploring Data Science. Recommended background (not mandatory): Essentials of Data Science, Probability and Statistics, and Linear Algebra. Assessment: assignments/labs 50%, quiz 20%, and End-Term Final Project 30%.\n";
+          result += "- **MGMT801 — Internship Project:** BMS (Hons); Semester V; 2 non-taught credits (0-0-0); 2 months; no prerequisite. The stored note says it should be completed 6–8 weeks after Semester IV final examinations and before Semester V begins. Assessment: report 60%, presentation/demo 40%.\n\n";
+          result += "These are records already stored in the advisor’s knowledge base. They may or may not be the contents of your PDF.";
+        } else {
+          result += "Upload page screenshots as images or paste the relevant text, and I can analyse the actual contents.";
+        }
+        return result;
+      })()
+    : undefined;
   const profileText=["Programme: "+(profile.program&&profile.program!=="Not specified"?profile.program:"unknown"),"Semester: "+(profile.semester&&profile.semester!=="Not specified"?profile.semester:"unknown"),"Credits: "+(profile.completedCredits||"unknown"),"CGPA: "+(profile.cgpa||"unknown")].join("\n");
   // Keep the model prompt comfortably inside Groq's 8,000-token-per-minute allowance.
   // The full source list remains visible in the UI; only the most relevant excerpts go to the model.
@@ -1204,6 +1235,7 @@ export async function POST(request: Request) {
     "Optional student profile (blank means unknown):\n"+profileText+"\n\n"+
     "SOURCE PRIORITY: The repository's allowlisted VU Student Handbook (August 2026), Student SOP (17 August 2026), Course Plans, Minor Courses and structured B.Tech semester-spread workbooks are official academic evidence. Use these documents first for attendance, absence, condonation, assessment, credits, prerequisites, progression, course and semester questions. Use official VU webpages for programme descriptions and admissions. A public marketing webpage not mentioning a policy does NOT mean the policy is absent from the academic handbook.\n"+
     "ACADEMIC ACCURACY: Use only facts supported by the supplied official document/page excerpts. Never invent percentages, thresholds, policies, course codes, credits, prerequisites, fees, deadlines, eligibility or approvals. When a source gives a specific attendance percentage or condition, quote it accurately and name the rule and its scope. Distinguish general rules from programme/cohort-specific rules. If the supplied excerpts are insufficient, say precisely what is missing and ask only the clarification that would resolve it.\n"+
+    "ATTACHMENT HONESTY: Only treat content actually extracted into studentAttachments as uploaded-file evidence. A filename is not file content. Never say or imply that you read an attachment unless its extracted text or image description is present. If a PDF, DOCX, XLSX or PPTX was not processed, say so and clearly separate any relevant information retrieved from the advisor’s stored knowledge base from the unseen attachment.\n"+
     "For a programme-specific question when the programme truly matters and is unknown, ask which programme the student is enrolled in. Do not ask for a programme merely to answer a campus-wide rule that the handbook states applies to all students.\n"+
     "For B.Tech course/semester questions, use the structured semester-spread record including admission batch, semester, prerequisite, credits and source workbook. Do not merge conflicting batches; ask for the admission batch when necessary. For B.Tech minor-course questions that specify an admission year, use the separately extracted rows for that exact year across every matching minor sheet; do not omit a minor because it is outside the first few search matches, and do not include other admission years.\n"+
     "Do not claim to be university staff or decide enrolment, eligibility, credit transfer, grades, exceptions or approvals. Cite factual claims using [1], [2], etc. only for the numbered sources supplied below; never invent citations.\n"+
@@ -1231,6 +1263,10 @@ export async function POST(request: Request) {
     answer=socialAnswer;
     modelUsed="Deterministic conversational response";
     pipeline.push("Handled a conversational, wellbeing or out-of-scope message without requiring an external model");
+  }else if(unreadableAttachmentAnswer){
+    answer=unreadableAttachmentAnswer;
+    modelUsed="Deterministic attachment-transparency response";
+    pipeline.push("Attachment contents were not extracted; clearly separated stored VU course-plan records from the unread file");
   }else if(minorBatchClarification){
     answer="B.Tech minor options are batch-specific. Which admission year should I check (for example, 2023 or 2024)?";
     modelUsed="Deterministic admission-batch clarification";

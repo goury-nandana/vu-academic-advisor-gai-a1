@@ -92,6 +92,31 @@ class SyntheticAgentWorkflowTests(unittest.TestCase):
         self.assertIn("syntheticStudent&&requestedSyntheticCourseCode&&asksSyntheticDecision", ROUTE_SOURCE)
         self.assertIn("synthetic demonstration", ROUTE_SOURCE.lower())
 
+    def test_agentic_workflow_supports_all_ten_authenticated_btech_accounts(self):
+        account_profiles = [row for row in self.students.values() if row.get("username") and not row.get("test_fixture_only")]
+        self.assertEqual(len(account_profiles), 10)
+        self.assertTrue(all(row.get("programme", "").startswith("B.Tech") for row in account_profiles))
+        self.assertIn("function matchesProgramme", AGENT_SOURCE)
+        self.assertIn('record === "btech" && /^btech(?:[a-z0-9]+)?$/.test(student)', AGENT_SOURCE)
+        self.assertNotIn('String(record.programme || "").toLowerCase() === student.programme.toLowerCase()', AGENT_SOURCE)
+        for student in account_profiles:
+            matching = [row for row in COURSE_DATA["courseRecords"] if str(row.get("batch")) == str(student["admission_batch"]) and row.get("document_type") == "semester_spread" and row.get("is_course_record") is not False and str(row.get("programme", "")).lower() == "b.tech"]
+            self.assertTrue(matching, student["id"])
+
+    def test_agentic_workflow_trace_and_rag_comparison_are_visible(self):
+        self.assertIn('pipeline.push(...syntheticAgentWorkflow.stages)', ROUTE_SOURCE)
+        self.assertIn('Orchestrated six deterministic specialist stages', ROUTE_SOURCE)
+        self.assertIn('Workflow comparison:', ROUTE_SOURCE)
+        self.assertIn('agent-workflow', PAGE_SOURCE)
+        for stage in ("Student-profile agent:", "Course-retrieval agent:", "Credit-calculation agent:", "Eligibility agent:", "Verification agent:", "Recommendation agent:"):
+            self.assertIn(stage, AGENT_SOURCE)
+
+    def test_agentic_credit_report_uses_authenticated_profile_batch(self):
+        self.assertIn('matching "+result.student.admission_batch+" workbook records.', ROUTE_SOURCE)
+        self.assertIn('result.student.current_semester===null?"Graduated"', ROUTE_SOURCE)
+        self.assertIn('const authenticatedStudent=getAuthenticatedStudent(request)', ROUTE_SOURCE)
+        self.assertIn('syntheticStudentId:authenticatedStudent.id', ROUTE_SOURCE)
+
     def test_privacy_notice_is_visible_in_frontend(self):
         self.assertIn("your question, relevant profile/course context, and any file or image you choose to upload may be sent to Groq", PAGE_SOURCE)
         self.assertIn("Never enter:</strong> real student IDs, passwords, Digiicampus credentials, private student records", PAGE_SOURCE)

@@ -1,6 +1,6 @@
 # VU Academic Advisor — DATA308 Generative AI Assignment 2
 
-A multimodal academic-advising prototype for Vidyashilp University. The production-facing app is a Next.js web chat hosted on Vercel. A legacy Streamlit implementation is also retained in the repository for the original academic-data workflow.
+A multimodal B.Tech-only academic advising prototype for Vidyashilp University. The production-facing app is a Next.js web chat hosted on Vercel. A legacy Streamlit implementation is also retained in the repository for the original academic-data workflow.
 
 **Production web chat:** https://vu-academic-advisor-gai-a1.vercel.app/  
 **Repository:** https://github.com/goury-nandana/vu-academic-advisor-gai-a2

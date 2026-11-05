@@ -234,7 +234,7 @@ async function readImages(key: string, files: File[], question: string): Promise
 
   const genericRequest=/^\s*(?:(?:please|can you)\s+)?(?:look at|look over|see|view|describe|check)\b/i.test(question || "");
   const perImageFallback=analyses.map((item)=>"**"+item.fileName.replace(/\*\*/g,"")+"** — "+item.userSummary);
-  if(genericRequest || !answer) {
+  if(genericRequest) {
     answer=analyses.length===1
       ? analyses[0].userSummary
       : perImageFallback.join("\n\n");
@@ -1428,8 +1428,8 @@ export async function POST(request: Request) {
   const pendingCourseQuestion = getPendingBtechCourseQuestion(history, combinedQuestion);
   const contextualFacultyQuestion = getContextualFacultyFollowupQuestion(history, combinedQuestion);
   const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || contextualFacultyQuestion || combinedQuestion;
-  const imageOnlyAnswer = onlyImagesUploaded && previousAttachmentContext.length===0 && imageBatch.analyses.length > 0
-    ? (imageBatch.answer || imageBatch.analyses.map((item)=>"**"+item.fileName+"** — "+item.userSummary).join("\n\n"))
+  const imageOnlyAnswer = onlyImagesUploaded && previousAttachmentContext.length===0 && imageBatch.analyses.length > 0 && imageBatch.answer
+    ? imageBatch.answer
     : undefined;
   // Uploaded files and transcribed speech must be processed before the general out-of-scope guard.
   const socialAnswer = files.length ? undefined : (getSimpleSocialAnswer(effectiveQuestion, history) || getDeterministicScopeAnswer(effectiveQuestion));

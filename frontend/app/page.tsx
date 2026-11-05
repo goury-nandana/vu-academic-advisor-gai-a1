@@ -366,6 +366,11 @@ export default function Home() {
       setMessages((m) => [...m, { id: idRef.current++, role: "bot", text: r.answer, ...r }]);
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unknown request error";
+      if (typed && draftRef.current && !draftRef.current.value.trim()) {
+        draftRef.current.value = typed;
+        draftRef.current.style.height = "auto";
+        draftRef.current.style.height = Math.min(draftRef.current.scrollHeight, 120) + "px";
+      }
       if (files.length) {
         setAttachments((current) => {
           const restored = [...files, ...current.filter((file) => !files.includes(file))];

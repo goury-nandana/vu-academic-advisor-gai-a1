@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import academicKnowledgeJson from "../../../data/vu-academic-knowledge.json";
 import websiteKnowledgeJson from "../../../data/vu-website-knowledge.json";
-import { getSyntheticStudent, runAcademicAdvisorAgentWorkflow, type AgentWorkflowResult } from "../../../academic-agents";
+import { creditCalculationAgent, getSyntheticStudent, runAcademicAdvisorAgentWorkflow, type AgentWorkflowResult } from "../../../academic-agents";
 import { getAuthenticatedStudent } from "../../../lib/demo-auth";
 
 export const runtime = "nodejs";
@@ -497,11 +497,18 @@ function isMinorQuestion(question: string): boolean {
   return /\bminor(?:s)?\b/i.test(question);
 }
 
-function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []): string | undefined {
+function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = [], student?: { name: string; username: string; synthetic_student_id: string }): string | undefined {
   const normalized = question.trim().toLowerCase()
     .replace(/(.)\1{2,}/g, "$1")
     .replace(/[.!?]+$/g, "")
     .replace(/\s+/g, " ");
+
+  if (/^(?:who\s+(?:am\s+i|a\s+i)|what(?:\s+is|'s)\s+my\s+name|my\s+name|my\s+user\s+id|who\s+is\s+logged\s+in|which\s+profile)$/.test(normalized) && student) {
+    return "You are **" + student.name + "**. Your User ID is **" + student.username + "** (synthetic profile: " + student.synthetic_student_id + ").";
+  }
+  if (/^(?:who\s+are\s+(?:u|you)|who\s+r\s+u|what(?:\s+is|'s)\s+your\s+name|is\s+your\s+name(?:\s+.*)?|are\s+you\s+vikki|are\s+you\s+vikky)$/.test(normalized)) {
+    return "I’m **Vikki Talk**, the academic assistant for B.Tech at Vidyashilp University.";
+  }
 
   // Crisis language bypasses academic scope filtering and never depends on Groq availability.
   if (/\b(?:i(?:'m| am)?\s+)?(?:going to|about to|planning to|want to|wish to|thinking about)\s+(?:commit\s+)?suicide\b|\b(?:i(?:'m| am)?\s+)?(?:want to|going to|might|may|plan to)\s+(?:kill|hurt)\s+myself\b|\b(?:i want to die|i don't want to live|i do not want to live|end my life|take my own life|i'm suicidal|i am suicidal)\b/i.test(normalized)) {
@@ -539,8 +546,8 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
     return "No problem. I understand. What would you like to check next?";
   }
 
-  if (/^(?:hi+|hello+|h+e+y+|heylo+|hii+|hlo+|helo+|hallo+|good morning|goodmorning|good afternoon|goodafternoon|good evening|goodevening|good night|namaste|namaskara+|namaskaram+|vanakkam|bonjour|bonour|bonjur|hola)(?: there)?$/.test(normalized)) {
-    return "Hello. I’m the VU Academic Advisor. You can ask me about Vidyashilp University programmes, courses, prerequisites, credits, semesters and admissions.";
+  if (/^(?:hi+|h+y+|hello+|h+e+y+|heylo+|hii+|hlo+|helo+|hallo+|good morning|goodmorning|good afternoon|goodafternoon|good evening|goodevening|good night|namaste|namaskara+|namaskaram|vanakkam|bonjour|bonour|bonjur|hola)(?: there)?$/.test(normalized)) {
+    return "Hello. I’m **Vikki Talk** 👋 Your academic assistant for B.Tech at Vidyashilp University. Ask me about courses, prerequisites, credits, backlogs, eligibility and academic progression.";
   }
   if (/^(?:bro|bruh|dude|yo|mate)$/.test(normalized)) {
     return "Hey. What do you need help with?";
@@ -595,7 +602,7 @@ function getDeterministicScopeAnswer(question: string): string | undefined {
   if (/\bweather\b|\btemperature\b|\bforecast\b/.test(normalized)) {
     return "I can help with Vidyashilp University academic information, but I do not have live weather data for the campus. Please check a weather service for current conditions.";
   }
-  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credit|attendance|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question);
+  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credits?|credit|attendance|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question) || /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question) || /\b[A-Z]{2,6}[\s-]?\d{3,4}[A-Z]?\b/i.test(question);
   if (!hasVuAcademicContext) {
     return "I’m the VU Academic Advisor. I can help with Vidyashilp University programmes, courses, curriculum, academic policies, admissions and student support. I can’t answer general-knowledge or unrelated questions.";
   }
@@ -1629,7 +1636,7 @@ export async function POST(request: Request) {
     ? imageBatch.answer+(failedImageNames.length?"\n\nI could not reliably read "+failedImageNames.join(", ")+". The answer uses only the images that could be analysed.":"")
     : undefined;
   // Uploaded files and transcribed speech must be processed before the general out-of-scope guard.
-  const socialAnswer = (files.length || previousAttachmentContext.length > 0) ? undefined : (getSimpleSocialAnswer(effectiveQuestion, history) || getDeterministicScopeAnswer(effectiveQuestion));
+  const socialAnswer = (files.length || previousAttachmentContext.length > 0) ? undefined : (getSimpleSocialAnswer(effectiveQuestion, history, authenticatedStudent) || getDeterministicScopeAnswer(effectiveQuestion));
 
   const pipeline=["Validated question, optional profile and attachment size","Processed supported text/image/audio attachments without storing chat history"];
   const minorIntent=isMinorQuestion(effectiveQuestion);
@@ -1643,6 +1650,23 @@ export async function POST(request: Request) {
     : effectiveQuestion;
   const structuredCourseSearch=findStructuredCourseSearch(structuredSearchQuestion,syntheticStudent?.programme||profile.program);
   const requestedSyntheticCourseCode=structuredCourseSearch?.requestedCodes[0];
+  const requestedSemester=extractCourseSemester(effectiveQuestion);
+  const asksOwnSemesterCourses=/\b(?:did\s+i\s+have|did\s+i\s+take|i\s+had|i\s+took|my)\b/i.test(effectiveQuestion) && /\b(?:courses?|subjects?)\b/i.test(effectiveQuestion) && /\b(?:semester|sem)\b/i.test(effectiveQuestion);
+  const ownSemesterRecords=asksOwnSemesterCourses && requestedSemester!==undefined
+    ? authenticatedStudent.academic_records.filter((record)=>Number(record.semester)===requestedSemester)
+    : [];
+  const ownSemesterAnswer=asksOwnSemesterCourses && requestedSemester!==undefined
+    ? ownSemesterRecords.length
+      ? "**Semester "+requestedSemester+" courses for "+authenticatedStudent.name+" ("+authenticatedStudent.programme+", admission batch "+authenticatedStudent.admission_batch+")**\n\n| Course Code | Course Title | Credits | Result |\n| --- | --- | ---: | --- |\n"+ownSemesterRecords.map((record)=>"| "+record.course_code+" | "+record.course_title.replace(/\|/g,"\\|")+" | "+record.credits+" | "+(record.status||"Not recorded")+" |").join("\n")+"\n\nThese rows come from your authenticated synthetic student profile. They are fictional demonstration records, not an official VU transcript."
+      : "No Semester "+requestedSemester+" course records are listed in the authenticated synthetic profile for "+authenticatedStudent.name+"."
+    : undefined;
+  const asksCompletedCredits=/\bhow\s+many\b.{0,50}\bcredits?\b|\bcompleted\s+credits?\b|\bcredit\s+total\b/i.test(effectiveQuestion);
+  const completedCreditResult=syntheticStudent && asksCompletedCredits
+    ? creditCalculationAgent(syntheticStudent,ACADEMIC_KNOWLEDGE.courseRecords)
+    : undefined;
+  const completedCreditsAnswer=completedCreditResult
+    ? "**Completed credits for "+authenticatedStudent.name+" ("+authenticatedStudent.admission_batch+" admission batch)**\n\nYou have **"+completedCreditResult.total+" completed credits** recorded across **"+completedCreditResult.courseCodes.length+" passed course records** with matching batch-specific workbook entries."+(completedCreditResult.missing.length?"\n\nI could not verify credit values for these profile course codes, so they were excluded: "+completedCreditResult.missing.join(", ")+".":"")+"\n\nThis is a calculation from your synthetic demo profile and the available B.Tech course records, not an official university credit statement."
+    : undefined;
   const asksForVisual=/\b(?:chart|graph|infographic|visuali[sz]e|diagram|flowchart|visual summary)\b/i.test(effectiveQuestion);
   const asksSyntheticDecision=/\b(?:eligible|eligibility|prerequisite|can i take|can they take|can this student take|can .* take|how many credits|credit total)\b/i.test(effectiveQuestion) || asksForVisual;
   const syntheticAgentWorkflow:AgentWorkflowResult|undefined=
@@ -1758,6 +1782,14 @@ export async function POST(request: Request) {
     answer=socialAnswer;
     modelUsed="Deterministic conversational response";
     pipeline.push("Handled a conversational, wellbeing or out-of-scope message without requiring an external model");
+  }else if(ownSemesterAnswer){
+    answer=ownSemesterAnswer;
+    modelUsed="Deterministic authenticated synthetic semester-record lookup";
+    pipeline.push("Listed semester course rows directly from the currently authenticated synthetic student profile");
+  }else if(completedCreditsAnswer){
+    answer=completedCreditsAnswer;
+    modelUsed="Deterministic batch-matched completed-credit calculation";
+    pipeline.push("Calculated completed credits from passed course codes and matching admission-batch workbook rows");
   }else if(unreadableAttachmentAnswer){
     answer=unreadableAttachmentAnswer;
     modelUsed="Deterministic attachment-transparency response";

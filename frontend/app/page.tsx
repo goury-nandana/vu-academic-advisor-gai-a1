@@ -427,8 +427,8 @@ export default function Home() {
     if ((!typed && attachments.length === 0) || busy || recording || transcribing) return;
     const question = typed || "Please look at my attachment.";
     const normalizedQuestion = question.toLowerCase();
-    const identityQuestion = /\b(who am i|what is my name|my name|my user id|who is logged in|which profile)\b/.test(normalizedQuestion);
-    const marksheetQuestion = /\\b(marksheet|mark sheet|transcript)\\b/.test(normalizedQuestion) && /\\b(download|get|generate|give|show|need|want|provide|my)\\b/.test(normalizedQuestion);
+    const identityQuestion = /\b(?:who\s+(?:am\s+i|a\s+i)|what\s+is\s+my\s+name|my\s+name|my\s+user\s+id|who\s+is\s+logged\s+in|which\s+profile)\b/.test(normalizedQuestion);
+    const marksheetQuestion = /\b(marksheet|mark sheet|transcript)\b/.test(normalizedQuestion) && /\b(download|get|generate|give|show|need|want|provide|my)\b/.test(normalizedQuestion);
     if (identityQuestion && authStudent) {
       setMessages((current) => [...current, { id: idRef.current++, role: "user", text: question }, { id: idRef.current++, role: "bot", text: "You are **" + authStudent.name + "**. Your User ID is **" + authStudent.username + "** (synthetic profile: " + authStudent.synthetic_student_id + ")." }]);
       if (draftRef.current) { draftRef.current.value = ""; draftRef.current.style.height = ""; }

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Camera, Check, Copy, FileText, Mic, Square, X, Volume2, VolumeX } from "lucide-react";
+import { ArrowUp, Camera, Check, Copy, Download, FileText, Mic, Square, X, Volume2, VolumeX } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { askAdvisor, transcribeVoice, type Source, type Visualization } from "./advisor";
 
 type ImageAttachment = { name: string; url: string; file: File };
-type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[]; imageFiles?: ImageAttachment[]; pipeline?: string[]; model?: string; visualization?: Visualization; followUps?: string[]; fileNotes?: string[] };
+type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[]; imageFiles?: ImageAttachment[]; pipeline?: string[]; model?: string; visualization?: Visualization; followUps?: string[]; fileNotes?: string[]; createdAt?: string };
 type Presence = "off" | "typing" | "recent";
 
 function splitPipeCells(value: string) {
@@ -205,6 +205,7 @@ export default function Home() {
   const [semester, setSemester] = useState("Not specified");
   const [credits, setCredits] = useState("");
   const [cgpa, setCgpa] = useState("");
+  const [syntheticStudentId, setSyntheticStudentId] = useState("");
 
   const idRef = useRef(1);
   const endRef = useRef<HTMLDivElement>(null);
@@ -364,12 +365,12 @@ export default function Home() {
       const r = await askAdvisor({
         question,
         history,
-        profile: { program, semester, completedCredits: credits, cgpa },
+        profile: { program, semester, completedCredits: credits, cgpa, syntheticStudentId },
         files,
         attachmentContext,
       });
       setAttachmentContext(r.attachmentContext ?? attachmentContext);
-      setMessages((m) => [...m, { id: idRef.current++, role: "bot", text: r.answer, ...r }]);
+      setMessages((m) => [...m, { id: idRef.current++, role: "bot", text: r.answer, ...r, createdAt: new Date().toISOString() }]);
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unknown request error";
       if (typed && draftRef.current && !draftRef.current.value.trim()) {
@@ -424,6 +425,32 @@ export default function Home() {
     } catch {
       setNotice("Clipboard access is unavailable. Check your browser permissions and try again.");
     }
+  }
+
+  function exportEvidence(message: Msg) {
+    const messageIndex = messages.findIndex((item) => item.id === message.id);
+    const precedingQuestion = messages.slice(0, Math.max(0, messageIndex)).reverse()
+      .find((item) => item.role === "user");
+    const recordedAt = message.createdAt || new Date().toISOString();
+    const evidence = {
+      recordType: "VU Academic Advisor output evidence",
+      recordedAt,
+      model: message.model || "Not reported",
+      question: precedingQuestion?.text || "Question not found in current browser session",
+      answer: message.text,
+      sources: message.sources || [],
+      processingSteps: message.pipeline || [],
+      note: "This export is a browser-side evidence copy. Redact personal information before sharing it for evaluation. It does not prove that the answer is correct; verify every claim against its cited source.",
+    };
+    const blob = new Blob([JSON.stringify(evidence, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "vu-advisor-evidence-" + recordedAt.replace(/[:.]/g, "-") + ".json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   async function copyImage(messageId: number, image: ImageAttachment) {
@@ -525,6 +552,16 @@ export default function Home() {
               />
             </label>
           </div>
+          <label className="field">
+            <span>Demo profile (synthetic only)</span>
+            <select value={syntheticStudentId} onChange={(e) => setSyntheticStudentId(e.target.value)}>
+              <option value="">Not selected</option>
+              <option value="SYN-001">SYN-001 — prerequisites met</option>
+              <option value="SYN-002">SYN-002 — failed prerequisite</option>
+              <option value="SYN-003">SYN-003 — incomplete information</option>
+            </select>
+          </label>
+          <p className="profile-help">Invented test profiles for demonstrating the multi-stage workflow. They are not real student records.</p>
           <button className="clear" onClick={clearChat}>Clear Chat</button>
         </div>
       </aside>
@@ -589,7 +626,22 @@ export default function Home() {
                         {speakingId === m.id ? <VolumeX size={16} aria-hidden="true" focusable="false" /> : <Volume2 size={16} aria-hidden="true" focusable="false" />}
                         <span>{speakingId === m.id ? "Stop" : "Read aloud"}</span>
                       </button>
+                      <button type="button" className="answer-tool" onClick={() => exportEvidence(m)} aria-label="Export answer evidence" title="Export question, answer, model and citations">
+                        <Download size={16} aria-hidden="true" focusable="false" />
+                        <span>Export evidence</span>
+                      </button>
                     </div>
+                    {m.model && (
+                      <div className="answer-meta">
+                        <span>Model: {m.model}</span>
+                        {m.pipeline && m.pipeline.length > 0 && (
+                          <details>
+                            <summary>Processing steps</summary>
+                            <ol>{m.pipeline.map((step, index) => <li key={index}>{step}</li>)}</ol>
+                          </details>
+                        )}
+                      </div>
+                    )}
                     {m.sources && m.sources.length > 0 && (
                       <div className="sources">
                         {compactSources(m.sources).map((s, i) =>
@@ -675,6 +727,9 @@ export default function Home() {
             <input ref={cameraInput} type="file" hidden accept="image/*" capture="environment"
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           </form>
+          <div className="privacy-disclaimer">
+            Privacy notice: Questions, optional profile details and uploaded files are sent to Groq for AI processing. This prototype does not save chat history in a VU student database and is not connected to Digiicampus. Do not enter passwords, student IDs or sensitive personal records. Clear Chat removes the current browser conversation; it cannot revoke data already processed by the model provider.
+          </div>
           <div className="disclaimer">
             Academic information only. This AI is not the Registrar and cannot confirm enrolment, eligibility, credit transfer, grades, fees, deadlines, exceptions or approvals. Rules can change; verify course codes, credits and requirements against the current VU Handbook, Digicampus and the responsible university office. Written confirmation from VU is authoritative.
           </div>

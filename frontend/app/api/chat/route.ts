@@ -1451,7 +1451,7 @@ function validateVisual(input: unknown) {
 }
 
 function buildCoursePathwayVisualization(result: AgentWorkflowResult) {
-  const normalize = (value: string) => value.replace(/[\\s-]/g, "").toUpperCase();
+  const normalize = (value: string) => value.replace(/[\s-]/g, "").toUpperCase();
   const completed = new Set(result.student.completed_course_codes.map(normalize));
   const failed = new Set(result.student.failed_course_codes.map(normalize));
   const prerequisites = result.prerequisites.length

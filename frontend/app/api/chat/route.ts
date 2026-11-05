@@ -1450,6 +1450,39 @@ function validateVisual(input: unknown) {
   return {kind,title:v.title.slice(0,100),items};
 }
 
+function buildCoursePathwayVisualization(result: AgentWorkflowResult) {
+  const normalize = (value: string) => value.replace(/[\\s-]/g, "").toUpperCase();
+  const completed = new Set(result.student.completed_course_codes.map(normalize));
+  const failed = new Set(result.student.failed_course_codes.map(normalize));
+  const prerequisites = result.prerequisites.length
+    ? result.prerequisites.map((code) => {
+        const record = result.evidenceRecords.find((item) => normalize(item.course_code) === normalize(code));
+        const status = completed.has(normalize(code)) ? "completed" as const
+          : failed.has(normalize(code)) ? "failed" as const : "unknown" as const;
+        const detail = status === "completed" ? "Recorded as passed in this synthetic profile"
+          : status === "failed" ? "Recorded as failed in this synthetic profile"
+          : record ? "Completion is not established by this synthetic profile"
+          : "Prerequisite course row could not be verified in the batch dataset";
+        return { code, title: record?.course_title || "Title not verified in batch data", status, detail };
+      })
+    : [{
+        code: "NONE",
+        title: "No direct prerequisite listed",
+        status: "not-required" as const,
+        detail: "The matching batch course row lists no direct prerequisite",
+      }];
+  return {
+    kind: "course-pathway" as const,
+    title: "Course prerequisite pathway",
+    items: [],
+    pathway: {
+      target: { code: result.course.course_code, title: result.course.course_title },
+      prerequisites,
+      eligibility: result.eligibility,
+    },
+  };
+}
+
 export async function POST(request: Request) {
   const origin=request.headers.get("origin");
   const requestHost=request.headers.get("x-forwarded-host")||request.headers.get("host");
@@ -1610,7 +1643,8 @@ export async function POST(request: Request) {
     : effectiveQuestion;
   const structuredCourseSearch=findStructuredCourseSearch(structuredSearchQuestion,syntheticStudent?.programme||profile.program);
   const requestedSyntheticCourseCode=structuredCourseSearch?.requestedCodes[0];
-  const asksSyntheticDecision=/\b(?:eligible|eligibility|prerequisite|can i take|can they take|can this student take|can .* take|how many credits|credit total)\b/i.test(effectiveQuestion);
+  const asksForVisual=/\b(?:chart|graph|infographic|visuali[sz]e|diagram|flowchart|visual summary)\b/i.test(effectiveQuestion);
+  const asksSyntheticDecision=/\b(?:eligible|eligibility|prerequisite|can i take|can they take|can this student take|can .* take|how many credits|credit total)\b/i.test(effectiveQuestion) || asksForVisual;
   const syntheticAgentWorkflow:AgentWorkflowResult|undefined=
     syntheticStudent&&requestedSyntheticCourseCode&&asksSyntheticDecision
       ? runAcademicAdvisorAgentWorkflow(syntheticStudent.id,requestedSyntheticCourseCode,ACADEMIC_KNOWLEDGE.courseRecords)
@@ -1823,7 +1857,11 @@ export async function POST(request: Request) {
     }
   }
   let visualization;
-  if(key&&/\b(chart|graph|infographic|visuali[sz]e|diagram|flowchart|visual summary)\b/i.test(combinedQuestion)&&sources.length){
+  if(syntheticAgentWorkflow && asksForVisual) {
+    visualization = buildCoursePathwayVisualization(syntheticAgentWorkflow);
+    modelUsed = modelUsed + " + deterministic SVG course-pathway infographic";
+    pipeline.push("Rendered a source-grounded course prerequisite infographic from the authenticated profile and exact batch-matched workbook records");
+  } else if(key&&/\b(chart|graph|infographic|visuali[sz]e|diagram|flowchart|visual summary)\b/i.test(combinedQuestion)&&sources.length){
     try{
       const raw=await groq(key,[
         {role:"system",content:"Return JSON only with kind (bars,steps,cards), title and items. Use ONLY facts/numbers present in the answer and source excerpts. Never infer or calculate missing values. Use bars only for comparable numbers; steps for a process; cards for non-numeric comparisons. At most six items."},

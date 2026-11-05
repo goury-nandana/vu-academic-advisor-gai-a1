@@ -1616,8 +1616,10 @@ export async function POST(request: Request) {
       if(visualization) pipeline.push("Created a source-bounded visual summary");
     }catch{/* Keep the text answer when structured visualization is unavailable. */}
   }
+  const citedSourceNumbers=new Set(Array.from(answer.matchAll(/\[(\d+)\]/g), (match)=>Number(match[1])));
+  const citedSources=sources.filter((source)=>citedSourceNumbers.has(Number(source.citation)));
   return NextResponse.json({
-    answer,sources:sources.map(({title,url,citation,type})=>({title,url,citation,type})),pipeline,model:modelUsed,
+    answer,sources:citedSources.map(({title,url,citation,type})=>({title,url,citation,type})),pipeline,model:modelUsed,
     visualization,followUps,fileNotes,attachmentContext:allAttachmentContext,
   },{headers:{"Cache-Control":"no-store, max-age=0","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin"}});
 }

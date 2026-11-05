@@ -1318,6 +1318,8 @@ export async function POST(request: Request) {
   ).slice(-8);
   const profile=resolveStudentProfile(rawProfile,history,question);
   const files=form.getAll("files").filter((f):f is File=>f instanceof File);
+  const previousAttachmentContext=parse<string[]>(form.get("attachmentContext"),[])
+    .filter((item):item is string=>typeof item==="string").slice(-4).map((item)=>item.slice(0,9000));
   const onlyImagesUploaded = files.length > 0 && files.every((file) => file.type.startsWith("image/") || /\.(?:png|jpe?g|webp|bmp|tiff?)$/i.test(file.name));
   if(!question&&!files.length) return NextResponse.json({error:"Enter an academic question or attach a file."},{status:400});
   if(files.length>4||files.some(f=>f.size>MAX_BYTES)||files.reduce((n,f)=>n+f.size,0)>MAX_BYTES)
@@ -1411,7 +1413,7 @@ export async function POST(request: Request) {
   const pendingCourseQuestion = getPendingBtechCourseQuestion(history, combinedQuestion);
   const contextualFacultyQuestion = getContextualFacultyFollowupQuestion(history, combinedQuestion);
   const effectiveQuestion = pendingMinorQuestion || pendingCourseQuestion || contextualFacultyQuestion || combinedQuestion;
-  const imageOnlyAnswer = onlyImagesUploaded && imageBatch.analyses.length > 0
+  const imageOnlyAnswer = onlyImagesUploaded && previousAttachmentContext.length===0 && imageBatch.analyses.length > 0
     ? (imageBatch.answer || imageBatch.analyses.map((item)=>"**"+item.fileName+"** — "+item.userSummary).join("\\n\\n"))
     : undefined;
   // Uploaded files and transcribed speech must be processed before the general out-of-scope guard.
@@ -1472,10 +1474,11 @@ export async function POST(request: Request) {
   // The full source list remains visible in the UI; only the most relevant excerpts go to the model.
   const contextAcademicSources = sources.filter((source)=>source.type==="academic").slice(0,2);
   const contextWebsiteSources = sources.filter((source)=>source.type==="website").slice(0,2);
+  const allAttachmentContext=[...previousAttachmentContext,...attachments].slice(-4);
   const context=safeData(JSON.stringify({
     officialVUAcademicDocuments:contextAcademicSources.map((source)=>({citation:source.citation,title:source.title,url:source.url,excerpt:source.text.slice(0,1000)})),
     officialVUWebPages:contextWebsiteSources.map((source)=>({citation:source.citation,title:source.title,url:source.url,excerpt:source.text.slice(0,1000)})),
-    studentAttachments:attachments.slice(0,4).map((attachment)=>attachment.slice(0,6000)),
+    studentAttachments:allAttachmentContext.map((attachment)=>attachment.slice(0,6000)),
     recentConversation:history.slice(-3).map((item)=>({role:item.role,text:item.text.slice(-350)})),
   }));
   const system="You are the VU Academic Advisor, an academic information assistant for Vidyashilp University, Bengaluru.\n"+
@@ -1609,6 +1612,6 @@ export async function POST(request: Request) {
   }
   return NextResponse.json({
     answer,sources:sources.map(({title,url,citation,type})=>({title,url,citation,type})),pipeline,model:modelUsed,
-    visualization,followUps,fileNotes,
+    visualization,followUps,fileNotes,attachmentContext:allAttachmentContext,
   },{headers:{"Cache-Control":"no-store, max-age=0","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin"}});
 }

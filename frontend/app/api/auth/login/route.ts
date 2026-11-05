@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSessionToken, demoSessionCookieName, demoSessionTtlSeconds, getStudentById, verifyDemoCredentials } from "../../../lib/demo-auth";
+import { createSessionToken, demoSessionCookieName, demoSessionTtlSeconds, getStudentById, verifyDemoCredentials } from "../../../../lib/demo-auth";
 
 export const runtime = "nodejs";
 export async function POST(request: Request) {

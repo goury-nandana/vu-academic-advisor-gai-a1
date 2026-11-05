@@ -1377,16 +1377,19 @@ export async function POST(request: Request) {
         else { unreadableAttachmentNames.push(file.name); fileNotes.push("No readable text found in "+file.name); }
       }else if(file.type.startsWith("image/")||["png","jpg","jpeg","webp","bmp","tif","tiff"].includes(ext)){
         const analysis=imageBatch.analyses[imageIndex++];
-        if(analysis && (analysis.userSummary || analysis.visualDescription || analysis.visibleText || analysis.academicInformation)) {
+        const summaryLooksUsable=Boolean(analysis?.userSummary) &&
+          !/could not (?:identify|read|generate)|could not generate a reliable description/i.test(analysis.userSummary);
+        const hasImageEvidence=Boolean(analysis && (
+          analysis.visualDescription || analysis.visibleText || analysis.academicInformation || summaryLooksUsable
+        ));
+        if(analysis && hasImageEvidence) {
           attachments.push("USER-UPLOADED IMAGE: "+file.name+"\nBACKEND IMAGE ANALYSIS (internal evidence; not a student-facing report):\n"+JSON.stringify({
             visualType:analysis.visualType,
             visualDescription:analysis.visualDescription,
             visibleText:analysis.visibleText,
             academicInformation:analysis.academicInformation,
+            userSummary:analysis.userSummary,
           }));
-          if(!analysis.visualDescription && !analysis.visibleText && !analysis.academicInformation){
-            unreadableAttachmentNames.push(file.name);
-          }
         } else {
           unreadableAttachmentNames.push(file.name);
         }

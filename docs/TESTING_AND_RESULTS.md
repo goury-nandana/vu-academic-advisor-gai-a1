@@ -50,6 +50,14 @@ The GitHub Actions run validates repository tests and the frontend build. It doe
 
 ## Vercel release status
 
-The previous Vercel production deployment attempt for the Task 6 commit was rejected because the Vercel Hobby team's daily deployment allowance had been exhausted (HTTP 402 / build-rate-limit response). At that point the production alias continued to point to an older commit, not the Task 6 source commit. The next production deployment must be checked in Vercel by exact commit SHA, then the production alias must be verified. A successful GitHub Actions run is not evidence that Vercel deployed the commit.
+A Vercel production deployment is verified:
 
-**Release state:** GitHub main and CI are verified; latest production deployment must be rechecked after this documentation commit. Do not present the newest code as live until that check succeeds.
+- Deployment: `dpl_DR61rbmBqambRvN665GxgtLYqRVv`
+- State: **READY**
+- Deployment commit: `36605c53ba5557cc3c7e7822f184b7466933f21a`
+- Production aliases assigned: `vu-academic-advisor-gai-a1.vercel.app`, `vu-academic-advisor-gai-a1-goury2.vercel.app`, and the main-branch alias.
+- The deployed commit is a documentation-only commit after the Task 6 implementation commit; the application source code is unchanged from the tested Task 6 implementation.
+
+A direct attempt to deploy the newest Task 7 documentation commit `328b5203a59dbf2347199b07503267312a189737` was rejected by Vercel with HTTP 402, code `api-deployments-free-per-day`, because the team exceeded 100 deployments in the daily window. Vercel reported a retry period of 24 hours. Since Task 7 changes are documentation-only, the runtime application is already deployed; the latest documentation commit itself is not the deployment's source SHA.
+
+A successful GitHub Actions run does not by itself prove deployment. The READY deployment state and production aliases above were checked separately. A direct protected-page fetch may require an active Vercel share link / authentication; deployment metadata verifies the alias assignment but is not a browser-based user acceptance test.

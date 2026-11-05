@@ -105,7 +105,7 @@ class SyntheticAccountTests(unittest.TestCase):
         self.assertIn("application/pdf", MARKSHEET_ROUTE)
         self.assertIn("Content-Disposition", MARKSHEET_ROUTE)
         self.assertIn("createSyntheticMarksheetPdf(student)", MARKSHEET_ROUTE)
-        self.assertIn("Fictional student record - NOT an official marksheet", MARKSHEET_PDF)
+        self.assertIn("SYNTHETIC DEMONSTRATION RECORD - NOT AN OFFICIAL MARKSHEET", MARKSHEET_PDF)
         self.assertIn("academic_records", MARKSHEET_PDF)
         self.assertIn("createSyntheticMarksheetPdf", MARKSHEET_PDF)
         self.assertIn("/api/marksheet", FRONTEND_PAGE)

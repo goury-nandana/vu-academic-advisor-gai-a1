@@ -504,6 +504,9 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:privacy(?: of (?:the )?user)?|user privacy|privacy of users|is my data private|are my chats private|how is my privacy protected)$/.test(normalized)) {
     return "This chatbot uses fictional synthetic student profiles for demonstration. Academic answers about your profile are limited to the account you are logged into; I should not disclose another profile’s individual grades, CGPA, attendance or credits. Avoid entering real sensitive personal information. For details about data handling, check the project’s privacy notice and hosting settings.";
   }
+  if (/^(?:who (?:got|has) the (?:lowest|least) (?:cgpa|gpa) (?:in|of) (?:my )?class|who has the lowest cgpa|who got the lowest cgpa|lowest cgpa in my class|class lowest cgpa|who is the lowest cgpa student)$/.test(normalized)) {
+    return "I can’t disclose another student’s individual CGPA or identify who has the lowest academic score. This demo uses synthetic student records, and individual academic results are private. I can help you review your own CGPA and academic progress.";
+  }
   if (/^(?:who (?:topped|is the topper|is the top student) (?:my )?class|who is (?:the )?topper|who i(?:s)? the topper|who topped my class|class topper|class top ranker)$/.test(normalized)) {
     return "I don’t have an authorized class-rank or topper list to share. This demo uses synthetic student records, and I can’t disclose another student’s individual academic results. I can help you review your own CGPA and completed credits.";
   }
@@ -611,6 +614,9 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   }
   if (/\b(?:my|our)\s+(?:dog|cat|pet|friend|family member|someone)\s+(?:died|dies|passed away)\b|\b(?:my dog|my cat|my pet)\s+(?:passed away|has died|died|dies)\b/i.test(normalized)) {
     return "I’m sorry for your loss. Losing a pet or someone close can be painful. Take the time you need, and consider talking with someone you trust. You can talk about it here too.";
+  }
+  if (/^(?:i have depression|i have clinical depression|i suffer from depression|i am diagnosed with depression|i've been diagnosed with depression)$/.test(normalized)) {
+    return "I’m sorry you’re dealing with depression. You don’t have to explain everything at once. If possible, consider speaking with a mental-health professional and someone you trust. If you feel you might hurt yourself or are in immediate danger, call India’s emergency number **112** or go to the nearest emergency department. You can also contact **Tele-MANAS at 14416**, India’s free 24/7 mental-health helpline. Are you feeling safe right now?";
   }
   if (/\b(?:i am|i'm|im|feeling|feel|been feeling)\b.{0,60}\b(?:sad|upset|low|down|lonely|stressed|overwhelmed|depressed|in depression|anxious|anxiety|hopeless)\b|\b(?:sad|upset|low|down|lonely|stressed|overwhelmed|depressed|anxious|anxiety)\b.{0,60}\b(?:today|right now|lately|because)\b/i.test(normalized)) {
     return "I’m sorry you’re feeling this way. You can tell me what has been happening, or talk it through one step at a time. Consider reaching out to someone you trust or a qualified mental-health professional. If you feel in immediate danger or may hurt yourself, contact local emergency services or go to the nearest emergency department.";

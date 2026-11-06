@@ -1734,6 +1734,35 @@ export async function POST(request: Request) {
   // Student-specific eligibility decisions still use the authenticated profile in the workflow.
   const structuredCourseSearch=findStructuredCourseSearch(effectiveQuestion,syntheticStudent?.programme||profile.program);
   const requestedSyntheticCourseCode=structuredCourseSearch?.requestedCodes[0];
+  const asksProfileCourseEligibility=Boolean(requestedSyntheticCourseCode)&&/\b(?:can\s+i\s+(?:take|enrol|enroll|register)|am\s+i\s+(?:eligible|allowed)|eligible|eligibility|prerequisite|pre-requisite|pre requisite)\b/i.test(effectiveQuestion);
+  const requestedEligibilityTrack=extractCourseTrack(effectiveQuestion);
+  const profileCourseCandidates=asksProfileCourseEligibility?ACADEMIC_KNOWLEDGE.courseRecords.filter((record)=>
+    String(record.course_code||"").replace(/[\s-]/g,"").toUpperCase()===requestedSyntheticCourseCode&&
+    String(record.batch||"")===authenticatedStudent.admission_batch&&
+    record.document_type==="semester_spread"&&record.is_course_record!==false&&
+    String(record.programme||"").toLowerCase()==="b.tech"
+  ): [];
+  const trackedProfileCourseCandidates=requestedEligibilityTrack
+    ? profileCourseCandidates.filter((record)=>normalizeCourseSearchText(record.track)===normalizeCourseSearchText(requestedEligibilityTrack))
+    : profileCourseCandidates;
+  const prerequisiteVariants=[...new Set(trackedProfileCourseCandidates.map((record)=>String(record.prerequisite||"").trim().toUpperCase()))];
+  const profileCourseRecord=trackedProfileCourseCandidates.length>0&&prerequisiteVariants.length===1
+    ? trackedProfileCourseCandidates[0]
+    : undefined;
+  const profileCoursePrerequisites=profileCourseRecord&&String(profileCourseRecord.prerequisite||"").trim()&&!/^(?:nil|none|na|n\/a|-)$/i.test(String(profileCourseRecord.prerequisite||"").trim())
+    ? String(profileCourseRecord.prerequisite).split(/[,;]+/).map((code)=>code.replace(/[\s-]/g,"").toUpperCase()).filter(Boolean)
+    : [];
+  const profilePrerequisiteEvidenceRecords:CourseRecord[]=profileCourseRecord
+    ? [profileCourseRecord,...profileCoursePrerequisites.flatMap((code)=>{
+        const row=ACADEMIC_KNOWLEDGE.courseRecords.find((record)=>
+          String(record.course_code||"").replace(/[\s-]/g,"").toUpperCase()===code&&
+          String(record.batch||"")===authenticatedStudent.admission_batch&&
+          record.document_type==="semester_spread"&&record.is_course_record!==false&&
+          String(record.programme||"").toLowerCase()==="b.tech"
+        );
+        return row?[row]:[];
+      })]
+    : [];
   const requestedSemester=extractCourseSemester(effectiveQuestion);
   const asksOwnSemesterCourses=/\b(?:did\s+i\s+have|did\s+i\s+take|i\s+had|i\s+took|my)\b/i.test(effectiveQuestion) && /\b(?:courses?|subjects?)\b/i.test(effectiveQuestion) && /\b(?:semester|sem)\b/i.test(effectiveQuestion);
   const ownSemesterRecords=asksOwnSemesterCourses && requestedSemester!==undefined
@@ -1779,7 +1808,7 @@ export async function POST(request: Request) {
   const baseAcademicMatches:AcademicDocument[]=programmeDirectoryIntent || onlyImagesUploaded
     ? []
     : retrieveAcademic(effectiveQuestion,syntheticStudent?.programme||profile.program,structuredCourseSearch);
-  const syntheticEvidenceDocuments=(syntheticAgentWorkflow?.evidenceRecords||[]).map((record)=>courseRecordDocument(record));
+  const syntheticEvidenceDocuments=[...(syntheticAgentWorkflow?.evidenceRecords||[]),...profilePrerequisiteEvidenceRecords].map((record)=>courseRecordDocument(record));
   const academicMatches=[...baseAcademicMatches,...syntheticEvidenceDocuments].filter((document,index,all)=>{
     const key=[document.source||"",document.title||"",document.section||"",document.text.slice(0,100)].join("|");
     return all.findIndex((candidate)=>[candidate.source||"",candidate.title||"",candidate.section||"",candidate.text.slice(0,100)].join("|")===key)===index;
@@ -1788,6 +1817,52 @@ export async function POST(request: Request) {
   const localWebsiteMatches = socialAnswer || suppressWebsiteForAttendance || onlyImagesUploaded
     ? []
     : programmeDirectoryIntent ? retrieveProgrammeDirectoryChunks() : retrieveWebsiteKnowledge(effectiveQuestion);
+  const profilePrerequisiteAnswer=asksProfileCourseEligibility
+    ? (() => {
+        const studentLabel=authenticatedStudent.name+" ("+authenticatedStudent.synthetic_student_id+")";
+        if(!profileCourseCandidates.length) {
+          return "**Personal prerequisite check — "+studentLabel+"**\n\nI could not find a B.Tech course-plan row for **"+requestedSyntheticCourseCode+"** in your **"+authenticatedStudent.admission_batch+" admission batch**. The course may not be listed for this batch in the supplied workbook. I cannot safely apply another batch's prerequisites or infer your eligibility. Please verify the course plan with your Faculty Advisor.";
+        }
+        if(!profileCourseRecord) {
+          return "**Personal prerequisite check — "+studentLabel+"**\n\nThe supplied course plan contains more than one prerequisite variant for **"+requestedSyntheticCourseCode+"** in your admission batch. Please specify the track (Data Science or AI/ML) so I do not apply the wrong prerequisite list.";
+        }
+        const statusFor=(code:string):string=>{
+          const record=authenticatedStudent.academic_records.find((item)=>String(item.course_code||"").replace(/[\s-]/g,"").toUpperCase()===code);
+          const status=String(record?.status||"").toLowerCase();
+          if(status==="passed"||authenticatedStudent.completed_course_codes.some((item)=>String(item).replace(/[\s-]/g,"").toUpperCase()===code)) return "Passed";
+          if(status==="failed"||authenticatedStudent.failed_course_codes.some((item)=>String(item).replace(/[\s-]/g,"").toUpperCase()===code)) return "Failed";
+          if(status.includes("progress")) return "In progress";
+          if(authenticatedStudent.unknown_course_codes?.some((item)=>String(item).replace(/[\s-]/g,"").toUpperCase()===code)) return "Unknown";
+          return "Not recorded";
+        };
+        const statusRows=profileCoursePrerequisites.map((code)=>({code,status:statusFor(code)}));
+        const failed=statusRows.filter((item)=>item.status==="Failed").map((item)=>item.code);
+        const unfinished=statusRows.filter((item)=>item.status!=="Passed"&&item.status!=="Failed").map((item)=>item.code);
+        const batch=authenticatedStudent.admission_batch;
+        const targetCitationIndex=academicMatches.findIndex((document)=>
+          String(document.title||"").toUpperCase().startsWith(requestedSyntheticCourseCode+" —")&&
+          String(document.text||"").includes("B.Tech admission batch "+batch)
+        );
+        const citation=targetCitationIndex>=0?" ["+(targetCitationIndex+1)+"]":"";
+        let resultText="";
+        if(!statusRows.length) resultText="The batch-specific course-plan row lists no direct prerequisite codes.";
+        else if(failed.length) resultText="The direct prerequisite check is **not met** because the profile records failed prerequisite(s): "+failed.join(", ")+".";
+        else if(unfinished.length) resultText="The direct prerequisite check is **not yet confirmed**. The profile does not show a passed result for: "+unfinished.map((code)=>code+" ("+statusRows.find((item)=>item.code===code)?.status+")").join(", ")+".";
+        else resultText="The profile records all listed direct prerequisites as passed. The direct prerequisite check is **met**.";
+        const rows=statusRows.length
+          ? "\n\n| Required prerequisite | Profile result |\n| --- | --- |\n"+statusRows.map((item)=>"| "+item.code+" | "+item.status+" |").join("\n")
+          : "";
+        const currentSemester=authenticatedStudent.current_semester;
+        const plannedSemester=Number(profileCourseRecord.semester);
+        let semesterNote="";
+        if(currentSemester!==null&&Number.isFinite(plannedSemester)) {
+          if(plannedSemester===currentSemester+1) semesterNote="The course plan places this course in your next semester (Semester "+plannedSemester+").";
+          else if(plannedSemester>currentSemester+1) semesterNote="The course plan places this course in Semester "+plannedSemester+", not immediately next semester (Semester "+(currentSemester+1)+").";
+          else if(plannedSemester<=currentSemester) semesterNote="The course plan lists this course in Semester "+plannedSemester+". It is not shown as a new next-semester course for your current Semester "+currentSemester+".";
+        }
+        return "**Personal prerequisite check — "+studentLabel+"**\n\n- **Course:** "+profileCourseRecord.course_code+" — "+profileCourseRecord.course_title+" ("+profileCourseRecord.credits+" credits)."+citation+"\n- **Your admission batch:** "+batch+"\n- **Course-plan semester:** "+(Number.isFinite(plannedSemester)?plannedSemester:"Not specified")+"\n- **Prerequisites listed for your batch:** "+(profileCoursePrerequisites.join(", ")||"None listed")+"."+rows+"\n\n**Result:** "+resultText+(semesterNote?"\n\n"+semesterNote:"")+"\n\nThis checks only the direct prerequisites against your authenticated fictional profile. It does not guarantee registration, timetable availability or University approval.";
+      })()
+    : undefined;
   const pages = (isBtechMinorQuery||isStudentMinorQuery||structuredCourseSearch||socialAnswer||suppressWebsiteForAttendance||onlyImagesUploaded)
     ? []
     : localWebsiteMatches.length ? localWebsiteMatches : await retrieve(combinedQuestion);
@@ -1876,7 +1951,11 @@ export async function POST(request: Request) {
   const asksNextSemester=/\b(next|upcoming)\s*(?:semester|sem|term)\b/i.test(effectiveQuestion);
   // If the student is asking for a *definition* of minor/major/specialisation (not requesting a list of options),
   // skip the batch clarification and let the LLM answer from handbook context.
-  const isDefinitionQuestion = /\b(?:what\s+is|what's|explain|difference|diff|between|mean|means|definition|define)\b.{0,80}\b(?:minor|major|speciali[sz]ation)\b|\b(?:minor|major|speciali[sz]ation)\b.{0,80}\b(?:what\s+is|what's|explain|difference|diff|mean|means|definition|define)\b/i.test(effectiveQuestion);
+  const isDefinitionQuestion = /\b(?:what\s+is|what's|explain|difference|diff|between|compare|comparison|distinguish|mean|means|definition|define)\b.{0,120}\b(?:minor|major|speciali[sz]ation)\b|\b(?:minor|major|speciali[sz]ation)\b.{0,120}\b(?:what\s+is|what's|explain|difference|diff|between|compare|comparison|distinguish|mean|means|definition|define)\b/i.test(effectiveQuestion);
+  const comparesMinorAndSpecialisation=/\bminor(?:s)?\b/i.test(effectiveQuestion)&&/\bspeciali[sz]ations?\b/i.test(effectiveQuestion)&&/\b(?:difference|diff|compare|comparison|distinguish|between|versus|vs\.?|mean|means|definition|define|explain)\b/i.test(effectiveQuestion);
+  const minorMajorSpecialisationAnswer=comparesMinorAndSpecialisation
+    ? "At VU, the exact structure and available options depend on the B.Tech programme and your admission-batch course plan. The terms are different:\n\n- **Major:** your primary field of study — the main academic discipline of your degree.\n- **Minor:** an additional, separately structured set of courses in another or complementary subject area, alongside your main programme. It normally has its own prescribed course/credit requirements.\n- **Specialisation:** a focused pathway within your programme, built around a particular area and its prescribed courses or electives.\n\n**In simple terms:** major = your main field; minor = an additional field; specialisation = a focused area within your programme. A minor and a specialisation are not automatically interchangeable, and the course plan for your batch determines which options VU offers and what must be completed."
+    : undefined;
   const minorBatchClarification=isBtechMinorQuery&&!isBatchSpecificBtechMinorQuery&&!isDefinitionQuestion;
   const minorProgrammeClarification=isStudentMinorQuery&&programmeMissing;
   const minorSemesterClarification=isStudentMinorQuery&&!programmeMissing&&asksNextSemester&&semesterMissing;
@@ -1888,6 +1967,16 @@ export async function POST(request: Request) {
     answer=socialAnswer;
     modelUsed="Deterministic conversational response";
     pipeline.push("Handled a conversational, wellbeing or out-of-scope message without requiring an external model");
+  }else if(minorMajorSpecialisationAnswer){
+    answer=minorMajorSpecialisationAnswer;
+    modelUsed="Deterministic academic-concept explanation";
+    pipeline.push("Recognised a conceptual comparison and answered without requesting an admission batch or mixing it with minor-option lookup");
+  }else if(profilePrerequisiteAnswer){
+    answer=profilePrerequisiteAnswer;
+    modelUsed="Deterministic authenticated-profile and batch-specific prerequisite check";
+    pipeline.push("Matched the requested course to the authenticated student's exact admission-batch workbook row");
+    pipeline.push("Compared each batch-specific prerequisite against passed, failed, in-progress and unrecorded results in the authenticated synthetic profile");
+    pipeline.push("Separated the prerequisite result from course-semester placement and official registration approval");
   }else if(ownSemesterAnswer){
     answer=ownSemesterAnswer;
     modelUsed="Deterministic authenticated synthetic semester-record lookup";

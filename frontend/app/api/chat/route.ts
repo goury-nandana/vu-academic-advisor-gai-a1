@@ -1257,8 +1257,9 @@ function retrieveAcademic(
   if (convocationIntent) {
     const convocationHandbook = ACADEMIC_KNOWLEDGE.documents.find((document) =>
       /Student Handbook/i.test(document.source || "") &&
-      /16\.?\s*Convocation/i.test(document.text || "") &&
-      /held annually/i.test(document.text || "")
+      /Convocation/i.test(document.text || "") &&
+      /held annually/i.test(document.text || "") &&
+      /Degrees shall be awarded in person/i.test(document.text || "")
     );
     addDocument(convocationHandbook);
   }
@@ -1944,7 +1945,7 @@ export async function POST(request: Request) {
     ? "**SGPA vs CGPA**\n\n- **SGPA (Semester Grade Point Average):** measures your weighted grade-point average for courses registered in one semester.\n- **CGPA (Cumulative Grade Point Average):** measures your cumulative weighted grade-point average across courses registered up to and including the latest completed semester.\n\nBoth are credit-weighted: multiply each course's credits by its grade point, add those products, then divide by the total credits of the included courses. The Handbook states that both are calculated to two decimal places. [Clauses 8.16–8.17]" + gradeAverageCitation + "\n\n**Remember:** SGPA is semester-specific; CGPA is cumulative."
     : undefined;
   const convocationSourceIndex = academicMatches.findIndex((document) =>
-    /16\.?\s*Convocation/i.test(document.text || "") && /held annually/i.test(document.text || "")
+    /Convocation/i.test(document.text || "") && /held annually/i.test(document.text || "") && /Degrees shall be awarded in person/i.test(document.text || "")
   );
   const convocationCitation = convocationSourceIndex >= 0 ? " [" + (convocationSourceIndex + 1) + "]" : "";
   const convocationAnswer = /\bconvocation\b/i.test(effectiveQuestion) && convocationSourceIndex >= 0

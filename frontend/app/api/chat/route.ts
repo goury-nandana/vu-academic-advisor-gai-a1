@@ -1750,7 +1750,7 @@ export async function POST(request: Request) {
   const completedCreditsAnswer=completedCreditResult
     ? "**Completed credits for "+authenticatedStudent.name+" ("+authenticatedStudent.admission_batch+" admission batch)**\n\nYou have **"+completedCreditResult.total+" credits earned** across **"+completedCreditResult.courseCodes.length+" passed course records** in your authenticated synthetic profile. Failed and in-progress courses are excluded.\n\nThis is calculated directly from the fictional demo profile, not an official university credit statement."
     : undefined;
-  const asksProgressSnapshot=/\b(?:academic progress|progress snapshot|progression summary|how am i doing academically|confused about my academic progress)\b/i.test(effectiveQuestion);
+  const asksProgressSnapshot=/\b(?:academic progress(?:ion)?|my academic progress(?:ion)?|progress snapshot|progression summary|how am i doing academically|confused about my academic progress|progress through semesters)\b/i.test(effectiveQuestion);
   const progressPassedCredits=authenticatedStudent.academic_records.filter((record)=>String(record.status||"").toLowerCase()==="passed").reduce((sum,record)=>sum+Number(record.credits||0),0);
   const progressFailedCredits=authenticatedStudent.academic_records.filter((record)=>String(record.status||"").toLowerCase()==="failed").reduce((sum,record)=>sum+Number(record.credits||0),0);
   const progressInProgressCredits=authenticatedStudent.academic_records.filter((record)=>/in progress/i.test(String(record.status||""))).reduce((sum,record)=>sum+Number(record.credits||0),0);

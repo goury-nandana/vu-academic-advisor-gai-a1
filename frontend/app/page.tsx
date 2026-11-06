@@ -126,7 +126,8 @@ function renderAnswer(text: string) {
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ href, children }) => {
-            const safeHttp = /^https?:\/\//i.test(href || "");\n            const safeSameOriginPath = Boolean(href && href.startsWith("/") && !href.startsWith("//"));\n            if (!href || (!safeHttp && !safeSameOriginPath)) return <span>{children}</span>;
+            const safeHttp = /^https?:\/\//i.test(href || "");
+            const safeSameOriginPath = Boolean(href && href.startsWith("/") && !href.startsWith("//"));\n            if (!href || (!safeHttp && !safeSameOriginPath)) return <span>{children}</span>;
             // Never render model-supplied links as avatar/infographic images.
             if (/\.(?:png|jpe?g|gif|webp|svg)(?:[?#].*)?$/i.test(href)) return null;
             return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;

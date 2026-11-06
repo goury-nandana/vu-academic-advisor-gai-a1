@@ -510,11 +510,20 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:my\s+age|how\s+old\s+am\s+i|what\s+is\s+my\s+age)$/.test(normalized) && student) {
     return "Your age is not included in this synthetic student profile, so I cannot determine it.";
   }
-  if (/^(?:my\s+student\s+profile|my\s+profile|profile\s+summary)$/.test(normalized) && student) {
+  if (/^(?:my\s+student\s+profile|my\s+profile|profile\s+summary|student\s+details?|my\s+details|student\s+info(?:rmation)?)$/.test(normalized) && student) {
     const status = student.academic_status ? student.academic_status.toLowerCase().replace(/_/g, " ") : "status not recorded";
     const semester = student.current_semester === null ? "graduated" : "Semester " + student.current_semester;
     const cgpa = student.synthetic_cgpa === null ? "" : " Demo CGPA: **" + student.synthetic_cgpa + "**.";
     return "**" + student.name + "** (" + student.username + ") is a " + status + " B.Tech " + student.programme + " student, admission batch " + student.admission_batch + ", " + semester + "." + cgpa + "\n\nThis is a fictional demonstration profile, not an official VU student record.";
+  }
+  if (/^(?:no way|no way!|seriously|really\?)$/.test(normalized)) {
+    return "Are you surprised by something I said, or do you mean something else? Tell me which part you’re referring to.";
+  }
+  if (/^(?:i have (?:a )?headache|i(?:'m| am) having (?:a )?headache|my head hurts|headache)$/.test(normalized)) {
+    return "Sorry you’re dealing with a headache. Consider resting, drinking water and taking a break from screens. If it is sudden or unusually severe, follows a head injury, or comes with weakness, confusion, vision changes or a high fever, seek urgent medical care. Would you like general self-care information?";
+  }
+  if (/\\bvu\\s*0?\\d{3}\\b/i.test(normalized) && /\\b(?:cgpa|gpa|marks|grades|attendance|credits?|profile|semester)\\b/i.test(normalized) && /\\b(?:compare|higher|lower|more|less|better|than|what|does|is|has|show|tell)\\b/i.test(normalized)) {
+    return "I can show information from the profile you are currently logged into, but I can’t disclose or compare another student’s individual academic records. I can help you review your own CGPA, credits or semester progress.";
   }
   if (/^(?:teacher|teachers|professor|professors|faculty)$/.test(normalized)) {
     return "Are you looking for a particular course instructor, a professor’s contact details, or the VU faculty directory?";
@@ -596,6 +605,9 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   }
   if (/^(?:who is your boyfriend|do you have a boyfriend|who is your girlfriend|do you have a girlfriend)$/.test(normalized)) {
     return "I don’t have personal relationships. I’m here to help with Vidyashilp University information.";
+  }
+    if (/^(?:tgb|yhn|ujm|ikol|asdf|qwer|zxcv)(?:[a-z]+)?(?:\\s+(?:tgb|yhn|ujm|ikol|asdf|qwer|zxcv)[a-z]*)*$/i.test(normalized)) {
+    return "I couldn’t make sense of that message. Could you retype or rephrase it?";
   }
   // A bare word is ambiguous: ask what the student means instead of guessing their intent.
   if (/^[a-z0-9][a-z0-9'-]*$/i.test(normalized)) {
@@ -1900,17 +1912,11 @@ export async function POST(request: Request) {
   const followUps:string[]=[];
   const deterministicMinor=minorBatchClarification||minorProgrammeClarification||minorSemesterClarification||deterministicBtechMinor||deterministicStudentMinor;
 
-  if(!followUps.length) {
-    if(files.length || previousAttachmentContext.length) followUps.push("Would you like me to read or explain a specific part of the uploaded file?");
-    else if(/\b(?:course|subject|prerequisite|eligib|semester|minor|major|credit|backlog)\b/i.test(effectiveQuestion)) followUps.push("Would you like me to check the related course details or requirements?");
-    else if(/\b(?:profile|who am i|my name|my id)\b/i.test(effectiveQuestion)) followUps.push("Would you like to see your semester-wise courses or completed credits?");
-    else followUps.push("What would you like to check next?");
-  }
   if(!deterministicAttendance&&!deterministicMinor&&!deterministicStructuredCourse&&!programmeDirectoryAnswer){
     if(programmeSpecific&&programmeMissing) followUps.push("Which programme are you enrolled in?");
     else if(semesterSpecific&&semesterMissing) followUps.push("Which semester are you currently in?");
     if(followUps.length&&!answer.toLowerCase().includes(followUps[0].toLowerCase().replace("?",""))) {
-      answer+="\n\n"+followUps[0]+" I need this detail to avoid mixing requirements from different programmes or semesters.";
+      answer+="\n\n"+followUps[0];
     }
   }
   let visualization;

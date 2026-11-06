@@ -784,7 +784,9 @@ function findStructuredCourseSearch(
   // official document. Let general document retrieval handle it instead of claiming no match.
   if (requestedCodes.length && !matchingBtechCodes) return undefined;
   const semesterListIntent = semester !== undefined &&
-    /\b(?:courses?|subjects?)\b/i.test(question) &&
+    /\b(?:courses|subjects)\b/i.test(question) &&
+    /\b(?:list|show|what|which|all|offered|taught|included)\b/i.test(question) &&
+    !/\b(?:fail|failed|backlog|progress|progression|eligible|eligibility|promot|promotion)\b/i.test(question) &&
     hasBtechContext;
   const courseDetailsIntent = requestedCodes.length > 0 ||
     (requestedTitles.length > 0 &&
@@ -1208,11 +1210,13 @@ function retrieveAcademic(
   if (isMinorQuestion(question)) return retrieveNonBtechMinorContext();
   const courseCodes = (question.match(/\b[A-Za-z]{2,6}[\s-]?\d{3,4}[A-Za-z]?\b/g) ?? [])
     .map((code) => code.replace(/[\s-]/g, "").toUpperCase());
+  const progressionIntent = /\b(?:fail|failed|backlog|progress|progression|promot|promotion|eligible)\b/i.test(question) &&
+    /\b(?:semester|year|academic year)\b/i.test(question);
   const gradeAverageIntent = /\b(?:cgpa|sgpa|grade point average)\b/i.test(question);
   const convocationIntent = /\bconvocation\b/i.test(question);
   const definitionsIntent = /\b(?:definition|definitions|define|meaning|what is|what does)\b/i.test(question) &&
     /\b(?:academic calendar|academic council|academic regulations|academic term|board of governors|act|regulatory bodies|programme regulations|definitions)\b/i.test(question);
-  const academicIntent = attendanceIntent || gradeAverageIntent || convocationIntent || definitionsIntent || courseCodes.length > 0 ||
+  const academicIntent = attendanceIntent || progressionIntent || gradeAverageIntent || convocationIntent || definitionsIntent || courseCodes.length > 0 ||
     /\b(credit|course|prerequisite|curriculum|syllabus|semester|grading|grade|assessment|exam|examination|academic regulation|progression|registration|minor|speciali[sz]ation|elective|leave policy|medical leave|attendance policy)\b/i.test(question);
   if (!academicIntent) return [];
 
@@ -1247,6 +1251,19 @@ function retrieveAcademic(
     seen.add(key);
     selected.push(document);
   };
+
+  if (progressionIntent) {
+    const registrationRules = ACADEMIC_KNOWLEDGE.documents.find((document) =>
+      /Student Handbook/i.test(document.source || "") && Number(document.page) === 25 &&
+      /2\.10\.1/.test(document.text || "") && /2\.11/.test(document.text || "")
+    );
+    const yearlyProgressionRules = ACADEMIC_KNOWLEDGE.documents.find((document) =>
+      /Student Handbook/i.test(document.source || "") && Number(document.page) === 42 &&
+      /12\.1/.test(document.text || "") && /Minimum CGPA of 4\.00/.test(document.text || "")
+    );
+    addDocument(registrationRules);
+    addDocument(yearlyProgressionRules);
+  }
 
   if (definitionsIntent) {
     // Clause 7 definitions span adjacent chunks on Handbook PDF page 10.
@@ -1450,6 +1467,29 @@ function deterministicProgrammeDirectoryAnswer(
   answer += "\nVU also lists **Hons. with Research** pathways for Economics, Psychology and Digital Business. Electives, minors and the homepage’s broader “Areas of Study” are not automatically formal specialisation tracks. Track/minor availability can vary by intake, so confirm the current options for the student’s batch.";
   return answer;
 }
+function isBtechDegreeCreditRequirementQuestion(question: string): boolean {
+  return /\b(?:total|minimum|required|degree|graduation|graduate|complete|completion)\b.{0,70}\bcredits?\b|\bcredits?\b.{0,70}\b(?:required|to graduate|for graduation|to complete|degree|total)\b/i.test(question) &&
+    /\b(?:b\.?\s*tech|engineering)\b/i.test(question);
+}
+
+function retrieveBtechDegreeCreditChunks(question: string): WebsiteSearchHit[] {
+  const asksDataScience = /\bdata[\s-]+science\b/i.test(question);
+  const asksAiMl = /\b(?:ai\s*\/\s*ml|ai[\s-]*ml|artificial intelligence)\b/i.test(question);
+  return WEBSITE_KNOWLEDGE.chunks.filter((chunk) =>
+    (chunk.page_id === "programme_btech_ds" || chunk.page_id === "programme_btech_aiml") &&
+    /\b180 credits\b/i.test(chunk.text || "") &&
+    (!asksDataScience || chunk.page_id === "programme_btech_ds") &&
+    (!asksAiMl || chunk.page_id === "programme_btech_aiml")
+  ).map((chunk) => ({
+    title: String(chunk.page_title || "Vidyashilp University") + " — " + String(chunk.heading || chunk.section || "Programme structure"),
+    url: String(chunk.page_url || "https://vidyashilp.edu.in/"),
+    text: String(chunk.text || ""),
+    pageId: chunk.page_id,
+    heading: chunk.heading,
+    score: 100,
+  }));
+}
+
 function retrieveWebsiteKnowledge(question: string): WebsiteSearchHit[] {
   const terms = queryWords(question);
   if (!terms.length) return [];
@@ -1785,7 +1825,13 @@ export async function POST(request: Request) {
   // Do not silently constrain general course-detail/L-T-P questions to the logged-in
   // student's admission batch. If the student names a batch, the search function applies it.
   // Student-specific eligibility decisions still use the authenticated profile in the workflow.
-  const structuredCourseSearch=findStructuredCourseSearch(effectiveQuestion,syntheticStudent?.programme||profile.program);
+  const isSemesterCourseListQuestion = extractCourseSemester(effectiveQuestion)!==undefined &&
+    /\b(?:courses|subjects)\b/i.test(effectiveQuestion) &&
+    /\b(?:list|show|what|which|all|offered|taught|included)\b/i.test(effectiveQuestion);
+  const courseSearchQuestion = isSemesterCourseListQuestion && !extractCourseBatch(effectiveQuestion) && authenticatedStudent.admission_batch
+    ? effectiveQuestion + " admission batch " + authenticatedStudent.admission_batch
+    : effectiveQuestion;
+  const structuredCourseSearch=findStructuredCourseSearch(courseSearchQuestion,syntheticStudent?.programme||profile.program);
   const requestedSyntheticCourseCode=structuredCourseSearch?.requestedCodes[0];
   const asksProfileCourseEligibility=Boolean(requestedSyntheticCourseCode)&&/\b(?:can\s+i\s+(?:take|enrol|enroll|register)|am\s+i\s+(?:eligible|allowed)|eligible|eligibility|prerequisite|pre-requisite|pre requisite)\b/i.test(effectiveQuestion);
   const requestedEligibilityTrack=extractCourseTrack(effectiveQuestion);
@@ -1826,7 +1872,9 @@ export async function POST(request: Request) {
       ? "**Semester "+requestedSemester+" courses for "+authenticatedStudent.name+" ("+authenticatedStudent.programme+", admission batch "+authenticatedStudent.admission_batch+")**\n\n| Course Code | Course Title | Credits | Result |\n| --- | --- | ---: | --- |\n"+ownSemesterRecords.map((record)=>"| "+record.course_code+" | "+record.course_title.replace(/\|/g,"\\|")+" | "+record.credits+" | "+(record.status||"Not recorded")+" |").join("\n")+"\n\nThese rows come from your authenticated synthetic student profile. They are fictional demonstration records, not an official VU transcript."
       : "No Semester "+requestedSemester+" course records are listed in the authenticated synthetic profile for "+authenticatedStudent.name+"."
     : undefined;
-  const asksCompletedCredits=/\bhow\s+many\b.{0,50}\bcredits?\b|\bcompleted\s+credits?\b|\bcredit\s+total\b/i.test(effectiveQuestion);
+  const asksDegreeCredits = /\b(?:total|minimum|required|degree|graduation|graduate|complete|completion)\b.{0,70}\bcredits?\b|\bcredits?\b.{0,70}\b(?:required|to graduate|for graduation|to complete|degree|total)\b/i.test(effectiveQuestion) &&
+    /\b(?:b\.?\s*tech|engineering|degree)\b/i.test(effectiveQuestion);
+  const asksCompletedCredits=/\bhow\s+many\b.{0,50}\bcredits?\b|\bcompleted\s+credits?\b|\bcredit\s+total\b/i.test(effectiveQuestion) && !asksDegreeCredits;
   const profilePassedRecords=authenticatedStudent.academic_records.filter((record)=>String(record.status||"").toLowerCase()==="passed");
   const profileCompletedCredits=profilePassedRecords.reduce((sum,record)=>sum+Number(record.credits||0),0);
   const completedCreditResult=asksCompletedCredits
@@ -1870,6 +1918,7 @@ export async function POST(request: Request) {
   const localWebsiteMatches = socialAnswer || suppressWebsiteForAttendance || onlyImagesUploaded
     ? []
     : programmeDirectoryIntent ? retrieveProgrammeDirectoryChunks()
+      : isBtechDegreeCreditRequirementQuestion(effectiveQuestion) ? retrieveBtechDegreeCreditChunks(effectiveQuestion)
       : isBtechMajorSpecialisationQuestion(effectiveQuestion) ? retrieveBtechMajorSpecialisationChunks()
       : retrieveWebsiteKnowledge(effectiveQuestion);
   const profilePrerequisiteAnswer=asksProfileCourseEligibility
@@ -1945,6 +1994,12 @@ export async function POST(request: Request) {
     pages as WebsiteSearchHit[],
     academicSources.length
   );
+  const btechCreditSourceIndices = pages.map((page, index) => ({page,index})).filter(({page}) => /\b180 credits\b/i.test(page.text || ""));
+  const btechDegreeCreditAnswer = isBtechDegreeCreditRequirementQuestion(effectiveQuestion) && btechCreditSourceIndices.length
+    ? "**B.Tech degree-credit requirement**\n\nThe official VU programme structure lists **180 credits across eight semesters** for the B.Tech. (Hons.) CSE–Data Science programme and **180 credits over eight semesters** for the B.Tech. (Hons.) CSE–AI & Machine Learning programme." +
+      btechCreditSourceIndices.map(({index}) => " [" + (academicSources.length + index + 1) + "]").join("") +
+      "\n\nThis is the total degree requirement, not the credits earned so far by an individual student. The exact course distribution is batch-specific."
+    : undefined;
   const gradeAverageComparisonIntent = /\bcgpa\b/i.test(effectiveQuestion) && /\bsgpa\b/i.test(effectiveQuestion) &&
     /\b(?:difference|diff|compare|comparison|between|vs\.?|versus|mean|means|explain)\b/i.test(effectiveQuestion);
   const gradeAverageSourceIndex = academicMatches.findIndex((document) =>
@@ -1954,6 +2009,17 @@ export async function POST(request: Request) {
   const gradeAverageCitation = gradeAverageSourceIndex >= 0 ? " [" + (gradeAverageSourceIndex + 1) + "]" : "";
   const gradeAverageComparisonAnswer = gradeAverageComparisonIntent && gradeAverageSourceIndex >= 0
     ? "**SGPA vs CGPA**\n\n- **SGPA (Semester Grade Point Average):** measures your weighted grade-point average for courses registered in one semester.\n- **CGPA (Cumulative Grade Point Average):** measures your cumulative weighted grade-point average across courses registered up to and including the latest completed semester.\n\nBoth are credit-weighted: multiply each course's credits by its grade point, add those products, then divide by the total credits of the included courses. The Handbook states that both are calculated to two decimal places. [Clauses 8.16–8.17]" + gradeAverageCitation + "\n\n**Remember:** SGPA is semester-specific; CGPA is cumulative."
+    : undefined;
+  const progressionRegistrationIndex = academicMatches.findIndex((document) =>
+    /Student Handbook/i.test(document.source || "") && /2\.10\.1/.test(document.text || "") && /2\.11/.test(document.text || "")
+  );
+  const progressionCriteriaIndex = academicMatches.findIndex((document) =>
+    /Student Handbook/i.test(document.source || "") && /12\.1/.test(document.text || "") && /Minimum CGPA of 4\.00/.test(document.text || "")
+  );
+  const progressionQuestionIntent = /\b(?:fail|failed|backlog|progress|progression|promot|promotion|eligible)\b/i.test(effectiveQuestion) &&
+    /\b(?:semester|year|academic year)\b/i.test(effectiveQuestion);
+  const progressionAnswer = progressionQuestionIntent && progressionRegistrationIndex >= 0 && progressionCriteriaIndex >= 0
+    ? "**Semester 1 to Semester 2 after one failed course**\n\nThe Student Handbook does not state that one failed Semester 1 course automatically prevents registration for Semester 2. Clause 2.10 says next-Semester registration requires payment of the specified fees, clearance of University/Hostel/Transport/Library dues, and no registration debarment. [" + (progressionRegistrationIndex + 1) + "]\n\nClause 2.11 applies the yearly progression criteria in Clause 12.1 when registering at the start of the next Academic Year. Clause 12.1 sets a minimum CGPA of **4.00 for progression to Year 2 (Semester 3)** and **5.00 for Year 3 and higher**. It does not set a separate CGPA threshold for moving from Semester 1 to Semester 2. [" + (progressionCriteriaIndex + 1) + "]\n\nTherefore, based on these Handbook clauses, one failed course alone is not listed as an automatic bar to Semester 2; the student must still meet the applicable registration conditions. Check the relevant B.Tech Programme Regulations and Faculty Advisor for any additional programme-specific rule."
     : undefined;
   const convocationSourceIndex = academicMatches.findIndex((document) =>
     /Convocation/i.test(document.text || "") && /held annually/i.test(document.text || "") && /Degrees shall be awarded in person/i.test(document.text || "")
@@ -2046,6 +2112,14 @@ export async function POST(request: Request) {
     answer=socialAnswer;
     modelUsed="Deterministic conversational response";
     pipeline.push("Handled a conversational, wellbeing or out-of-scope message without requiring an external model");
+  }else if(btechDegreeCreditAnswer){
+    answer=btechDegreeCreditAnswer;
+    modelUsed="Deterministic official VU B.Tech programme-credit lookup";
+    pipeline.push("Retrieved the 180-credit, eight-semester requirement from the official B.Tech programme-structure pages; kept it separate from synthetic credits earned");
+  }else if(progressionAnswer){
+    answer=progressionAnswer;
+    modelUsed="Deterministic Student Handbook registration and progression lookup";
+    pipeline.push("Retrieved Clauses 2.10, 2.11 and 12.1 and distinguished Semester 1-to-2 registration from yearly promotion to Semester 3");
   }else if(gradeAverageComparisonAnswer){
     answer=gradeAverageComparisonAnswer;
     modelUsed="Deterministic Student Handbook grading-rule explanation";

@@ -690,6 +690,35 @@ function getContextualFacultyFollowupQuestion(history: ChatHistoryItem[], questi
     ". Check the official VU Faculty directory for the School of Law. Include the listed names and designations, explain why the earlier reply missed the directory, and keep the source links limited to the relevant official faculty page.";
 }
 
+function getAuthenticatedProfilePrivacyAnswer(
+  question: string,
+  student: { name: string; username: string; synthetic_student_id: string },
+  attachmentContext: string[] = [],
+): string | undefined {
+  const normalized = question.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const ownName = String(student.name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const identityCue = /\\b(?:i am|i m|am i|is my name|my name is)\\b/i.test(normalized);
+  if (identityCue && ownName && normalized.includes(ownName)) {
+    return "Yes. The authenticated synthetic account currently signed in is **" + student.name +
+      "** (" + student.username + ", profile " + student.synthetic_student_id +
+      "). I will use this session identity as the reference for “me” and “my”. This is fictional demo data.";
+  }
+
+  // Student-specific grades from an uploaded/retained attachment are not the
+  // authenticated student's own record. Deny before sending such a request to
+  // the model, so prompt wording or follow-up context cannot override privacy.
+  const hasAttachments = attachmentContext.length > 0;
+  const asksIndividualResult = /\\b(?:cgpa|gpa|sgpa|marks?|grades?|scores?|results?|academic records?|backlogs?|student id)\\b/i.test(question);
+  const asksComparison = /\\b(?:less|lower|higher|more|better|worse|compare|comparison|compared|than)\\b/i.test(question);
+  const refersToOtherPerson = /\\b(?:her|his|their|she|he|they|that student|the other student|another student|not mine|is(?:ha|he|her) s)\\b/i.test(question) ||
+    (ownName && normalized.includes("not " + ownName));
+  if (hasAttachments && (asksIndividualResult || asksComparison) && refersToOtherPerson) {
+    return "I can confirm and discuss the academic results in the authenticated profile for **" + student.name +
+      "** only. I can’t disclose or compare another student’s individual CGPA, grades, marks or course results from an uploaded attachment. I can describe the document’s general structure without revealing those personal details.";
+  }
+  return undefined;
+}
+
 function getDeterministicScopeAnswer(question: string): string | undefined {
   const normalized = question.trim().toLowerCase();
   if (/\bweather\b|\btemperature\b|\bforecast\b/.test(normalized)) {
@@ -2145,6 +2174,7 @@ export async function POST(request: Request) {
   const contextAcademicSources = sources.filter((source)=>source.type==="academic").slice(0,2);
   const contextWebsiteSources = sources.filter((source)=>source.type==="website").slice(0,2);
   const allAttachmentContext=[...previousAttachmentContext,...attachments].slice(-4);
+  const profilePrivacyAnswer=getAuthenticatedProfilePrivacyAnswer(effectiveQuestion,authenticatedStudent,allAttachmentContext);
   const context=safeData(JSON.stringify({
     officialVUAcademicDocuments:contextAcademicSources.map((source)=>({citation:source.citation,title:source.title,url:source.url,excerpt:source.text.slice(0,1000)})),
     officialVUWebPages:contextWebsiteSources.map((source)=>({citation:source.citation,title:source.title,url:source.url,excerpt:source.text.slice(0,1000)})),
@@ -2209,7 +2239,11 @@ export async function POST(request: Request) {
   const deterministicStudentMinor=isStudentMinorQuery&&!minorProgrammeClarification&&!minorSemesterClarification;
   const deterministicStructuredCourse=structuredCourseSearch!==undefined;
   let modelUsed=MODEL;
-  if(socialAnswer){
+  if(profilePrivacyAnswer){
+    answer=profilePrivacyAnswer;
+    modelUsed="Deterministic authenticated-profile identity and attachment-privacy guardrail";
+    pipeline.push("Resolved self-identity from the authenticated session and blocked requests for another student's individual results before model generation");
+  }else if(socialAnswer){
     answer=socialAnswer;
     modelUsed="Deterministic conversational response";
     pipeline.push("Handled a conversational, wellbeing or out-of-scope message without requiring an external model");

@@ -1416,7 +1416,7 @@ function deterministicProgrammeDirectoryAnswer(
 ): string | undefined {
   if (!isProgrammeDirectoryQuestion(question)) return undefined;
   const citation = (pageId: string) => {
-    const index = pages.findIndex((page) => page.pageId === pageId);
+    const index = pages.findIndex((page) => "pageId" in page && page.pageId === pageId);
     return index >= 0 ? " [" + (citationOffset + index + 1) + "]" : "";
   };
   const requiredPages = [

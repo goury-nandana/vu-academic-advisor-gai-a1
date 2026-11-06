@@ -697,22 +697,22 @@ function getAuthenticatedProfilePrivacyAnswer(
 ): string | undefined {
   const normalized = question.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const ownName = String(student.name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const identityCue = /\\b(?:i am|i m|am i|is my name|my name is)\\b/i.test(normalized);
-  if (identityCue && ownName && normalized.includes(ownName)) {
+  const identityCue = /\b(?:i am|i m|am i|is my name|my name is)\b/i.test(normalized);
+  const ownFirstName = ownName.split(" ")[0];
+  const mentionsOwnName = Boolean(ownName && (normalized.includes(ownName) || normalized.split(" ").includes(ownFirstName)));
+  if (identityCue && ownName && mentionsOwnName) {
     return "Yes. The authenticated synthetic account currently signed in is **" + student.name +
       "** (" + student.username + ", profile " + student.synthetic_student_id +
       "). I will use this session identity as the reference for “me” and “my”. This is fictional demo data.";
   }
 
-  // Student-specific grades from an uploaded/retained attachment are not the
-  // authenticated student's own record. Deny before sending such a request to
-  // the model, so prompt wording or follow-up context cannot override privacy.
+  // Treat any uploaded/retained student document as untrusted evidence; block
+  // requests for another person's individual grades before model generation.
   const hasAttachments = attachmentContext.length > 0;
-  const asksIndividualResult = /\\b(?:cgpa|gpa|sgpa|marks?|grades?|scores?|results?|academic records?|backlogs?|student id)\\b/i.test(question);
-  const asksComparison = /\\b(?:less|lower|higher|more|better|worse|compare|comparison|compared|than)\\b/i.test(question);
-  const refersToOtherPerson = /\\b(?:her|his|their|she|he|they|that student|the other student|another student|not mine|is(?:ha|he|her) s)\\b/i.test(question) ||
-    (ownName && normalized.includes("not " + ownName));
-  if (hasAttachments && (asksIndividualResult || asksComparison) && refersToOtherPerson) {
+  const asksIndividualResult = /\b(?:cgpa|gpa|sgpa|marks?|grades?|scores?|results?|academic records?|backlogs?|student id)\b/i.test(question);
+  const asksComparison = /\b(?:less|lower|higher|more|better|worse|compare|comparison|compared|than)\b/i.test(question);
+  const refersToOtherPerson = /\b(?:her|his|their|she|he|they|that student|the other student|another student|not mine)\b/i.test(question);
+  if (hasAttachments && asksIndividualResult && (refersToOtherPerson || asksComparison)) {
     return "I can confirm and discuss the academic results in the authenticated profile for **" + student.name +
       "** only. I can’t disclose or compare another student’s individual CGPA, grades, marks or course results from an uploaded attachment. I can describe the document’s general structure without revealing those personal details.";
   }

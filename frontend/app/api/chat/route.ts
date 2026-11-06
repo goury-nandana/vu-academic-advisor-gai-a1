@@ -502,7 +502,7 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
     .replace(/[.!?]+$/g, "")
     .replace(/\s+/g, " ");
 
-  if (/^(?:what do you know about my profile|what information can you access from my account|what can you access from my account|what information is available in my account)$/.test(normalized) && student) {
+  if (/^(?:what do you know about my profile|what information can you access from my account|what can you access from my account|what information is available in my account|personal info you know about me|personal information you know about me|what personal info do you know about me|what personal information do you know about me)$/.test(normalized) && student) {
     const semester = student.current_semester === null ? "Graduated" : "Semester " + (student.current_semester ?? "not recorded");
     const cgpa = student.synthetic_cgpa === null || student.synthetic_cgpa === undefined ? "Not provided" : String(student.synthetic_cgpa);
     return "**Your authenticated synthetic profile**\n\n- Name: " + student.name + "\n- User ID: " + student.username + "\n- Synthetic profile ID: " + student.synthetic_student_id + "\n- Programme: " + (student.programme || "Not recorded") + "\n- Admission batch: " + (student.admission_batch || "Not recorded") + "\n- Semester: " + semester + "\n- Academic status: " + (student.academic_status || "Not recorded") + "\n- Demo CGPA: " + cgpa + "\n\nThe chat can access the signed-in synthetic profile fields and course records needed for academic answers. These are fictional assignment data, not real VU records.";
@@ -543,6 +543,13 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   }
   if (/^(?:who is|who's|tell me about|show me)\s+vu\s*0?\d{3}$/.test(normalized)) {
     return "I can’t disclose another student profile’s identity or individual academic details based on a User ID. This demo protects profile-level information; please sign in to the account you’re authorized to view.";
+  }
+  if (/^(?:am i graduated|have i graduated|did i graduate|am i a graduate|am i still a student|what is my academic status)$/.test(normalized) && student) {
+    const status = String(student.academic_status || "").toUpperCase();
+    if (status === "GRADUATED" || student.current_semester === null) {
+      return "Your authenticated synthetic profile is marked **GRADUATED**. It has no current semester. This is fictional demo data, not an official university graduation confirmation.";
+    }
+    return "Your authenticated synthetic profile is marked **" + (student.academic_status || "CURRENT") + "**, and your current semester is **Semester " + (student.current_semester ?? "not recorded") + "**. The profile does not indicate that you have graduated. This is fictional demo data, not an official university status confirmation.";
   }
   if (/^(?:who\s+(?:am\s+i|a\s+i)|what(?:\s+is|'s)\s+my\s+name|my\s+name|my\s+user\s+id|who\s+is\s+logged\s+in|which\s+profile)$/.test(normalized) && student) {
     return "You are **" + student.name + "**. Your User ID is **" + student.username + "** (synthetic profile: " + student.synthetic_student_id + ").";
@@ -688,7 +695,7 @@ function getDeterministicScopeAnswer(question: string): string | undefined {
   if (/\bweather\b|\btemperature\b|\bforecast\b/.test(normalized)) {
     return "I can help with Vidyashilp University academic information, but I do not have live weather data for the campus. Please check a weather service for current conditions.";
   }
-  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credits?|credit|cgpa|sgpa|gpa|grade point average|convocation|graduation|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question) || /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question) || extractCourseCodeCandidates(question).length > 0 ||
+  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credits?|credit|cgpa|sgpa|gpa|grade point average|convocation|graduation|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisites?|prerequisite|eligib(?:le|ility)|graduat(?:e|ed|ion)|backlogs?|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question) || /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question) || extractCourseCodeCandidates(question).length > 0 ||
     /\b(?:l[\s-]*t[\s-]*p|ltp)\b/i.test(question) ||
     (/\b(?:lecture|tutorial|practical|structure|details?)\b/i.test(question) && mentionsKnownCourseTitle(question));
   // Also allow personal academic profile questions and app-feature requests that
@@ -1923,14 +1930,32 @@ export async function POST(request: Request) {
         return row?[row]:[];
       })]
     : [];
-  const requestedSemester=extractCourseSemester(effectiveQuestion);
-  const asksOwnSemesterCourses=/\b(?:did\s+i\s+have|did\s+i\s+take|i\s+had|i\s+took|my)\b/i.test(effectiveQuestion) && /\b(?:courses?|subjects?)\b/i.test(effectiveQuestion) && /\b(?:semester|sem)\b/i.test(effectiveQuestion);
+  const explicitRequestedSemester=extractCourseSemester(effectiveQuestion);
+  const asksCurrentSemester=/\b(?:my\s+)?current\s*(?:semester|sem)|\bthis\s+sem(?:ester)?\b/i.test(effectiveQuestion);
+  const requestedSemester=explicitRequestedSemester??(asksCurrentSemester&&authenticatedStudent.current_semester!==null?Number(authenticatedStudent.current_semester):undefined);
+  const asksOwnSemesterCourses=/\b(?:did\s+i\s+have|did\s+i\s+take|i\s+had|i\s+took|my|of\s+my)\b/i.test(effectiveQuestion) && /\b(?:courses?|subjects?)\b/i.test(effectiveQuestion) && /\b(?:semester|sem)\b/i.test(effectiveQuestion);
+  const asksOwnSemesterLtp=asksOwnSemesterCourses&&/\b(?:l[\s-]*t[\s-]*p|ltp)\b/i.test(effectiveQuestion);
   const ownSemesterRecords=asksOwnSemesterCourses && requestedSemester!==undefined
     ? authenticatedStudent.academic_records.filter((record)=>Number(record.semester)===requestedSemester)
     : [];
   const ownSemesterAnswer=asksOwnSemesterCourses && requestedSemester!==undefined
     ? ownSemesterRecords.length
-      ? "**Semester "+requestedSemester+" courses for "+authenticatedStudent.name+" ("+authenticatedStudent.programme+", admission batch "+authenticatedStudent.admission_batch+")**\n\n| Course Code | Course Title | Credits | Result |\n| --- | --- | ---: | --- |\n"+ownSemesterRecords.map((record)=>"| "+record.course_code+" | "+record.course_title.replace(/\|/g,"\\|")+" | "+record.credits+" | "+(record.status||"Not recorded")+" |").join("\n")+"\n\nThese rows come from your authenticated synthetic student profile. They are fictional demonstration records, not an official VU transcript."
+      ? asksOwnSemesterLtp
+        ? (() => {
+            const ltpRows=ownSemesterRecords.map((record)=>{
+              const planRow=ACADEMIC_KNOWLEDGE.courseRecords.find((course)=>
+                String(course.course_code||"").replace(/[\s-]/g,"").toUpperCase()===String(record.course_code||"").replace(/[\s-]/g,"").toUpperCase()&&
+                String(course.batch||"")===String(authenticatedStudent.admission_batch||"")&&
+                Number(course.semester)===requestedSemester&&course.document_type==="semester_spread"&&course.is_course_record!==false
+              );
+              const ltp=[planRow?.L,planRow?.T,planRow?.P].map((value)=>value===null||value===undefined||value===""?"Not specified":String(value)).join("-");
+              const sourceIndex=academicMatches.findIndex((document)=>String(document.title||"").toUpperCase().startsWith(String(record.course_code||"").toUpperCase()+" —")&&String(document.text||"").includes("B.Tech admission batch "+authenticatedStudent.admission_batch));
+              const cite=sourceIndex>=0?" ["+(sourceIndex+1)+"]":"";
+              return "| "+record.course_code+" | "+record.course_title.replace(/\|/g,"\\|")+" | "+record.credits+" | "+(record.status||"Not recorded")+" | "+ltp+" |"+cite;
+            });
+            return "**Semester "+requestedSemester+" L-T-P for "+authenticatedStudent.name+" ("+authenticatedStudent.programme+", admission batch "+authenticatedStudent.admission_batch+")**\n\n| Course Code | Course Title | Credits | Result | L-T-P |\n| --- | --- | ---: | --- | --- |\n"+ltpRows.join("\n")+"\n\nCourse/result details are from your authenticated synthetic profile; L-T-P is matched to the supplied batch-specific semester-spread workbook. These are fictional demonstration records, not an official VU transcript. If an L-T-P value is shown as Not specified, the matching workbook row did not supply it.";
+          })()
+        : "**Semester "+requestedSemester+" courses for "+authenticatedStudent.name+" ("+authenticatedStudent.programme+", admission batch "+authenticatedStudent.admission_batch+")**\n\n| Course Code | Course Title | Credits | Result |\n| --- | --- | ---: | --- |\n"+ownSemesterRecords.map((record)=>"| "+record.course_code+" | "+record.course_title.replace(/\|/g,"\\|")+" | "+record.credits+" | "+(record.status||"Not recorded")+" |").join("\n")+"\n\nThese rows come from your authenticated synthetic student profile. They are fictional demonstration records, not an official VU transcript."
       : "No Semester "+requestedSemester+" course records are listed in the authenticated synthetic profile for "+authenticatedStudent.name+"."
     : undefined;
   const asksDegreeCredits = /\b(?:total|minimum|required|degree|graduation|graduate|complete|completion)\b.{0,70}\bcredits?\b|\bcredits?\b.{0,70}\b(?:required|to graduate|for graduation|to complete|degree|total)\b/i.test(effectiveQuestion) &&
@@ -2123,7 +2148,7 @@ export async function POST(request: Request) {
      "SCOPE: This advisor is restricted to B.Tech students and B.Tech academic advising. If asked about BMS, BA, Law or another non-B.Tech programme, politely state that the advisor only supports B.Tech. Do not provide detailed non-B.Tech programme or course guidance.\n"+
     "Authenticated synthetic student profile (identity is session-derived; grades and CGPA are fictional demo values):\n"+profileText+"\n\n"+
     "SOURCE PRIORITY: The repository's allowlisted VU Student Handbook (August 2026), Student SOP (17 August 2026), Course Plans, Minor Courses and structured B.Tech semester-spread workbooks are official academic evidence. Use these documents first for attendance, absence, condonation, assessment, credits, prerequisites, progression, course and semester questions. Use official VU webpages for programme descriptions and admissions. A public marketing webpage not mentioning a policy does NOT mean the policy is absent from the academic handbook.\n"+
-    "ACADEMIC ACCURACY: Use only facts supported by the supplied official document/page excerpts. Never invent percentages, thresholds, policies, course codes, credits, prerequisites, fees, deadlines, eligibility or approvals. When a source gives a specific attendance percentage or condition, quote it accurately and name the rule and its scope. Distinguish general rules from programme/cohort-specific rules. If the supplied excerpts are insufficient, say precisely what is missing and ask only the clarification that would resolve it.\n"+
+    "ACADEMIC ACCURACY: Use only facts supported by the supplied official document/page excerpts. Never invent percentages, thresholds, policies, course codes, credits, prerequisites, fees, deadlines, eligibility or approvals. When a source gives a specific attendance percentage or condition, quote it accurately and name the rule and its scope. Distinguish general rules from programme/cohort-specific rules. If the supplied excerpts are insufficient, say precisely what is missing and ask only the clarification that would resolve it. VU Student Handbook August 2026 Table 2 (Letter Grading System, Grade Point scale of 10) uses these grade-point values: O = 10, A+ = 9, A = 8, B+ = 7, B = 6, C = 5, P = 4, F = 0. S and U have no associated grade points. When the student asks for the grade-point mapping, provide this table rather than claiming it is absent from the excerpts; cite the supplied Student Handbook source passage if present.\n"+
     "ATTACHMENT HONESTY: Only treat text or image descriptions actually extracted into studentAttachments as uploaded-file evidence; filenames are not file contents. PDF, DOCX, XLSX and PPTX uploads are parsed before the answer is generated; image-only PDFs get an OCR retry. Any filename listed in unreadableAttachments could not be processed: tell the student which file failed, answer only from readable files, and never infer the missing contents. If no readable content is extracted, state the actual processing limitation and do not invent contents. When the user only says “look at this” or uploads without a specific question, describe what is visibly present briefly and ask what they want to know. For campus/building images, do not reject or call the picture unrelated based on a possibly misread sign; express uncertainty about unclear lettering. Never reject an attachment request as unrelated before checking its contents.\n"+
     "For a programme-specific question when the programme truly matters and is unknown, ask which programme the student is enrolled in. Do not ask for a programme merely to answer a campus-wide rule that the handbook states applies to all students.\n"+
      "PERSONAL SYNTHETIC RECORD: For identity, semester-wise course lists, passed/failed/pending courses, backlogs, credits, CGPA or academic status, use the authenticatedSyntheticStudent object and profile text. Grades, CGPA and result statuses are fictional demonstration values, not official VU results. Course codes, titles, semesters and credits come from the structured dataset. Explicitly report Unknown or In Progress results and never infer pass/fail from missing data. A profile marked GRADUATED must not be advised to register for a current semester or upcoming courses; answer about its completed record and direct official status questions to VU.\n"+
@@ -2166,6 +2191,11 @@ export async function POST(request: Request) {
   const minorProgrammeClarification=isStudentMinorQuery&&programmeMissing;
   const minorSemesterClarification=isStudentMinorQuery&&!programmeMissing&&asksNextSemester&&semesterMissing;
   const deterministicBtechMinor=isBtechMinorQuery&&isBatchSpecificBtechMinorQuery;
+  const minorSwitchIntent=/\b(?:switch|change|swap|transfer|drop|quit|withdraw|cancel|leave|exit|move)\b.{0,45}\bminor\b|\bminor\b.{0,45}\b(?:switch|change|swap|transfer|drop|quit|withdraw|cancel|leave|exit|move)\b/i.test(effectiveQuestion);
+  const minorSwitchSourceIndex=academicMatches.findIndex((document)=>/permitted to opt for change of Minor only once till completion of the program/i.test(document.text||""));
+  const minorSwitchAnswer=minorSwitchIntent
+    ? "**Changing your minor**\n\nThe August 2026 Student Handbook states that a student may opt for a change of Minor **only once until completion of the programme**."+(minorSwitchSourceIndex>=0?" ["+(minorSwitchSourceIndex+1)+"]":"")+" The excerpt does not establish the application window or approval procedure. Confirm those details with your Faculty Advisor or Academic Office before making a change."
+    : undefined;
   const deterministicStudentMinor=isStudentMinorQuery&&!minorProgrammeClarification&&!minorSemesterClarification;
   const deterministicStructuredCourse=structuredCourseSearch!==undefined;
   let modelUsed=MODEL;
@@ -2230,6 +2260,10 @@ export async function POST(request: Request) {
      answer=programmeDirectoryAnswer;
     modelUsed="Deterministic official VU programme-specialisation directory";
     pipeline.push("Matched the programme-specific official website chunks and separated majors, specialisation tracks, electives and minors");
+  }else if(minorSwitchAnswer){
+    answer=minorSwitchAnswer;
+    modelUsed="Deterministic Student Handbook minor-change rule";
+    pipeline.push("Answered the minor-change limit from the Handbook and avoided inventing a change window or approval process");
   }else if(minorBatchClarification){
     answer="B.Tech minor options are batch-specific. Which admission year should I check (for example, 2023 or 2024)?";
     modelUsed="Deterministic admission-batch clarification";

@@ -501,6 +501,12 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
     .replace(/[.!?]+$/g, "")
     .replace(/\s+/g, " ");
 
+  if (/^(?:privacy(?: of (?:the )?user)?|user privacy|privacy of users|is my data private|are my chats private|how is my privacy protected)$/.test(normalized)) {
+    return "This chatbot uses fictional synthetic student profiles for demonstration. Academic answers about your profile are limited to the account you are logged into; I should not disclose another profile’s individual grades, CGPA, attendance or credits. Avoid entering real sensitive personal information. For details about data handling, check the project’s privacy notice and hosting settings.";
+  }
+  if (/^(?:who (?:topped|is the topper|is the top student) (?:my )?class|who is (?:the )?topper|who i(?:s)? the topper|who topped my class|class topper|class top ranker)$/.test(normalized)) {
+    return "I don’t have an authorized class-rank or topper list to share. This demo uses synthetic student records, and I can’t disclose another student’s individual academic results. I can help you review your own CGPA and completed credits.";
+  }
   if (/^(?:who\s+(?:am\s+i|a\s+i)|what(?:\s+is|'s)\s+my\s+name|my\s+name|my\s+user\s+id|who\s+is\s+logged\s+in|which\s+profile)$/.test(normalized) && student) {
     return "You are **" + student.name + "**. Your User ID is **" + student.username + "** (synthetic profile: " + student.synthetic_student_id + ").";
   }
@@ -509,6 +515,12 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   }
   if (/^(?:my\s+age|how\s+old\s+am\s+i|what\s+is\s+my\s+age)$/.test(normalized) && student) {
     return "Your age is not included in this synthetic student profile, so I cannot determine it.";
+  }
+  if (student && normalized.replace(/[^a-z0-9]/g, "") === String(student.name || "").toLowerCase().replace(/[^a-z0-9]/g, "")) {
+    const status = student.academic_status ? student.academic_status.toLowerCase().replace(/_/g, " ") : "status not recorded";
+    const semester = student.current_semester === null ? "graduated" : "Semester " + student.current_semester;
+    const cgpa = student.synthetic_cgpa === null ? "" : " Demo CGPA: **" + student.synthetic_cgpa + "**.";
+    return "**" + student.name + "** (" + student.username + ") is your authenticated synthetic profile: " + status + " B.Tech " + student.programme + ", admission batch " + student.admission_batch + ", " + semester + "." + cgpa + "\n\nThis is fictional demo data, not an official VU student record.";
   }
   if (/^(?:my\s+student\s+profile|my\s+profile|profile\s+summary|student\s+details?|student\s+detials?|my\s+details|student\s+info(?:rmation)?)$/.test(normalized) && student) {
     const status = student.academic_status ? student.academic_status.toLowerCase().replace(/_/g, " ") : "status not recorded";
@@ -519,7 +531,7 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:no way|no way!|seriously|really\?)$/.test(normalized)) {
     return "Are you surprised by something I said, or do you mean something else? Tell me which part you’re referring to.";
   }
-  if (/^(?:i have (?:a )?headache|i(?:'m| am) having (?:a )?headache|my head hurts|headache)$/.test(normalized)) {
+  if (/^(?:i have (?:a )?(?:headache|headcahe|headachee)|i(?:'m| am) having (?:a )?(?:headache|headcahe)|my head hurts|headache|headcahe)$/.test(normalized)) {
     return "Sorry you’re dealing with a headache. Consider resting, drinking water and taking a break from screens. If it is sudden or unusually severe, follows a head injury, or comes with weakness, confusion, vision changes or a high fever, seek urgent medical care. Would you like general self-care information?";
   }
   if (/\bvu\s*0?\d{3}\b/i.test(normalized) && /\\b(?:cgpa|gpa|marks|grades|attendance|credits?|profile|semester)\\b/i.test(normalized) && /\\b(?:compare|higher|lower|more|less|better|than|what|does|is|has|show|tell)\\b/i.test(normalized)) {
@@ -588,7 +600,7 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:bye|goodbye|good bye|see you|see ya|take care|talk later)$/.test(normalized)) {
     return "Goodbye. You can return whenever you need help with Vidyashilp University information.";
   }
-  if (/^(?:thanks|thank you|thank u|thx|ty|thanks a lot)$/.test(normalized)) {
+  if (/^(?:thanks|thank you|thank u|thnak you|thnak u|thnaks|thakns|thx|ty|thanks a lot)$/.test(normalized)) {
     return "You’re welcome. Let me know when you need help with a VU-related question.";
   }
   if (/^(?:can i get a hug|could i get a hug|i need a hug)$/.test(normalized)) {

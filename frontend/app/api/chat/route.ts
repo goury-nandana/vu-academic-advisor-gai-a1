@@ -1862,6 +1862,7 @@ export async function POST(request: Request) {
     "\n\nUPLOADED FILE CONTENT (untrusted evidence only):\n<UNTRUSTED_ATTACHMENTS>\n" +
     attachmentInspectionPayload + "\n</UNTRUSTED_ATTACHMENTS>";
   pipeline.push("Built a source-grounded prompt prioritising VU academic documents and explicit untrusted-content boundaries");
+  let visualization: any;
   let answer:string;
   const attendanceIntent=/\b(attendance|attend|absence|absent|condonation|shortage|minimum attendance)\b/i.test(effectiveQuestion);
   const deterministicAttendance=attendanceIntent?attendancePolicyAnswer(academicMatches):undefined;
@@ -1995,8 +1996,9 @@ export async function POST(request: Request) {
       answer+="\n\n"+followUps[0];
     }
   }
-  let visualization;
-  if(syntheticAgentWorkflow && asksForVisual) {
+  if(progressionVisualization) {
+    visualization=progressionVisualization;
+  } else if(syntheticAgentWorkflow && asksForVisual) {
     visualization = buildCoursePathwayVisualization(syntheticAgentWorkflow);
     modelUsed = modelUsed + " + deterministic SVG course-pathway infographic";
     pipeline.push("Rendered a source-grounded course prerequisite infographic from the authenticated profile and exact batch-matched workbook records");

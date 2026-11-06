@@ -131,6 +131,32 @@ function renderAnswer(text: string) {
             if (!href || (!safeHttp && !safeSameOriginPath)) return <span>{children}</span>;
             // Never render model-supplied links as avatar/infographic images.
             if (/\.(?:png|jpe?g|gif|webp|svg)(?:[?#].*)?$/i.test(href)) return null;
+            // Marksheet/PDF download — fetch with credentials so the auth cookie is sent,
+            // then trigger a blob download rather than opening a tab (which would lose the cookie).
+            if (href.startsWith("/api/marksheet")) {
+              return (
+                <button
+                  className="btn-download-marksheet"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(href, { credentials: "include" });
+                      if (!res.ok) { alert("Could not generate marksheet. Please make sure you are logged in."); return; }
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "synthetic-marksheet.pdf";
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      URL.revokeObjectURL(url);
+                    } catch { alert("Download failed. Please try again."); }
+                  }}
+                >
+                  ⬇ {children}
+                </button>
+              );
+            }
             return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
           },
           img: () => null,

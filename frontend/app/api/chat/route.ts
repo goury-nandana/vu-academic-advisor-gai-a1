@@ -1210,7 +1210,9 @@ function retrieveAcademic(
     .map((code) => code.replace(/[\s-]/g, "").toUpperCase());
   const gradeAverageIntent = /\b(?:cgpa|sgpa|grade point average)\b/i.test(question);
   const convocationIntent = /\bconvocation\b/i.test(question);
-  const academicIntent = attendanceIntent || gradeAverageIntent || convocationIntent || courseCodes.length > 0 ||
+  const definitionsIntent = /\b(?:definition|definitions|define|meaning|what is|what does)\b/i.test(question) &&
+    /\b(?:academic calendar|academic council|academic regulations|academic term|board of governors|act|regulatory bodies|programme regulations|definitions)\b/i.test(question);
+  const academicIntent = attendanceIntent || gradeAverageIntent || convocationIntent || definitionsIntent || courseCodes.length > 0 ||
     /\b(credit|course|prerequisite|curriculum|syllabus|semester|grading|grade|assessment|exam|examination|academic regulation|progression|registration|minor|speciali[sz]ation|elective|leave policy|medical leave|attendance policy)\b/i.test(question);
   if (!academicIntent) return [];
 
@@ -1246,11 +1248,20 @@ function retrieveAcademic(
     selected.push(document);
   };
 
+  if (definitionsIntent) {
+    // Clause 7 definitions span adjacent chunks on Handbook PDF page 10.
+    // Retrieve the complete page-level definition passages rather than relying on keyword ranking.
+    ACADEMIC_KNOWLEDGE.documents
+      .filter((document) => /Student Handbook/i.test(document.source || "") &&
+        Number(document.page) === 10 &&
+        /Definitions In these Regulations|Academic Calendar.*means|Academic Council.*means|Academic Term.*means/i.test(document.text || ""))
+      .forEach(addDocument);
+  }
   if (gradeAverageIntent) {
     const gradeAverageHandbook = ACADEMIC_KNOWLEDGE.documents.find((document) =>
       /Student Handbook/i.test(document.source || "") &&
       /SGPA is the weighted average of the grade points/i.test(document.text || "") &&
-      /CGPA indicates overall academic performance/i.test(document.text || "")
+      /Cumulative Grade Point Average indicates overall academic performance/i.test(document.text || "")
     );
     addDocument(gradeAverageHandbook);
   }
@@ -1938,7 +1949,7 @@ export async function POST(request: Request) {
     /\b(?:difference|diff|compare|comparison|between|vs\.?|versus|mean|means|explain)\b/i.test(effectiveQuestion);
   const gradeAverageSourceIndex = academicMatches.findIndex((document) =>
     /SGPA is the weighted average of the grade points/i.test(document.text || "") &&
-    /CGPA indicates overall academic performance/i.test(document.text || "")
+    /Cumulative Grade Point Average indicates overall academic performance/i.test(document.text || "")
   );
   const gradeAverageCitation = gradeAverageSourceIndex >= 0 ? " [" + (gradeAverageSourceIndex + 1) + "]" : "";
   const gradeAverageComparisonAnswer = gradeAverageComparisonIntent && gradeAverageSourceIndex >= 0

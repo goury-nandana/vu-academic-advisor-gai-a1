@@ -695,7 +695,7 @@ function getDeterministicScopeAnswer(question: string): string | undefined {
   if (/\bweather\b|\btemperature\b|\bforecast\b/.test(normalized)) {
     return "I can help with Vidyashilp University academic information, but I do not have live weather data for the campus. Please check a weather service for current conditions.";
   }
-  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credits?|credit|cgpa|sgpa|gpa|grade point average|convocation|graduation|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisites?|prerequisite|eligib(?:le|ility)|graduat(?:e|ed|ion)|backlogs?|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question) || /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question) || extractCourseCodeCandidates(question).length > 0 ||
+  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credits?|credit|attendance|attend|absence|absent|condonation|shortage|cgpa|sgpa|gpa|grade point average|convocation|graduation|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisites?|prerequisite|eligib(?:le|ility)|graduat(?:e|ed|ion)|backlogs?|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question) || /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question) || extractCourseCodeCandidates(question).length > 0 ||
     /\b(?:l[\s-]*t[\s-]*p|ltp)\b/i.test(question) ||
     (/\b(?:lecture|tutorial|practical|structure|details?)\b/i.test(question) && mentionsKnownCourseTitle(question));
   // Also allow personal academic profile questions and app-feature requests that
@@ -1950,7 +1950,9 @@ export async function POST(request: Request) {
                 Number(course.semester)===requestedSemester&&course.document_type==="semester_spread"&&course.is_course_record!==false
               );
               const ltp=[planRow?.L,planRow?.T,planRow?.P].map((value)=>value===null||value===undefined||value===""?"Not specified":String(value)).join("-");
-              const sourceIndex=academicMatches.findIndex((document)=>String(document.title||"").toUpperCase().startsWith(String(record.course_code||"").toUpperCase()+" —")&&String(document.text||"").includes("B.Tech admission batch "+authenticatedStudent.admission_batch));
+              // Do not reference academicMatches here: its declaration is later in this request handler.
+              // L-T-P is matched directly to the structured batch/semester workbook row above.
+              const sourceIndex=-1;
               const cite=sourceIndex>=0?" ["+(sourceIndex+1)+"]":"";
               return "| "+record.course_code+" | "+record.course_title.replace(/\|/g,"\\|")+" | "+record.credits+" | "+(record.status||"Not recorded")+" | "+ltp+" |"+cite;
             });

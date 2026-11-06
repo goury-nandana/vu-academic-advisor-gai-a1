@@ -126,7 +126,7 @@ function renderAnswer(text: string) {
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ href, children }) => {
-            if (!href || !/^https?:\/\//i.test(href)) return <span>{children}</span>;
+            const safeHttp = /^https?:\/\//i.test(href || "");\n            const safeSameOriginPath = Boolean(href && href.startsWith("/") && !href.startsWith("//"));\n            if (!href || (!safeHttp && !safeSameOriginPath)) return <span>{children}</span>;
             // Never render model-supplied links as avatar/infographic images.
             if (/\.(?:png|jpe?g|gif|webp|svg)(?:[?#].*)?$/i.test(href)) return null;
             return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
@@ -431,6 +431,12 @@ export default function Home() {
     const marksheetQuestion = /\b(marksheet|mark sheet|transcript)\b/.test(normalizedQuestion) && /\b(download|get|generate|give|show|need|want|provide|my)\b/.test(normalizedQuestion);
     if (identityQuestion && authStudent) {
       setMessages((current) => [...current, { id: idRef.current++, role: "user", text: question }, { id: idRef.current++, role: "bot", text: "You are **" + authStudent.name + "**. Your User ID is **" + authStudent.username + "** (synthetic profile: " + authStudent.synthetic_student_id + ")." }]);
+      if (draftRef.current) { draftRef.current.value = ""; draftRef.current.style.height = ""; }
+      setNotice("");
+      return;
+    }
+    if (/\b(?:i\s+)?(?:dont|don't|do not)\s+see\s+(?:the\s+)?(?:download\s+)?button|(?:download\s+)?button\s+(?:is\s+)?not\s+(?:visible|showing)/i.test(normalizedQuestion) && /\b(?:marksheet|mark\s*sheet|transcript|download)\b/i.test(normalizedQuestion)) {
+      setMessages((current) => [...current, { id: idRef.current++, role: "user", text: question }, { id: idRef.current++, role: "bot", text: "Here is the direct link to your synthetic marksheet PDF: [Download Synthetic Marksheet PDF](/api/marksheet). If it does not start downloading, open the link in a new tab. This PDF is generated from your signed-in fictional demo profile." }]);
       if (draftRef.current) { draftRef.current.value = ""; draftRef.current.style.height = ""; }
       setNotice("");
       return;

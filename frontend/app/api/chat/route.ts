@@ -597,6 +597,10 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:who is your boyfriend|do you have a boyfriend|who is your girlfriend|do you have a girlfriend)$/.test(normalized)) {
     return "I don’t have personal relationships. I’m here to help with Vidyashilp University information.";
   }
+  // A bare word is ambiguous: ask what the student means instead of guessing their intent.
+  if (/^[a-z0-9][a-z0-9'-]*$/i.test(normalized)) {
+    return "Could you clarify what you mean by **“" + normalized + "”**? Are you asking about a B.Tech course, your student profile, or something else?";
+  }
   return undefined;
 }
 
@@ -1895,3 +1899,40 @@ export async function POST(request: Request) {
   const semesterSpecific=/\b(semester|term|this sem|next sem|current sem)\b/i.test(effectiveQuestion);
   const followUps:string[]=[];
   const deterministicMinor=minorBatchClarification||minorProgrammeClarification||minorSemesterClarification||deterministicBtechMinor||deterministicStudentMinor;
+
+  if(!followUps.length) {
+    if(files.length || previousAttachmentContext.length) followUps.push("Would you like me to read or explain a specific part of the uploaded file?");
+    else if(/\b(?:course|subject|prerequisite|eligib|semester|minor|major|credit|backlog)\b/i.test(effectiveQuestion)) followUps.push("Would you like me to check the related course details or requirements?");
+    else if(/\b(?:profile|who am i|my name|my id)\b/i.test(effectiveQuestion)) followUps.push("Would you like to see your semester-wise courses or completed credits?");
+    else followUps.push("What would you like to check next?");
+  }
+  if(!deterministicAttendance&&!deterministicMinor&&!deterministicStructuredCourse&&!programmeDirectoryAnswer){
+    if(programmeSpecific&&programmeMissing) followUps.push("Which programme are you enrolled in?");
+    else if(semesterSpecific&&semesterMissing) followUps.push("Which semester are you currently in?");
+    if(followUps.length&&!answer.toLowerCase().includes(followUps[0].toLowerCase().replace("?",""))) {
+      answer+="\n\n"+followUps[0]+" I need this detail to avoid mixing requirements from different programmes or semesters.";
+    }
+  }
+  let visualization;
+  if(syntheticAgentWorkflow && asksForVisual) {
+    visualization = buildCoursePathwayVisualization(syntheticAgentWorkflow);
+    modelUsed = modelUsed + " + deterministic SVG course-pathway infographic";
+    pipeline.push("Rendered a source-grounded course prerequisite infographic from the authenticated profile and exact batch-matched workbook records");
+  } else if(key&&/\b(chart|graph|infographic|visuali[sz]e|diagram|flowchart|visual summary)\b/i.test(combinedQuestion)&&sources.length){
+    try{
+      const raw=await groq(key,[
+        {role:"system",content:"Return JSON only with kind (bars,steps,cards), title and items. Use ONLY facts/numbers present in the answer and source excerpts. Never infer or calculate missing values. Use bars only for comparable numbers; steps for a process; cards for non-numeric comparisons. At most six items."},
+        {role:"user",content:"Request: "+combinedQuestion+"\nAnswer: "+answer+"\nEvidence: "+sources.map((source)=>"["+source.citation+"] "+source.title+"\n"+source.text.slice(0,2200)).join("\n\n")},
+      ],MODEL,true);
+      if(deterministicAttendance&&visualization) modelUsed=MODEL+" (visual summary only)";
+      visualization=validateVisual(JSON.parse(raw));
+      if(visualization) pipeline.push("Created a source-bounded visual summary");
+    }catch{/* Keep the text answer when structured visualization is unavailable. */}
+  }
+  const citedSourceNumbers=new Set(Array.from(answer.matchAll(/\[(\d+)\]/g), (match)=>Number(match[1])));
+  const citedSources=sources.filter((source)=>citedSourceNumbers.has(Number(source.citation)));
+  return NextResponse.json({
+    answer,sources:citedSources.map(({title,url,citation,type})=>({title,url,citation,type})),pipeline,model:modelUsed,
+    visualization,followUps,attachmentContext:allAttachmentContext,
+  },{headers:{"Cache-Control":"no-store, max-age=0","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin"}});
+}

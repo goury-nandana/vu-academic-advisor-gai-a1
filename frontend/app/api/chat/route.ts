@@ -510,7 +510,7 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:my\s+age|how\s+old\s+am\s+i|what\s+is\s+my\s+age)$/.test(normalized) && student) {
     return "Your age is not included in this synthetic student profile, so I cannot determine it.";
   }
-  if (/^(?:my\s+student\s+profile|my\s+profile|profile\s+summary|student\s+details?|my\s+details|student\s+info(?:rmation)?)$/.test(normalized) && student) {
+  if (/^(?:my\s+student\s+profile|my\s+profile|profile\s+summary|student\s+details?|student\s+detials?|my\s+details|student\s+info(?:rmation)?)$/.test(normalized) && student) {
     const status = student.academic_status ? student.academic_status.toLowerCase().replace(/_/g, " ") : "status not recorded";
     const semester = student.current_semester === null ? "graduated" : "Semester " + student.current_semester;
     const cgpa = student.synthetic_cgpa === null ? "" : " Demo CGPA: **" + student.synthetic_cgpa + "**.";
@@ -522,7 +522,7 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:i have (?:a )?headache|i(?:'m| am) having (?:a )?headache|my head hurts|headache)$/.test(normalized)) {
     return "Sorry you’re dealing with a headache. Consider resting, drinking water and taking a break from screens. If it is sudden or unusually severe, follows a head injury, or comes with weakness, confusion, vision changes or a high fever, seek urgent medical care. Would you like general self-care information?";
   }
-  if (/\\bvu\\s*0?\\d{3}\\b/i.test(normalized) && /\\b(?:cgpa|gpa|marks|grades|attendance|credits?|profile|semester)\\b/i.test(normalized) && /\\b(?:compare|higher|lower|more|less|better|than|what|does|is|has|show|tell)\\b/i.test(normalized)) {
+  if (/\bvu\s*0?\d{3}\b/i.test(normalized) && /\\b(?:cgpa|gpa|marks|grades|attendance|credits?|profile|semester)\\b/i.test(normalized) && /\\b(?:compare|higher|lower|more|less|better|than|what|does|is|has|show|tell)\\b/i.test(normalized)) {
     return "I can show information from the profile you are currently logged into, but I can’t disclose or compare another student’s individual academic records. I can help you review your own CGPA, credits or semester progress.";
   }
   if (/^(?:teacher|teachers|professor|professors|faculty)$/.test(normalized)) {
@@ -606,7 +606,7 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:who is your boyfriend|do you have a boyfriend|who is your girlfriend|do you have a girlfriend)$/.test(normalized)) {
     return "I don’t have personal relationships. I’m here to help with Vidyashilp University information.";
   }
-    if (/^(?:tgb|yhn|ujm|ikol|asdf|qwer|zxcv)(?:[a-z]+)?(?:\\s+(?:tgb|yhn|ujm|ikol|asdf|qwer|zxcv)[a-z]*)*$/i.test(normalized)) {
+    if (/^(?:tgb|yhn|ujm|ikol|asdf|qwer|zxcv)(?:[a-z]+)?(?:\s+(?:tgb|yhn|ujm|ikol|asdf|qwer|zxcv)[a-z]*)*$/i.test(normalized)) {
     return "I couldn’t make sense of that message. Could you retype or rephrase it?";
   }
   // A bare word is ambiguous: ask what the student means instead of guessing their intent.

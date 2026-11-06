@@ -510,7 +510,7 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:my\s+age|how\s+old\s+am\s+i|what\s+is\s+my\s+age)$/.test(normalized) && student) {
     return "Your age is not included in this synthetic student profile, so I cannot determine it.";
   }
-  if (/^(?:student|my\s+student\s+profile|my\s+profile|profile\s+summary)$/.test(normalized) && student) {
+  if (/^(?:my\s+student\s+profile|my\s+profile|profile\s+summary)$/.test(normalized) && student) {
     const status = student.academic_status ? student.academic_status.toLowerCase().replace(/_/g, " ") : "status not recorded";
     const semester = student.current_semester === null ? "graduated" : "Semester " + student.current_semester;
     const cgpa = student.synthetic_cgpa === null ? "" : " Demo CGPA: **" + student.synthetic_cgpa + "**.";

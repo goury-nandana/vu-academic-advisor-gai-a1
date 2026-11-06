@@ -840,7 +840,8 @@ function findStructuredCourseSearch(
     hasBtechContext;
   const courseDetailsIntent = requestedCodes.length > 0 ||
     (requestedTitles.length > 0 &&
-      /\b(?:course|subject|code|prerequisite|pre-requisite|credits?|l[\s-]*t[\s-]*p|semester|details?)\b/i.test(question));
+      (/\b(?:course|subject|code|prerequisite|pre-requisite|credits?|l[\s-]*t[\s-]*p|semester|details?)\b/i.test(question) ||
+       /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question)));
 
   if (!courseDetailsIntent && !semesterListIntent) return undefined;
 
@@ -1520,8 +1521,8 @@ function deterministicProgrammeDirectoryAnswer(
   return answer;
 }
 function isBtechDegreeCreditRequirementQuestion(question: string): boolean {
-  return /\b(?:total|minimum|required|degree|graduation|graduate|complete|completion)\b.{0,70}\bcredits?\b|\bcredits?\b.{0,70}\b(?:required|to graduate|for graduation|to complete|degree|total)\b/i.test(question) &&
-    /\b(?:b\.?\s*tech|engineering)\b/i.test(question);
+  const degreeCreditsIntent = /\b(?:total|minimum|required|degree|graduation|graduate|complete|completion)\b.{0,70}\bcredits?\b|\bcredits?\b.{0,70}\b(?:required|to graduate|for graduation|to complete|degree|total)\b|\bhow many credits? do i need to graduate\b|\bcredits? do i need to (?:graduate|complete my degree)\b/i.test(question);
+  return degreeCreditsIntent && (/\b(?:b\.?\s*tech|engineering|degree)\b/i.test(question) || /\b(?:i|my|me)\b/i.test(question));
 }
 
 function retrieveBtechDegreeCreditChunks(question: string): WebsiteSearchHit[] {
@@ -1958,8 +1959,8 @@ export async function POST(request: Request) {
         : "**Semester "+requestedSemester+" courses for "+authenticatedStudent.name+" ("+authenticatedStudent.programme+", admission batch "+authenticatedStudent.admission_batch+")**\n\n| Course Code | Course Title | Credits | Result |\n| --- | --- | ---: | --- |\n"+ownSemesterRecords.map((record)=>"| "+record.course_code+" | "+record.course_title.replace(/\|/g,"\\|")+" | "+record.credits+" | "+(record.status||"Not recorded")+" |").join("\n")+"\n\nThese rows come from your authenticated synthetic student profile. They are fictional demonstration records, not an official VU transcript."
       : "No Semester "+requestedSemester+" course records are listed in the authenticated synthetic profile for "+authenticatedStudent.name+"."
     : undefined;
-  const asksDegreeCredits = /\b(?:total|minimum|required|degree|graduation|graduate|complete|completion)\b.{0,70}\bcredits?\b|\bcredits?\b.{0,70}\b(?:required|to graduate|for graduation|to complete|degree|total)\b/i.test(effectiveQuestion) &&
-    /\b(?:b\.?\s*tech|engineering|degree)\b/i.test(effectiveQuestion);
+  const asksDegreeCredits = /\b(?:total|minimum|required|degree|graduation|graduate|complete|completion)\b.{0,70}\bcredits?\b|\bcredits?\b.{0,70}\b(?:required|to graduate|for graduation|to complete|degree|total)\b|\bhow many credits? do i need to graduate\b|\bcredits? do i need to (?:graduate|complete my degree)\b/i.test(effectiveQuestion) &&
+    (/\b(?:b\.?\s*tech|engineering|degree)\b/i.test(effectiveQuestion) || /\b(?:i|my|me)\b/i.test(effectiveQuestion));
   const asksCompletedCredits=/\bhow\s+many\b.{0,50}\bcredits?\b|\bcompleted\s+credits?\b|\bcredit\s+total\b/i.test(effectiveQuestion) && !asksDegreeCredits;
   const profilePassedRecords=authenticatedStudent.academic_records.filter((record)=>String(record.status||"").toLowerCase()==="passed");
   const profileCompletedCredits=profilePassedRecords.reduce((sum,record)=>sum+Number(record.credits||0),0);

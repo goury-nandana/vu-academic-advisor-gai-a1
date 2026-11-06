@@ -687,7 +687,7 @@ function getDeterministicScopeAnswer(question: string): string | undefined {
   if (/\bweather\b|\btemperature\b|\bforecast\b/.test(normalized)) {
     return "I can help with Vidyashilp University academic information, but I do not have live weather data for the campus. Please check a weather service for current conditions.";
   }
-  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credits?|credit|attendance|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question) || /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question) || /\b[A-Z]{2,6}[\s-]?\d{3,4}[A-Z]?\b/i.test(question);
+  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credits?|credit|cgpa|sgpa|gpa|grade point average|convocation|graduation|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question) || /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question) || /\b[A-Z]{2,6}[\s-]?\d{3,4}[A-Z]?\b/i.test(question);
   // Also allow personal academic profile questions and app-feature requests that
   // implicitly refer to the student’s own record — these are always in scope.
   const isPersonalProfileQuestion = /\b(?:my|mine)\b.{0,80}\b(?:profile|record|progress|summary|status|cgpa|credits?|courses?|backlogs?|marks?|grade|semester|transcript|marksheet|academic|standard|performance|timeline|history)\b|\b(?:read\s+aloud|summarise|summarize|explain).{0,60}\b(?:my|mine)\b|\b(?:download|generate|give\s+me|show\s+me).{0,40}\b(?:marksheet|transcript|pdf|record)\b/i.test(question);
@@ -1208,7 +1208,9 @@ function retrieveAcademic(
   if (isMinorQuestion(question)) return retrieveNonBtechMinorContext();
   const courseCodes = (question.match(/\b[A-Za-z]{2,6}[\s-]?\d{3,4}[A-Za-z]?\b/g) ?? [])
     .map((code) => code.replace(/[\s-]/g, "").toUpperCase());
-  const academicIntent = attendanceIntent || courseCodes.length > 0 ||
+  const gradeAverageIntent = /\b(?:cgpa|sgpa|grade point average)\b/i.test(question);
+  const convocationIntent = /\bconvocation\b/i.test(question);
+  const academicIntent = attendanceIntent || gradeAverageIntent || convocationIntent || courseCodes.length > 0 ||
     /\b(credit|course|prerequisite|curriculum|syllabus|semester|grading|grade|assessment|exam|examination|academic regulation|progression|registration|minor|speciali[sz]ation|elective|leave policy|medical leave|attendance policy)\b/i.test(question);
   if (!academicIntent) return [];
 
@@ -1243,6 +1245,23 @@ function retrieveAcademic(
     seen.add(key);
     selected.push(document);
   };
+
+  if (gradeAverageIntent) {
+    const gradeAverageHandbook = ACADEMIC_KNOWLEDGE.documents.find((document) =>
+      /Student Handbook/i.test(document.source || "") &&
+      /SGPA is the weighted average of the grade points/i.test(document.text || "") &&
+      /CGPA indicates overall academic performance/i.test(document.text || "")
+    );
+    addDocument(gradeAverageHandbook);
+  }
+  if (convocationIntent) {
+    const convocationHandbook = ACADEMIC_KNOWLEDGE.documents.find((document) =>
+      /Student Handbook/i.test(document.source || "") &&
+      /16\.?\s*Convocation/i.test(document.text || "") &&
+      /held annually/i.test(document.text || "")
+    );
+    addDocument(convocationHandbook);
+  }
 
   if (attendanceIntent) {
     // Include the complete linked Handbook/SOP attendance rules, not only the highest scoring excerpt.
@@ -1340,6 +1359,28 @@ function isProgrammeDirectoryQuestion(question: string): boolean {
   const asksSpecialisations = /\b(?:speciali[sz]ations?|speciali[sz]ation tracks?|tracks offered)\b/i.test(question) &&
     /\b(?:what|which|list|offer|offered|available|VU|Vidyashilp|programmes?|programs?|degrees?)\b/i.test(question);
   return asksProgrammes || asksSpecialisations;
+}
+
+function isBtechMajorSpecialisationQuestion(question: string): boolean {
+  return /\bmajor\b/i.test(question) &&
+    /\b(?:specialisation|specialization|specilisation|specilization)\b/i.test(question) &&
+    /\b(?:difference|diff|compare|comparison|distinguish|between|versus|vs\.?|mean|means|definition|define|explain)\b/i.test(question);
+}
+
+function retrieveBtechMajorSpecialisationChunks(): WebsiteSearchHit[] {
+  const ids = ["programme_btech_ds__01", "programme_btech_aiml__01"];
+  return ids.flatMap((id) => {
+    const chunk = WEBSITE_KNOWLEDGE.chunks.find((item) => item.chunk_id === id);
+    if (!chunk) return [];
+    return [{
+      title: String(chunk.page_title || "Vidyashilp University") + " — " + String(chunk.heading || ""),
+      url: String(chunk.page_url || "https://vidyashilp.edu.in/"),
+      text: String(chunk.text || ""),
+      pageId: chunk.page_id,
+      heading: chunk.heading,
+      score: 100,
+    }];
+  });
 }
 
 function retrieveProgrammeDirectoryChunks(): WebsiteSearchHit[] {
@@ -1816,7 +1857,9 @@ export async function POST(request: Request) {
   const suppressWebsiteForAttendance = /\b(attendance|attendance policy|absence|condonation|shortage|medical leave)\b/i.test(effectiveQuestion);
   const localWebsiteMatches = socialAnswer || suppressWebsiteForAttendance || onlyImagesUploaded
     ? []
-    : programmeDirectoryIntent ? retrieveProgrammeDirectoryChunks() : retrieveWebsiteKnowledge(effectiveQuestion);
+    : programmeDirectoryIntent ? retrieveProgrammeDirectoryChunks()
+      : isBtechMajorSpecialisationQuestion(effectiveQuestion) ? retrieveBtechMajorSpecialisationChunks()
+      : retrieveWebsiteKnowledge(effectiveQuestion);
   const profilePrerequisiteAnswer=asksProfileCourseEligibility
     ? (() => {
         const studentLabel=authenticatedStudent.name+" ("+authenticatedStudent.synthetic_student_id+")";
@@ -1890,6 +1933,30 @@ export async function POST(request: Request) {
     pages as WebsiteSearchHit[],
     academicSources.length
   );
+  const gradeAverageComparisonIntent = /\bcgpa\b/i.test(effectiveQuestion) && /\bsgpa\b/i.test(effectiveQuestion) &&
+    /\b(?:difference|diff|compare|comparison|between|vs\.?|versus|mean|means|explain)\b/i.test(effectiveQuestion);
+  const gradeAverageSourceIndex = academicMatches.findIndex((document) =>
+    /SGPA is the weighted average of the grade points/i.test(document.text || "") &&
+    /CGPA indicates overall academic performance/i.test(document.text || "")
+  );
+  const gradeAverageCitation = gradeAverageSourceIndex >= 0 ? " [" + (gradeAverageSourceIndex + 1) + "]" : "";
+  const gradeAverageComparisonAnswer = gradeAverageComparisonIntent && gradeAverageSourceIndex >= 0
+    ? "**SGPA vs CGPA**\n\n- **SGPA (Semester Grade Point Average):** measures your weighted grade-point average for courses registered in one semester.\n- **CGPA (Cumulative Grade Point Average):** measures your cumulative weighted grade-point average across courses registered up to and including the latest completed semester.\n\nBoth are credit-weighted: multiply each course's credits by its grade point, add those products, then divide by the total credits of the included courses. The Handbook states that both are calculated to two decimal places. [Clauses 8.16–8.17]" + gradeAverageCitation + "\n\n**Remember:** SGPA is semester-specific; CGPA is cumulative."
+    : undefined;
+  const convocationSourceIndex = academicMatches.findIndex((document) =>
+    /16\.?\s*Convocation/i.test(document.text || "") && /held annually/i.test(document.text || "")
+  );
+  const convocationCitation = convocationSourceIndex >= 0 ? " [" + (convocationSourceIndex + 1) + "]" : "";
+  const convocationAnswer = /\bconvocation\b/i.test(effectiveQuestion) && convocationSourceIndex >= 0
+    ? "**Convocation at Vidyashilp University**\n\nThe Student Handbook states that VU holds convocation annually. The University announces the ceremony date and invites eligible students to register. Students must submit the completed application and pay the prescribed convocation fee by the announced deadline. Degrees are awarded in person to students who graduated in the preceding academic year; students unable to attend may receive their degrees in absentia." + convocationCitation + "\n\nThe Handbook does not specify the date of the next ceremony. Check the [official VU news page](https://vidyashilp.edu.in/news/) or contact the [University](https://vidyashilp.edu.in/contact/) for the current date and registration notice."
+    : undefined;
+  const majorSpecialisationCitation = (pageId: string) => {
+    const index = pages.findIndex((page) => page.pageId === pageId);
+    return index >= 0 ? " [" + (academicSources.length + index + 1) + "]" : "";
+  };
+  const majorSpecialisationAnswer = isBtechMajorSpecialisationQuestion(effectiveQuestion)
+    ? "**Major vs specialisation at VU**\n\nIn general, a **major** is the main field of study, while a **specialisation** is the particular focus within or attached to that field. VU's current B.Tech programme pages use these labels in a programme-specific way: the CSE–Data Science page describes Data Science as its specialisation and major, while the CSE–AI & Machine Learning page describes AI/ML as the programme's specialisation/major focus." + majorSpecialisationCitation("programme_btech_ds") + majorSpecialisationCitation("programme_btech_aiml") + "\n\nRead the labels from the exact B.Tech programme and admission-batch course plan. The published pages do not establish a universal rule about when students choose a specialisation, whether it can be changed, or how it appears on every transcript. I will not assume those details."
+    : undefined;
   const attachmentReferenceIntent = unreadableAttachmentNames.length > 0 && attachments.length === 0 && !/Voice transcript:/i.test(combinedQuestion);
   const unreadableAttachmentAnswer = attachmentReferenceIntent
     ? (() => {
@@ -1967,6 +2034,18 @@ export async function POST(request: Request) {
     answer=socialAnswer;
     modelUsed="Deterministic conversational response";
     pipeline.push("Handled a conversational, wellbeing or out-of-scope message without requiring an external model");
+  }else if(gradeAverageComparisonAnswer){
+    answer=gradeAverageComparisonAnswer;
+    modelUsed="Deterministic Student Handbook grading-rule explanation";
+    pipeline.push("Retrieved Clause 8.16–8.17 and distinguished semester-specific SGPA from cumulative CGPA using the Handbook formulas");
+  }else if(convocationAnswer){
+    answer=convocationAnswer;
+    modelUsed="Deterministic Student Handbook convocation-policy lookup";
+    pipeline.push("Retrieved Clause 16 of the August 2026 Student Handbook for the annual convocation and registration process");
+  }else if(majorSpecialisationAnswer){
+    answer=majorSpecialisationAnswer;
+    modelUsed="Deterministic official VU B.Tech programme-page comparison";
+    pipeline.push("Compared the two current official B.Tech programme descriptions and avoided unsupported claims about track selection or transcript rules");
   }else if(minorMajorSpecialisationAnswer){
     answer=minorMajorSpecialisationAnswer;
     modelUsed="Deterministic academic-concept explanation";

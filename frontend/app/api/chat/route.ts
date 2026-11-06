@@ -541,8 +541,8 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
     if (student.current_semester === null) return "Your authenticated synthetic profile is marked as graduated; it has no current semester.";
     return "You are currently in **Semester " + student.current_semester + "** according to your authenticated synthetic profile. This is demo data, not an official university record.";
   }
-  if (/^(?:who is|who's|tell me about|show me)\s+vu\s*0?\d{3}$/.test(normalized)) {
-    return "I can’t disclose another student profile’s identity or individual academic details based on a User ID. This demo protects profile-level information; please sign in to the account you’re authorized to view.";
+  if (/\b(?:vu\s*0?\d{2,3}|syn[-\s]?\d{3}|vusyn\d{3})\b/i.test(normalized) && /\b(?:records?|profile|details?|grades?|marks?|cgpa|courses?|show|tell|who is|view|access|get)\b/i.test(normalized)) {
+    return "I can only show academic information for the account you are currently signed into. I can’t access or display another student’s records. If you want to check a different account, please log out and log in as that account.";
   }
   if (/^(?:am i graduated|have i graduated|did i graduate|am i a graduate|am i still a student|what is my academic status)$/.test(normalized) && student) {
     const status = String(student.academic_status || "").toUpperCase();
@@ -1875,7 +1875,13 @@ export async function POST(request: Request) {
   const effectiveQuestion = useProfileBatchForMinor
     ? effectiveQuestionBase + " (admission batch " + authenticatedStudent.admission_batch + ", from the signed-in profile)"
     : effectiveQuestionBase;
-  const genericAttachmentInspection = files.length > 0 && /^(?:(?:please|can you|could you)\s+)?(?:look(?:\s+at)?|check|review|inspect|describe|summari[sz]e|take\s+a\s+look\s+at)\s+(?:(?:my|these|this|the)\s+)?(?:attachments?|files?|documents?)(?:\s+please)?[.!?]*$/i.test(question);
+  // genericAttachmentInspection: triggered when student uploads file(s) and asks to inspect/summarise them.
+  // Also covers short "summarise this", "what is this", "explain this" when files are attached.
+  const genericAttachmentInspection = files.length > 0 && (
+    /^(?:(?:please|can you|could you)\s+)?(?:look(?:\s+at)?|check|review|inspect|describe|summari[sz]e|take\s+a\s+look\s+at)\s+(?:(?:my|these|this|the)\s+)?(?:attachments?|files?|documents?)(?:\s+please)?[.!?]*$/i.test(question) ||
+    /^(?:(?:please\s+)?(?:summari[sz]e|summarise|summarize|describe|explain|review|analyse|analyze|read|check|inspect|look\s+at))\s+(?:this|these|it|them|the\s+file|the\s+pdf|the\s+document|my\s+file|my\s+pdf|my\s+document)[.!?]*$/i.test(question) ||
+    (files.length > 0 && /^(?:what(?:'s|\s+is)\s+(?:this|in\s+this|it)|what\s+does\s+(?:this|it)\s+(?:say|contain|show)|can\s+you\s+read\s+(?:this|it))[.!?]*$/i.test(question))
+  );
   const failedImageNames=unreadableAttachmentNames.filter((name)=>imageFiles.some((file)=>file.name===name));
   const readableImageCount=imageFiles.length-failedImageNames.length;
   const imageOnlyAnswer = onlyImagesUploaded && previousAttachmentContext.length===0 && readableImageCount > 0 && imageBatch.answer

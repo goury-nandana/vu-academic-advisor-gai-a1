@@ -510,6 +510,13 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:who (?:topped|is the topper|is the top student) (?:my )?class|who is (?:the )?topper|who i(?:s)? the topper|who topped my class|class topper|class top ranker)$/.test(normalized)) {
     return "I don’t have an authorized class-rank or topper list to share. This demo uses synthetic student records, and I can’t disclose another student’s individual academic results. I can help you review your own CGPA and completed credits.";
   }
+  if (/^(?:in which sem(?:ester)? am i|which sem(?:ester)? am i in|what sem(?:ester)? am i in|my current sem(?:ester)?|current sem(?:ester)?)$/.test(normalized) && student) {
+    if (student.current_semester === null) return "Your authenticated synthetic profile is marked as graduated; it has no current semester.";
+    return "You are currently in **Semester " + student.current_semester + "** according to your authenticated synthetic profile. This is demo data, not an official university record.";
+  }
+  if (/^(?:who is|who's|tell me about|show me)\s+vu\s*0?\d{3}$/.test(normalized)) {
+    return "I can’t disclose another student profile’s identity or individual academic details based on a User ID. This demo protects profile-level information; please sign in to the account you’re authorized to view.";
+  }
   if (/^(?:who\s+(?:am\s+i|a\s+i)|what(?:\s+is|'s)\s+my\s+name|my\s+name|my\s+user\s+id|who\s+is\s+logged\s+in|which\s+profile)$/.test(normalized) && student) {
     return "You are **" + student.name + "**. Your User ID is **" + student.username + "** (synthetic profile: " + student.synthetic_student_id + ").";
   }

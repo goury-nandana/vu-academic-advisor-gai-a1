@@ -501,8 +501,14 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
     .replace(/[.!?]+$/g, "")
     .replace(/\s+/g, " ");
 
-  if (/^(?:privacy(?: of (?:the )?user)?|user privacy|privacy of users|is my data private|are my chats private|how is my privacy protected)$/.test(normalized)) {
-    return "This chatbot uses fictional synthetic student profiles for demonstration. Academic answers about your profile are limited to the account you are logged into; I should not disclose another profile’s individual grades, CGPA, attendance or credits. Avoid entering real sensitive personal information. For details about data handling, check the project’s privacy notice and hosting settings.";
+  if (/^(?:(?:what|which)\s+(?:personal\s+)?(?:information|data)\s+(?:do you|does this chatbot|does the chatbot)\s+(?:store|keep|collect|use)\s+(?:about|on)\s+me|what\s+(?:do you|does this chatbot)\s+know\s+about\s+me|what\s+data\s+is\s+stored\s+about\s+me|privacy(?:\s+of\s+(?:the\s+)?user)?|user privacy|privacy of users|is my data private|are my chats private|how is my privacy protected|what information do you have about me)$/.test(normalized)) {
+    const profileDetails = student
+      ? "The authenticated demo profile available in this session contains your name, username/User ID, synthetic profile ID, programme, admission batch, academic status, current semester (if applicable), fictional CGPA (if supplied), and course-level records such as course codes, titles, credits, grades and result status."
+      : "The demo uses synthetic student profiles; no authenticated profile is available in this request.";
+    return "This is an academic-advisor demo using fictional synthetic student data, not real university records. " + profileDetails + " The response system receives your current question and the relevant authenticated profile context to answer it. I should only disclose your own profile information, not another student's individual academic data. Do not enter real sensitive personal information. For exact retention, logging and hosting details, consult the project's privacy notice and deployment settings; I cannot verify those settings from this chat.";
+  }
+  if (/\b(?:show|give|display|list|reveal|provide)\b.{0,80}\b(?:all\s+(?:five|5|\d+)\s+)?(?:synthetic\s+)?students?\b.{0,80}\b(?:records?|profiles?|academic\s+details?|grades?|cgpa|data)\b|\b(?:all\s+(?:five|5|\d+)\s+students?)(?:'s|\s+)?\s*(?:academic\s+)?(?:records?|profiles?|data)\b/i.test(normalized)) {
+    return "I can only show the academic information associated with the account you are currently authenticated into. I can’t provide a roster or records for other students. You can ask for your own profile summary or academic records.";
   }
   if (/^(?:who (?:got|has) the (?:lowest|least) (?:cgpa|gpa) (?:in|of) (?:my )?class|who has the lowest cgpa|who got the lowest cgpa|lowest cgpa in my class|class lowest cgpa|who is the lowest cgpa student)$/.test(normalized)) {
     return "I can’t disclose another student’s individual CGPA or identify who has the lowest academic score. This demo uses synthetic student records, and individual academic results are private. I can help you review your own CGPA and academic progress.";
@@ -1700,10 +1706,10 @@ export async function POST(request: Request) {
   const isStudentMinorQuery=minorIntent&&!isBtechMinorQuery;
   const requestedMinorBatches=getBtechMinorBatches(effectiveQuestion);
   const isBatchSpecificBtechMinorQuery=requestedMinorBatches.length>0;
-  const structuredSearchQuestion = syntheticStudent
-    ? effectiveQuestion + " for B.Tech admission batch " + syntheticStudent.admission_batch
-    : effectiveQuestion;
-  const structuredCourseSearch=findStructuredCourseSearch(structuredSearchQuestion,syntheticStudent?.programme||profile.program);
+  // Do not silently constrain general course-detail/L-T-P questions to the logged-in
+  // student's admission batch. If the student names a batch, the search function applies it.
+  // Student-specific eligibility decisions still use the authenticated profile in the workflow.
+  const structuredCourseSearch=findStructuredCourseSearch(effectiveQuestion,syntheticStudent?.programme||profile.program);
   const requestedSyntheticCourseCode=structuredCourseSearch?.requestedCodes[0];
   const requestedSemester=extractCourseSemester(effectiveQuestion);
   const asksOwnSemesterCourses=/\b(?:did\s+i\s+have|did\s+i\s+take|i\s+had|i\s+took|my)\b/i.test(effectiveQuestion) && /\b(?:courses?|subjects?)\b/i.test(effectiveQuestion) && /\b(?:semester|sem)\b/i.test(effectiveQuestion);

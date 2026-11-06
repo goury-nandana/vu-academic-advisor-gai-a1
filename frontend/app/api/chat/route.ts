@@ -1967,7 +1967,7 @@ export async function POST(request: Request) {
         return "**Personal prerequisite check — "+studentLabel+"**\n\n- **Course:** "+profileCourseRecord.course_code+" — "+profileCourseRecord.course_title+" ("+profileCourseRecord.credits+" credits)."+citation+"\n- **Your admission batch:** "+batch+"\n- **Course-plan semester:** "+(Number.isFinite(plannedSemester)?plannedSemester:"Not specified")+"\n- **Prerequisites listed for your batch:** "+(profileCoursePrerequisites.join(", ")||"None listed")+"."+rows+"\n\n**Result:** "+resultText+(semesterNote?"\n\n"+semesterNote:"")+"\n\nThis checks only the direct prerequisites against your authenticated fictional profile. It does not guarantee registration, timetable availability or University approval.";
       })()
     : undefined;
-  const pages = (isBtechMinorQuery||isStudentMinorQuery||structuredCourseSearch||socialAnswer||suppressWebsiteForAttendance||onlyImagesUploaded)
+  const pages: WebsiteSearchHit[] = (isBtechMinorQuery||isStudentMinorQuery||structuredCourseSearch||socialAnswer||suppressWebsiteForAttendance||onlyImagesUploaded)
     ? []
     : localWebsiteMatches.length ? localWebsiteMatches : await retrieve(combinedQuestion);
   pipeline.push("Searched the embedded VU Student Handbook, Student SOP, course plans and structured B.Tech semester-spread records");

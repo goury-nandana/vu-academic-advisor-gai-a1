@@ -688,7 +688,10 @@ function getDeterministicScopeAnswer(question: string): string | undefined {
     return "I can help with Vidyashilp University academic information, but I do not have live weather data for the campus. Please check a weather service for current conditions.";
   }
   const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credits?|credit|attendance|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question) || /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question) || /\b[A-Z]{2,6}[\s-]?\d{3,4}[A-Z]?\b/i.test(question);
-  if (!hasVuAcademicContext) {
+  // Also allow personal academic profile questions and app-feature requests that
+  // implicitly refer to the student’s own record — these are always in scope.
+  const isPersonalProfileQuestion = /\b(?:my|mine)\b.{0,80}\b(?:profile|record|progress|summary|status|cgpa|credits?|courses?|backlogs?|marks?|grade|semester|transcript|marksheet|academic|standard|performance|timeline|history)\b|\b(?:read\s+aloud|summarise|summarize|explain).{0,60}\b(?:my|mine)\b|\b(?:download|generate|give\s+me|show\s+me).{0,40}\b(?:marksheet|transcript|pdf|record)\b/i.test(question);
+  if (!hasVuAcademicContext && !isPersonalProfileQuestion) {
     return "I’m Vikki Talk, the academic assistant for B.Tech at Vidyashilp University. I’m limited to B.Tech academic advising, so I can’t answer general knowledge questions. I can help with your courses, prerequisites, credits, backlogs, eligibility or academic progress.";
   }
   return undefined;
@@ -1871,7 +1874,10 @@ export async function POST(request: Request) {
   const programmeMissing=!profileProgramme||profileProgramme==="Not specified";
   const semesterMissing=!profileSemester||profileSemester==="Not specified";
   const asksNextSemester=/\b(next|upcoming)\s*(?:semester|sem|term)\b/i.test(effectiveQuestion);
-  const minorBatchClarification=isBtechMinorQuery&&!isBatchSpecificBtechMinorQuery;
+  // If the student is asking for a *definition* of minor/major/specialisation (not requesting a list of options),
+  // skip the batch clarification and let the LLM answer from handbook context.
+  const isDefinitionQuestion = /\b(?:what\s+is|what's|explain|difference|diff|between|mean|means|definition|define)\b.{0,80}\b(?:minor|major|speciali[sz]ation)\b|\b(?:minor|major|speciali[sz]ation)\b.{0,80}\b(?:what\s+is|what's|explain|difference|diff|mean|means|definition|define)\b/i.test(effectiveQuestion);
+  const minorBatchClarification=isBtechMinorQuery&&!isBatchSpecificBtechMinorQuery&&!isDefinitionQuestion;
   const minorProgrammeClarification=isStudentMinorQuery&&programmeMissing;
   const minorSemesterClarification=isStudentMinorQuery&&!programmeMissing&&asksNextSemester&&semesterMissing;
   const deterministicBtechMinor=isBtechMinorQuery&&isBatchSpecificBtechMinorQuery;

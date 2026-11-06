@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import academicKnowledgeJson from "../../../data/vu-academic-knowledge.json";
 import websiteKnowledgeJson from "../../../data/vu-website-knowledge.json";
+import { buildCourseCodeIndex, extractCourseCodeCandidates, resolveCourseCodes } from "../../../lib/course-codes";
 import { creditCalculationAgent, getSyntheticStudent, runAcademicAdvisorAgentWorkflow, type AgentWorkflowResult } from "../../../academic-agents";
 import { getAuthenticatedStudent } from "../../../lib/demo-auth";
 
@@ -570,7 +571,7 @@ function getSimpleSocialAnswer(question: string, history: ChatHistoryItem[] = []
   if (/^(?:i have (?:a )?(?:headache|headcahe|headachee)|i(?:'m| am) having (?:a )?(?:headache|headcahe)|my head hurts|headache|headcahe)$/.test(normalized)) {
     return "Sorry you’re dealing with a headache. Consider resting, drinking water and taking a break from screens. If it is sudden or unusually severe, follows a head injury, or comes with weakness, confusion, vision changes or a high fever, seek urgent medical care. Would you like general self-care information?";
   }
-  if (/\bvu\s*0?\d{3}\b/i.test(normalized) && /\\b(?:cgpa|gpa|marks|grades|attendance|credits?|profile|semester)\\b/i.test(normalized) && /\\b(?:compare|higher|lower|more|less|better|than|what|does|is|has|show|tell)\\b/i.test(normalized)) {
+  if (/\bvu\s*0?\d{3}\b/i.test(normalized) && /\b(?:cgpa|gpa|marks|grades|attendance|credits?|profile|semester)\b/i.test(normalized) && /\b(?:compare|higher|lower|more|less|better|than|what|does|is|has|show|tell)\b/i.test(normalized)) {
     return "I can show information from the profile you are currently logged into, but I can’t disclose or compare another student’s individual academic records. I can help you review your own CGPA, credits or semester progress.";
   }
   if (/^(?:teacher|teachers|professor|professors|faculty)$/.test(normalized)) {
@@ -687,7 +688,9 @@ function getDeterministicScopeAnswer(question: string): string | undefined {
   if (/\bweather\b|\btemperature\b|\bforecast\b/.test(normalized)) {
     return "I can help with Vidyashilp University academic information, but I do not have live weather data for the campus. Please check a weather service for current conditions.";
   }
-  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credits?|credit|cgpa|sgpa|gpa|grade point average|convocation|graduation|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question) || /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question) || /\b[A-Z]{2,6}[\s-]?\d{3,4}[A-Z]?\b/i.test(question);
+  const hasVuAcademicContext = /\b(?:vu|vidyashilp|university|campus|admission|application|programme|programmes|program|programs|speciali[sz]ations?|tracks?|courses?|subjects?|curriculum|syllabus|semester|credits?|credit|cgpa|sgpa|gpa|grade point average|convocation|graduation|exam|examination|assessment|marks|grade|facult(?:y|ies)|student|hostel|fee|scholarship|policy|handbook|sop|prerequisite|digii|bms|b\.?tech|b\.a\.|b\.des|ba llb|minors?|majors?|electives?|economics|psychology|department|school|wellness|counselling|counseling|internship|placement|contact|research|library|timetable|academic)\b/i.test(question) || /\b(?:can|may|could)\s+i\s+(?:take|enrol|enroll|register)\b/i.test(question) || extractCourseCodeCandidates(question).length > 0 ||
+    /\b(?:l[\s-]*t[\s-]*p|ltp)\b/i.test(question) ||
+    (/\b(?:lecture|tutorial|practical|structure|details?)\b/i.test(question) && mentionsKnownCourseTitle(question));
   // Also allow personal academic profile questions and app-feature requests that
   // implicitly refer to the student’s own record — these are always in scope.
   const isPersonalProfileQuestion = /\b(?:my|mine)\b.{0,80}\b(?:profile|record|progress|summary|status|cgpa|credits?|courses?|backlogs?|marks?|grade|semester|transcript|marksheet|academic|standard|performance|timeline|history)\b|\b(?:read\s+aloud|summarise|summarize|explain).{0,60}\b(?:my|mine)\b|\b(?:download|generate|give\s+me|show\s+me).{0,40}\b(?:marksheet|transcript|pdf|record)\b/i.test(question);
@@ -755,6 +758,47 @@ function courseRecordDocument(record: CourseRecord): AcademicDocument {
   };
 }
 
+const COURSE_TITLE_GENERIC_WORDS = new Set(["structure","structures","detail","details","credit","credits","course","courses","subject","subjects","code","codes","prerequisite","prerequisites","semester","lecture","tutorial","practical","about","tell","show","what","which","list","batch","admission","programme","program","the","and","for","with","from","that","please","this","where","when","does","how","can","you","are","ltp"]);
+function titleWords(value: unknown): string[] {
+  return String(value || "").toLowerCase().replace(/&/g, " and ").match(/[a-z0-9]+/g) ?? [];
+}
+let courseTitleWordListCache: string[][] | undefined;
+function courseTitleWordLists(): string[][] {
+  if (!courseTitleWordListCache) {
+    const unique = new Map<string, string[]>();
+    for (const record of ACADEMIC_KNOWLEDGE.courseRecords) {
+      const words = titleWords(record.course_title);
+      if (words.join("").length >= 6) unique.set(words.join(" "), words);
+    }
+    courseTitleWordListCache = [...unique.values()];
+  }
+  return courseTitleWordListCache;
+}
+/** True when the question names a course title that exists in the structured course records. */
+function mentionsKnownCourseTitle(question: string): boolean {
+  const padded = " " + titleWords(question).join(" ") + " ";
+  return courseTitleWordLists().some((words) => padded.includes(" " + words.join(" ") + " "));
+}
+/** Titles that contain every distinctive word of the question, e.g. "calculus" also finds "Multivariate Calculus". */
+function partialCourseTitleMatches(question: string, titles: string[]): string[] {
+  if (!/\b(?:l[\s-]*t[\s-]*p|ltp|course|subject|code|prerequisite|credits?|semester|details?|structure)\b/i.test(question)) return [];
+  const wanted = titleWords(question).filter((word) => word.length >= 4 && !COURSE_TITLE_GENERIC_WORDS.has(word));
+  if (!wanted.length) return [];
+  const matches = titles.filter((title) => {
+    const words = new Set(titleWords(title));
+    return wanted.every((word) => words.has(word));
+  });
+  return matches.length <= 8 ? matches : [];
+}
+function isMinorDefinitionQuestion(question: string): boolean {
+  return /\b(?:what\s+is|what's|explain|difference|diff|between|compare|comparison|distinguish|mean|means|definition|define)\b.{0,120}\b(?:minor|major|speciali[sz]ation\w*)\b|\b(?:minor|major|speciali[sz]ation\w*)\b.{0,120}\b(?:what\s+is|what's|explain|difference|diff|between|compare|comparison|distinguish|mean|means|definition|define)\b/i.test(question);
+}
+
+let courseCodeIndexCache: ReturnType<typeof buildCourseCodeIndex> | undefined;
+function getCourseCodeIndex() {
+  courseCodeIndexCache ??= buildCourseCodeIndex(ACADEMIC_KNOWLEDGE.courseRecords);
+  return courseCodeIndexCache;
+}
 function findStructuredCourseSearch(
   question: string,
   programme?: unknown
@@ -762,27 +806,26 @@ function findStructuredCourseSearch(
   if (!ACADEMIC_KNOWLEDGE.courseRecords.length || isMinorQuestion(question)) return undefined;
 
   const normalizedQuestion = normalizeCourseSearchText(question);
-  const requestedCodes = [...new Set(
-    (question.match(/\b[A-Za-z]{2,6}[\s-]?\d{3,4}[A-Za-z]?\b/g) || [])
-      .map((code) => code.replace(/[\s-]/g, "").toUpperCase())
-  )];
+  // Strict: only tokens that exist in the structured course records count as
+  // course codes. Student IDs (VU006, SYN-106, VU-SYN-106) are never courses.
+  const codeCandidates = extractCourseCodeCandidates(question);
+  const requestedCodes = resolveCourseCodes(question, getCourseCodeIndex()).valid;
 
   const titleCandidates = [...new Set(
     ACADEMIC_KNOWLEDGE.courseRecords
       .map((record) => String(record.course_title || "").trim())
       .filter((title) => normalizeCourseSearchText(title).length >= 6)
   )];
-  const requestedTitles = titleCandidates
+  const exactTitles = titleCandidates
     .filter((title) => normalizedQuestion.includes(normalizeCourseSearchText(title)))
     .sort((a, b) => normalizeCourseSearchText(b).length - normalizeCourseSearchText(a).length);
+  const requestedTitles = [...new Set([...exactTitles, ...partialCourseTitleMatches(question, titleCandidates)])];
   const semester = extractCourseSemester(question);
   const hasBtechContext = isBtechProgramme(programme) || isBtechProgramme(question);
-  const matchingBtechCodes = ACADEMIC_KNOWLEDGE.courseRecords.some((record) =>
-    requestedCodes.includes(String(record.course_code || "").replace(/[\s-]/g, "").toUpperCase())
-  );
+  const matchingBtechCodes = requestedCodes.length > 0;
   // A code absent from the semester-spread archive may still exist in Course_Plans or another
   // official document. Let general document retrieval handle it instead of claiming no match.
-  if (requestedCodes.length && !matchingBtechCodes) return undefined;
+  if (codeCandidates.length && !matchingBtechCodes) return undefined;
   const semesterListIntent = semester !== undefined &&
     /\b(?:courses|subjects)\b/i.test(question) &&
     /\b(?:list|show|what|which|all|offered|taught|included)\b/i.test(question) &&
@@ -908,14 +951,17 @@ function structuredCourseAnswer(search: StructuredCourseSearch): string {
     const courseName = readableCourseTitle(search.requestedTitle || records[0].course_title);
     const codes = [...new Set(records.map((record) => record.course_code))];
     if (search.ltpOnly) {
-      let answer = "**" + courseName + " (" + codes.join(", ") + ") — L-T-P structure**\n\n";
-      answer += "| Admission batch | L | T | P | L-T-P | Source |\n";
-      answer += "| --- | ---: | ---: | ---: | --- | --- |\n";
+      const distinctTitles = [...new Set(records.map((record) => String(record.course_title || "")))].filter(Boolean);
+      const heading = distinctTitles.length > 1 ? "L-T-P structure — " + distinctTitles.join(" / ") : courseName + " (" + codes.join(", ") + ") — L-T-P structure";
+      let answer = "**" + heading + "**\n\n";
+      answer += "| Admission batch | Course | L | T | P | L-T-P | Source |\n";
+      answer += "| --- | --- | ---: | ---: | ---: | --- | --- |\n";
       for (const record of records) {
         const lecture = record.L === undefined || record.L === null || record.L === "" ? "Not specified" : String(record.L);
         const tutorial = record.T === undefined || record.T === null || record.T === "" ? "Not specified" : String(record.T);
         const practical = record.P === undefined || record.P === null || record.P === "" ? "Not specified" : String(record.P);
         answer += "| " + String(record.batch || "Not specified") +
+          " | " + String(record.course_code || "") + " " + String(record.course_title || "") +
           " | " + lecture +
           " | " + tutorial +
           " | " + practical +
@@ -1208,8 +1254,7 @@ function retrieveAcademic(
     return retrieveBtechMinorBatches(getBtechMinorBatches(question));
   }
   if (isMinorQuestion(question)) return retrieveNonBtechMinorContext();
-  const courseCodes = (question.match(/\b[A-Za-z]{2,6}[\s-]?\d{3,4}[A-Za-z]?\b/g) ?? [])
-    .map((code) => code.replace(/[\s-]/g, "").toUpperCase());
+  const courseCodes = extractCourseCodeCandidates(question);
   const progressionIntent = /\b(?:fail|failed|backlog|progress|progression|promot|promotion|eligible)\b/i.test(question) &&
     /\b(?:semester|year|academic year)\b/i.test(question);
   const gradeAverageIntent = /\b(?:cgpa|sgpa|grade point average)\b/i.test(question);
@@ -1678,6 +1723,15 @@ export async function POST(request: Request) {
     }catch{      return NextResponse.json({error:"Invalid request origin."},{status:403});
     }
   }
+  // Authenticate BEFORE reading the body or the model key, so unauthenticated
+  // callers cannot trigger multipart parsing or model work.
+  const authenticatedStudent=getAuthenticatedStudent(request);
+  if(!authenticatedStudent) return NextResponse.json({error:"Please log in with a synthetic student account before chatting."},{status:401});
+  // The cookie is shared by every tab. If another tab switched accounts, refuse
+  // instead of silently answering as a different student than the one shown.
+  const expectedProfileId=request.headers.get("x-expected-profile-id");
+  if(expectedProfileId&&expectedProfileId!==authenticatedStudent.id)
+    return NextResponse.json({error:"Your session changed in another tab or window. Reload this page to continue as the signed-in student.",code:"SESSION_CHANGED"},{status:409});
   const declaredLength=Number(request.headers.get("content-length")||0);
   if(Number.isFinite(declaredLength)&&declaredLength>MAX_BYTES+512*1024)
     return NextResponse.json({error:"The chat request is larger than the allowed upload limit."},{status:413});
@@ -1685,8 +1739,6 @@ export async function POST(request: Request) {
   let form:FormData;
   try { form=await request.formData(); } catch { return NextResponse.json({error:"Could not read the chat request."},{status:400}); }
   const question=String(form.get("question")??"").trim().slice(0,4000);
-  const authenticatedStudent=getAuthenticatedStudent(request);
-  if(!authenticatedStudent) return NextResponse.json({error:"Please log in with a synthetic student account before chatting."},{status:401});
   // Identity and profile context are server-derived from the signed HttpOnly session.
   const rawProfile:Record<string,unknown>={
     program:authenticatedStudent.programme,
@@ -1805,7 +1857,16 @@ export async function POST(request: Request) {
   const pendingCourseQuestion = getPendingBtechCourseQuestion(history, combinedQuestion);
   const contextualCourseLtpQuestion = getContextualBtechCourseLtpQuestion(history, combinedQuestion);
   const contextualFacultyQuestion = getContextualFacultyFollowupQuestion(history, combinedQuestion);
-  const effectiveQuestion = pendingMinorQuestion || pendingBtechMinorCorrection || pendingCourseQuestion || contextualCourseLtpQuestion || contextualFacultyQuestion || combinedQuestion;
+  const effectiveQuestionBase = pendingMinorQuestion || pendingBtechMinorCorrection || pendingCourseQuestion || contextualCourseLtpQuestion || contextualFacultyQuestion || combinedQuestion;
+  // Minor-option lookups use the signed-in student's own admission batch instead of asking for it.
+  const useProfileBatchForMinor = isMinorQuestion(effectiveQuestionBase) &&
+    (isBtechMinorQuestion(effectiveQuestionBase) || isBtechProgramme(authenticatedStudent.programme)) &&
+    getBtechMinorBatches(effectiveQuestionBase).length === 0 &&
+    !isMinorDefinitionQuestion(effectiveQuestionBase) &&
+    /^20\d{2}$/.test(String(authenticatedStudent.admission_batch));
+  const effectiveQuestion = useProfileBatchForMinor
+    ? effectiveQuestionBase + " (admission batch " + authenticatedStudent.admission_batch + ", from the signed-in profile)"
+    : effectiveQuestionBase;
   const genericAttachmentInspection = files.length > 0 && /^(?:(?:please|can you|could you)\s+)?(?:look(?:\s+at)?|check|review|inspect|describe|summari[sz]e|take\s+a\s+look\s+at)\s+(?:(?:my|these|this|the)\s+)?(?:attachments?|files?|documents?)(?:\s+please)?[.!?]*$/i.test(question);
   const failedImageNames=unreadableAttachmentNames.filter((name)=>imageFiles.some((file)=>file.name===name));
   const readableImageCount=imageFiles.length-failedImageNames.length;
@@ -2096,10 +2157,10 @@ export async function POST(request: Request) {
   const asksNextSemester=/\b(next|upcoming)\s*(?:semester|sem|term)\b/i.test(effectiveQuestion);
   // If the student is asking for a *definition* of minor/major/specialisation (not requesting a list of options),
   // skip the batch clarification and let the LLM answer from handbook context.
-  const isDefinitionQuestion = /\b(?:what\s+is|what's|explain|difference|diff|between|compare|comparison|distinguish|mean|means|definition|define)\b.{0,120}\b(?:minor|major|speciali[sz]ation)\b|\b(?:minor|major|speciali[sz]ation)\b.{0,120}\b(?:what\s+is|what's|explain|difference|diff|between|compare|comparison|distinguish|mean|means|definition|define)\b/i.test(effectiveQuestion);
-  const comparesMinorAndSpecialisation=/\bminor(?:s)?\b/i.test(effectiveQuestion)&&/\bspeciali[sz]ations?\b/i.test(effectiveQuestion)&&/\b(?:difference|diff|compare|comparison|distinguish|between|versus|vs\.?|mean|means|definition|define|explain)\b/i.test(effectiveQuestion);
+  const isDefinitionQuestion = isMinorDefinitionQuestion(effectiveQuestion);
+  const comparesMinorAndSpecialisation=/\bminor(?:s)?\b/i.test(effectiveQuestion)&&/\bspeciali[sz]ation\w*\b/i.test(effectiveQuestion)&&/\b(?:difference|diff|compare|comparison|distinguish|between|versus|vs\.?|mean|means|definition|define|explain)\b/i.test(effectiveQuestion);
   const minorMajorSpecialisationAnswer=comparesMinorAndSpecialisation
-    ? "At VU, the exact structure and available options depend on the B.Tech programme and your admission-batch course plan. The terms are different:\n\n- **Major:** your primary field of study — the main academic discipline of your degree.\n- **Minor:** an additional, separately structured set of courses in another or complementary subject area, alongside your main programme. It normally has its own prescribed course/credit requirements.\n- **Specialisation:** a focused pathway within your programme, built around a particular area and its prescribed courses or electives.\n\n**In simple terms:** major = your main field; minor = an additional field; specialisation = a focused area within your programme. A minor and a specialisation are not automatically interchangeable, and the course plan for your batch determines which options VU offers and what must be completed."
+    ? "**General explanation — not an official VU definition.** This describes how the terms are usually used in higher education; it is not quoted from the VU Student Handbook or SOP.\n\n- **Specialisation:** a focused pathway within your own programme, built around a particular area and its prescribed courses or electives.\n- **Minor:** an additional, separately structured set of courses in another or complementary subject area, taken alongside your main programme. It normally has its own course and credit requirements.\n\nWhich specialisations and minors VU actually offers, and what you must complete, depends on your programme and admission-batch course plan. You are signed in as an admission-batch **"+authenticatedStudent.admission_batch+"** student, so ask me **\"show my minor options\"** or **\"show my course plan\"** and I will answer from the official records for that batch."
     : undefined;
   const minorBatchClarification=isBtechMinorQuery&&!isBatchSpecificBtechMinorQuery&&!isDefinitionQuestion;
   const minorProgrammeClarification=isStudentMinorQuery&&programmeMissing;

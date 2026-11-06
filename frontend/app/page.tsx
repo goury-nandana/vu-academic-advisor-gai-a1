@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Camera, Check, Copy, FileText, Mic, Square, X, Volume2, VolumeX } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { askAdvisor, transcribeVoice, type Source, type Visualization } from "./advisor";
+import { AdvisorError, askAdvisor, transcribeVoice, type Source, type Visualization } from "./advisor";
 
 type ImageAttachment = { name: string; url: string; file: File };
 type Msg = { id: number; role: "user" | "bot"; text: string; sources?: Source[]; files?: string[]; imageFiles?: ImageAttachment[]; pipeline?: string[]; model?: string; visualization?: Visualization; followUps?: string[]; fileNotes?: string[]; createdAt?: string };
@@ -295,6 +295,9 @@ export default function Home() {
   const draftRef = useRef<HTMLTextAreaElement>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
+  const chatAbortRef = useRef<AbortController | null>(null);
+  const sessionEpochRef = useRef(0);
+  const discardRecordingRef = useRef(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
@@ -330,6 +333,46 @@ export default function Home() {
       .finally(() => { if (active) setAuthReady(true); });
     return () => { active = false; };
   }, []);
+
+  const syncSessionRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    // The session cookie is shared by every tab. Re-check it when this tab regains
+    // focus so a login/logout elsewhere cannot leave this tab showing (or sending
+    // requests as) a different student.
+    if (!authStudent) { syncSessionRef.current = async () => {}; return; }
+    const shownId = authStudent.id;
+    const sync = async () => {
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" });
+        const data = await response.json().catch(() => ({})) as { student?: AuthStudent | null };
+        if (response.ok && data.student && data.student.id === shownId) return;
+        cancelPendingWork();
+        setMessages([{ id: idRef.current++, role: "bot", text: GREETING }]);
+        setAttachments([]);
+        setAttachmentContext([]);
+        if (response.ok && data.student) {
+          const student = data.student;
+          setAuthStudent(student);
+          setLoginUsername(student.username);
+          setProgram(student.programme);
+          setSemester(student.current_semester === null ? "Graduated" : String(student.current_semester));
+          setCgpa(student.synthetic_cgpa === null ? "" : String(student.synthetic_cgpa));
+          setCredits("");
+          setSyntheticStudentId(student.id);
+          setNotice("This tab was refreshed because you signed in as " + student.name + " in another tab or window.");
+        } else {
+          setAuthStudent(null);
+          setLoginError("Your session ended. Please sign in again.");
+        }
+      } catch { /* offline: keep the current view; the server still rejects mismatched requests */ }
+    };
+    syncSessionRef.current = sync;
+    const onVisible = () => { if (document.visibilityState === "visible") void sync(); };
+    window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { window.removeEventListener("focus", sync); document.removeEventListener("visibilitychange", onVisible); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStudent?.id]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -397,12 +440,15 @@ export default function Home() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const rec = new MediaRecorder(stream);
       const chunks: Blob[] = [];
+      const epoch = sessionEpochRef.current;
+      discardRecordingRef.current = false;
       rec.ondataavailable = (e) => {
         if (e.data.size > 0) chunks.push(e.data);
       };
       rec.onstop = async () => {
         stream.getTracks().forEach((track) => track.stop());
         if (tickRef.current) clearInterval(tickRef.current);
+        if (discardRecordingRef.current || epoch !== sessionEpochRef.current) { setRecording(false); return; }
         const type = rec.mimeType || "audio/webm";
         const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
         const recordingFile = new File(chunks, "voice-note." + ext, { type });
@@ -419,6 +465,7 @@ export default function Home() {
         setNotice("Transcribing your recording…");
         try {
           const transcript = await transcribeVoice(recordingFile);
+          if (epoch !== sessionEpochRef.current) return; // session changed while transcribing
           if (!transcript) {
             setNotice("No speech could be recognised. Try speaking more clearly or recording again.");
             return;
@@ -492,6 +539,10 @@ export default function Home() {
     setNotice("");
     setBusy(true);
     startTyping();
+    chatAbortRef.current?.abort();
+    const controller = new AbortController();
+    chatAbortRef.current = controller;
+    const epoch = sessionEpochRef.current;
     try {
       const r = await askAdvisor({
         question,
@@ -499,11 +550,17 @@ export default function Home() {
         profile: { program, semester, completedCredits: credits, cgpa, syntheticStudentId },
         files,
         attachmentContext,
+        expectedProfileId: authStudent?.id,
+        signal: controller.signal,
       });
+      // Drop late responses that belong to a previous session or cleared chat.
+      if (controller.signal.aborted || epoch !== sessionEpochRef.current) return;
       setAttachmentContext(r.attachmentContext ?? attachmentContext);
       setMessages((m) => [...m, { id: idRef.current++, role: "bot", text: r.answer, ...r, createdAt: new Date().toISOString() }]);
     } catch (error) {
+      if (controller.signal.aborted || epoch !== sessionEpochRef.current) return;
       const detail = error instanceof Error ? error.message : "Unknown request error";
+      if (error instanceof AdvisorError && error.code === "SESSION_CHANGED") void syncSessionRef.current();
       if (typed && draftRef.current && !draftRef.current.value.trim()) {
         draftRef.current.value = typed;
         draftRef.current.style.height = "auto";
@@ -591,7 +648,24 @@ export default function Home() {
     }
   }
 
+  function cancelPendingWork() {
+    sessionEpochRef.current += 1;
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+    if (recRef.current && recRef.current.state !== "inactive") {
+      discardRecordingRef.current = true;
+      recRef.current.stop();
+    }
+    if (tickRef.current) clearInterval(tickRef.current);
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    setSpeakingId(null);
+    setRecording(false);
+    setTranscribing(false);
+    setBusy(false);
+  }
+
   function clearChat() {
+    cancelPendingWork();
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     messages.forEach((message) => message.imageFiles?.forEach((image) => URL.revokeObjectURL(image.url)));
     setSpeakingId(null);
@@ -690,6 +764,7 @@ export default function Home() {
             <span>Demo CGPA: {authStudent?.synthetic_cgpa ?? "Not provided"}</span>
           </div>
           <button className="clear" onClick={async () => {
+            cancelPendingWork();
             await fetch("/api/auth/logout", { method: "POST" });
             setAuthStudent(null);
             setLoginPassword("");

@@ -12,13 +12,15 @@ const accounts = accountData.accounts as Account[];
 const students = studentData.students as unknown as SyntheticStudentProfile[];
 
 function sessionSecret(): string {
-  // SESSION_SECRET is preferred. GROQ_API_KEY is a server-only fallback so an
-  // existing deployment can function without exposing a signing key to clients.
-  return process.env.SESSION_SECRET?.trim() || process.env.GROQ_API_KEY?.trim() || "";
+  // A dedicated SESSION_SECRET is required. GROQ_API_KEY is deliberately NOT a
+  // fallback: a model-provider key must never double as a signing key.
+  const secret = process.env.SESSION_SECRET?.trim() || "";
+  if (process.env.NODE_ENV === "production" && secret.length < 32) return "";
+  return secret;
 }
 function signature(payload: string): string {
   const secret = sessionSecret();
-  if (!secret) throw new Error("Authentication requires SESSION_SECRET or GROQ_API_KEY.");
+  if (!secret) throw new Error("Authentication requires a SESSION_SECRET of at least 32 characters in production.");
   return createHmac("sha256", secret).update(payload).digest("base64url");
 }
 export function createSessionToken(profileId: string): string {

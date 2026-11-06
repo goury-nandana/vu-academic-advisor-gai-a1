@@ -25,12 +25,20 @@ export type AdvisorReply = {
 
 const EXTERNAL_API = process.env.NEXT_PUBLIC_ADVISOR_API_URL?.replace(/\/$/, "") ?? "";
 
+export class AdvisorError extends Error {
+  code?: string;
+  constructor(message: string, code?: string) { super(message); this.name = "AdvisorError"; this.code = code; }
+}
+
 export async function askAdvisor(input: {
   question: string;
   history: HistoryItem[];
   profile: Profile;
   files: File[];
   attachmentContext?: string[];
+  /** Consistency check only. The server-side session cookie remains the sole identity authority. */
+  expectedProfileId?: string;
+  signal?: AbortSignal;
 }): Promise<AdvisorReply> {
   const form = new FormData();
   form.append("question", input.question);
@@ -40,9 +48,15 @@ export async function askAdvisor(input: {
   form.append("attachmentContext", JSON.stringify(input.attachmentContext ?? []));
 
   const endpoint = EXTERNAL_API ? EXTERNAL_API + "/chat" : "/api/chat";
-  const response = await fetch(endpoint, { method: "POST", body: form, cache: "no-store" });
-  const data = await response.json().catch(() => ({})) as Partial<AdvisorReply> & { error?: string };
-  if (!response.ok) throw new Error(data.error || "Advisor API returned " + response.status + ".");
+  const response = await fetch(endpoint, {
+    method: "POST",
+    body: form,
+    cache: "no-store",
+    signal: input.signal,
+    headers: input.expectedProfileId ? { "x-expected-profile-id": input.expectedProfileId } : undefined,
+  });
+  const data = await response.json().catch(() => ({})) as Partial<AdvisorReply> & { error?: string; code?: string };
+  if (!response.ok) throw new AdvisorError(data.error || "Advisor API returned " + response.status + ".", data.code);
   return {
     answer: data.answer ?? "I could not find an answer to that.",
     sources: Array.isArray(data.sources) ? data.sources : [],

@@ -7,16 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
     "next": "^15.5.29",
+    "officeparser": "8.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1",
-    "officeparser": "8.2.0"
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
@@ -24,7 +25,8 @@
     "@types/react-dom": "^19.0.2",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.5.29",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "3.2.4"
   },
   "overrides": {
     "postcss": "8.5.32",
